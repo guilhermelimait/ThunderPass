@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">ThunderPass</string>
+    <string name="notification_channel_name">ThunderPass BLE</string>
+    <string name="notification_title">ThunderPass is active</string>
+    <string name="notification_text">Scanning for nearby devices…</string>
+
+    <!-- Permissions rationale strings -->
+    <string name="perm_bluetooth_rationale">
+        ThunderPass needs Bluetooth to discover and exchange profiles with nearby devices.
+    </string>
+    <string name="perm_notification_rationale">
+        ThunderPass needs to show a notification while running in the background.
+    </string>
+</resources>
