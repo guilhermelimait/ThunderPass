@@ -12,8 +12,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.retro.RetroAuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +33,10 @@ fun ProfileScreen(
     var draftName     by remember(profile.displayName) { mutableStateOf(profile.displayName) }
     var draftGreeting by remember(profile.greeting)     { mutableStateOf(profile.greeting) }
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
+    val context = LocalContext.current
+    val retroAuth = remember { RetroAuthManager.getInstance(context) }
+    var draftRaApiKey  by remember { mutableStateOf(retroAuth.getApiKey()) }
+    var draftRaApiUser by remember { mutableStateOf(retroAuth.getApiUser()) }
     var saved by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -138,16 +145,38 @@ fun ProfileScreen(
             OutlinedTextField(
                 value          = draftRetroUsername,
                 onValueChange  = { draftRetroUsername = it; saved = false },
-                label          = { Text("🎮 RetroAchievements Username") },
+                label          = { Text("\uD83C\uDFAE RetroAchievements Username") },
                 singleLine     = true,
                 modifier       = Modifier.fillMaxWidth(),
                 supportingText = { Text("Optional — share your RA stats on your Spark Card") },
+            )
+
+            OutlinedTextField(
+                value               = draftRaApiKey,
+                onValueChange       = { draftRaApiKey = it; saved = false },
+                label               = { Text("RA API Key") },
+                singleLine          = true,
+                modifier            = Modifier.fillMaxWidth(),
+                visualTransformation = PasswordVisualTransformation(),
+                supportingText      = { Text("From retroachievements.org/settings — kept encrypted on device") },
+            )
+
+            OutlinedTextField(
+                value          = draftRaApiUser,
+                onValueChange  = { draftRaApiUser = it; saved = false },
+                label          = { Text("RA API Username") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                supportingText = { Text("Usually the same as your RA username") },
             )
 
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick  = {
                     vm.save(draftName, draftGreeting, draftRetroUsername)
+                    if (draftRaApiKey.isNotBlank() && draftRaApiUser.isNotBlank()) {
+                        retroAuth.saveCredentials(draftRaApiKey.trim(), draftRaApiUser.trim())
+                    }
                     saved = true
                     if (firstRun) onComplete?.invoke()
                 },

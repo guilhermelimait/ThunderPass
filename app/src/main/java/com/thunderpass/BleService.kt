@@ -25,6 +25,7 @@ import com.thunderpass.ble.BleConstants
 import com.thunderpass.ble.EncounterDedup
 import com.thunderpass.ble.ScanMode
 import com.thunderpass.ble.GattClient
+import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.ble.GattServer
 import com.thunderpass.ble.RotatingIdManager
 import com.thunderpass.data.db.ThunderPassDatabase
@@ -104,6 +105,7 @@ class BleService : Service() {
             snapshotDao  = db.peerProfileSnapshotDao(),
             profileDao   = db.myProfileDao(),
             scope        = serviceScope,
+            retroAuth    = RetroAuthManager.getInstance(this),
             onProfileReceived = { encId, name -> updateEncounterNotification(encId, name) },
         )
         gattServer = GattServer(

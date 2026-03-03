@@ -141,34 +141,7 @@ fun EncounterDetailScreen(
                         Spacer(Modifier.height(8.dp))
                         HorizontalDivider()
                         Spacer(Modifier.height(8.dp))
-
-                        Text(
-                            text = "🎮 RetroAchievements",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        MetaCard(label = "RA Username", value = snapshot.retroUsername)
-
-                        if (snapshot.retroTotalPoints != null) {
-                            MetaCard(
-                                label = "Total Points",
-                                value = "%,d pts".format(snapshot.retroTotalPoints),
-                            )
-                        }
-                        if (snapshot.retroRecentlyPlayedCount != null) {
-                            MetaCard(
-                                label = "Games Recently Played",
-                                value = snapshot.retroRecentlyPlayedCount.toString(),
-                            )
-                        }
-                        if (snapshot.retroTotalPoints == null) {
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text("Fetching RA stats…") },
-                            )
-                        }
+                        RetroSparkCard(snapshot)
                     }
                 }
 

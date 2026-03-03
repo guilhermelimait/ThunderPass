@@ -3,7 +3,6 @@ package com.thunderpass.retro
 import android.util.Log
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import com.thunderpass.BuildConfig
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 
@@ -13,13 +12,8 @@ private const val BASE_URL = "https://retroachievements.org/API/"
 /**
  * Singleton Retrofit client for the RetroAchievements API.
  *
- * Configure credentials in `local.properties`:
- * ```
- * ra.apiKey=YOUR_WEB_API_KEY
- * ra.apiUser=YOUR_RA_USERNAME
- * ```
- * Keys are injected at build time via BuildConfig.
- * If no key is set, [fetchRetroMetadata] returns [Result.failure] gracefully.
+ * Credentials are resolved at call-time from [RetroAuthManager], which checks
+ * EncryptedSharedPreferences first and falls back to BuildConfig compile-time values.
  */
 object RetroRetrofitClient {
 
@@ -39,26 +33,22 @@ object RetroRetrofitClient {
 
     /**
      * Fetches the RetroAchievements global stats for [username].
-     *
-     * @return [Result.success] with a [RetroProfile], or [Result.failure] if:
-     *   - No API credentials are configured (BuildConfig.RA_API_KEY is empty), or
-     *   - The network call fails for any reason.
+     * Credentials are resolved from [auth] at call time.
      */
-    suspend fun fetchRetroMetadata(username: String): Result<RetroProfile> {
-        val apiKey  = BuildConfig.RA_API_KEY
-        val apiUser = BuildConfig.RA_API_USER
+    suspend fun fetchRetroMetadata(
+        username: String,
+        auth: RetroAuthManager,
+    ): Result<RetroProfile> {
+        val apiKey  = auth.getApiKey()
+        val apiUser = auth.getApiUser()
 
         if (apiKey.isBlank() || apiUser.isBlank()) {
             Log.d(TAG, "RA credentials not configured — skipping fetch for '$username'")
-            return Result.failure(IllegalStateException("RA_API_KEY / RA_API_USER not set in local.properties"))
+            return Result.failure(IllegalStateException("RA credentials not set"))
         }
 
         return runCatching {
-            service.getUserSummary(
-                apiUser = apiUser,
-                apiKey  = apiKey,
-                user    = username,
-            )
+            service.getUserSummary(apiUser = apiUser, apiKey = apiKey, user = username)
         }.onSuccess {
             Log.d(TAG, "Fetched RA profile for '$username': ${it.totalPoints} pts")
         }.onFailure {
