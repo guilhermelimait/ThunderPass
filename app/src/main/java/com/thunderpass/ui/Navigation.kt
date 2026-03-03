@@ -14,9 +14,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.thunderpass.supabase.SupabaseManager
+import io.github.jan.supabase.auth.auth
 
 private object Routes {
     const val SPLASH            = "splash"
+    const val AUTH              = "auth"
     const val ONBOARDING        = "onboarding"
     const val HOME              = "home"
     const val ENCOUNTERS        = "encounters"
@@ -47,16 +50,34 @@ fun ThunderPassNavGraph(
         composable(Routes.SPLASH) {
             val profileVm: ProfileViewModel = viewModel()
             LaunchedEffect(Unit) {
-                val firstRun = profileVm.isFirstRun()
-                val target   = if (firstRun) Routes.ONBOARDING else Routes.HOME
-                navController.navigate(target) {
-                    popUpTo(Routes.SPLASH) { inclusive = true }
+                val session = SupabaseManager.client.auth.currentSessionOrNull()
+                if (session == null) {
+                    // No session — go to auth screen
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                } else {
+                    val firstRun = profileVm.isFirstRun()
+                    val target   = if (firstRun) Routes.ONBOARDING else Routes.HOME
+                    navController.navigate(target) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
                 }
             }
-            // Brief blank screen while the DB check completes (~1 frame)
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        }
+
+        // ── Email OTP auth ──────────────────────────────────────────────────
+        composable(Routes.AUTH) {
+            AuthScreen(
+                onAuthenticated = {
+                    navController.navigate(Routes.SPLASH) {
+                        popUpTo(Routes.AUTH) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // ── The Grid — first-run onboarding ───────────────────────────────────

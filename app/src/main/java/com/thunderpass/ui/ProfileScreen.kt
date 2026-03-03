@@ -17,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.thunderpass.github.DeviceFlowState
 import com.thunderpass.retro.RetroAuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +41,6 @@ fun ProfileScreen(
     var draftGhostGame  by remember(profile.ghostGame)  { mutableStateOf(profile.ghostGame) }
     var draftGhostScore by remember(profile.ghostScore) { mutableStateOf(profile.ghostScore.takeIf { it > 0L }?.toString() ?: "") }
     var saved by remember { mutableStateOf(false) }
-    val deviceFlowState by vm.deviceFlowState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -233,87 +231,6 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            // ── GitHub Gist Sync ───────────────────────────────────────────────────
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            Text(
-                text       = "GitHub Gist Sync",
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text  = "Sync your profile card to a public Gist — visible at guilhermelimait.github.io/ThunderPass",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-            )
-            Spacer(Modifier.height(8.dp))
-            when (val gs = deviceFlowState) {
-                is DeviceFlowState.Connected -> {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment     = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text       = "✓ @${gs.username}",
-                            style      = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier   = Modifier.weight(1f),
-                        )
-                        OutlinedButton(onClick = { vm.syncToGist() }) { Text("Sync now") }
-                        TextButton(onClick = { vm.disconnectGitHub() }) { Text("Disconnect") }
-                    }
-                }
-                is DeviceFlowState.AwaitingCode -> {
-                    Card(
-                        colors   = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier             = Modifier.padding(16.dp),
-                            verticalArrangement  = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text("1. Open in a browser:", style = MaterialTheme.typography.bodySmall)
-                            Text(
-                                text  = gs.verificationUri,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                            Text("2. Enter this code:", style = MaterialTheme.typography.bodySmall)
-                            Text(
-                                text       = gs.userCode,
-                                style      = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color      = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                text  = "Waiting for you to authorize…",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        }
-                    }
-                }
-                is DeviceFlowState.Failure -> {
-                    Text(
-                        text  = "⚠️ ${gs.message}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick  = { vm.startDeviceFlow() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Try again") }
-                }
-                else -> {
-                    OutlinedButton(
-                        onClick  = { vm.startDeviceFlow() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("🐝 Connect GitHub · Sync profile card") }
-                }
-            }
             Spacer(Modifier.height(16.dp))
         }
     }
