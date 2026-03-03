@@ -21,4 +21,8 @@ interface MyProfileDao {
     /** Upsert — creates the row on first run, replaces on subsequent runs. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(profile: MyProfile)
+
+    /** Atomically add [amount] joules to the energy total. */
+    @Query("UPDATE my_profile SET joulesTotal = joulesTotal + :amount WHERE id = 1")
+    suspend fun addJoules(amount: Long)
 }

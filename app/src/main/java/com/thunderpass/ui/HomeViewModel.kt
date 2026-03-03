@@ -59,6 +59,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { list -> computeStreak(list) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    // ── Energy (Joules) ───────────────────────────────────────────────────────
+    val joulesTotal: StateFlow<Long> = profileDao.observe()
+        .filterNotNull()
+        .map { it.joulesTotal }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
     // ── Full encounter list with resolved snapshots ───────────────────────────
     val encounters: StateFlow<List<EncounterWithProfile>> =
         MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->

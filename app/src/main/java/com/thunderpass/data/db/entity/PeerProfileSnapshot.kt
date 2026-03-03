@@ -38,4 +38,15 @@ data class PeerProfileSnapshot(
      * compatibility so future fields aren't lost.
      */
     val rawJson: String,
+
+    // ── RetroAchievements ────────────────────────────────────────────────────
+
+    /** Peer's RetroAchievements username, if shared in their profile card. */
+    val retroUsername: String? = null,
+
+    /** Peer's total RA points, fetched after the GATT exchange. */
+    val retroTotalPoints: Long? = null,
+
+    /** Number of games the peer has recently played on RA. */
+    val retroRecentlyPlayedCount: Int? = null,
 )

@@ -13,8 +13,10 @@ import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
 import com.thunderpass.ble.BleConstants.THUNDERPASS_SERVICE_UUID
 import com.thunderpass.data.db.dao.EncounterDao
+import com.thunderpass.data.db.dao.MyProfileDao
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
+import com.thunderpass.retro.RetroRetrofitClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,6 +39,7 @@ class GattClient(
     private val context: Context,
     private val encounterDao: EncounterDao,
     private val snapshotDao: PeerProfileSnapshotDao,
+    private val profileDao: MyProfileDao,
     private val scope: CoroutineScope,
     /** Called on the IO dispatcher after a profile exchange succeeds. */
     private val onProfileReceived: ((encounterId: Long, displayName: String) -> Unit)? = null,
@@ -165,6 +168,7 @@ class GattClient(
             val avatar      = data.optJSONObject("avatar") ?: org.json.JSONObject()
             val avatarKind  = avatar.optString("kind", "defaultBolt")
             val avatarColor = avatar.optString("color", "#FFFFFF")
+            val retroUsername = data.optString("retroUsername", "").takeIf { it.isNotBlank() }
 
             val snapshotId = snapshotDao.insert(
                 PeerProfileSnapshot(
@@ -176,12 +180,27 @@ class GattClient(
                     protocolVersion = version,
                     receivedAt     = ts * 1000,
                     rawJson        = raw,
+                    retroUsername  = retroUsername,
                 )
             )
 
             encounterDao.linkSnapshot(encounterId, snapshotId)
-            Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId)")
+
+            // Award 100 Joules for each successful Spark
+            profileDao.addJoules(100)
+
+            Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId, +100J)")
             onProfileReceived?.invoke(encounterId, displayName)
+
+            // Background RetroAchievements fetch if the peer shared their username
+            if (retroUsername != null) {
+                scope.launch(Dispatchers.IO) {
+                    RetroRetrofitClient.fetchRetroMetadata(retroUsername).onSuccess { retro ->
+                        snapshotDao.updateRetroStats(snapshotId, retro.totalPoints, retro.recentlyPlayedCount)
+                        Log.i(TAG, "RA stats for $retroUsername: ${retro.totalPoints} pts stored")
+                    }
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse/persist GATT payload: ${e.message}")
         }

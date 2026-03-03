@@ -15,6 +15,12 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        // RetroAchievements API credentials — set in local.properties or CI secrets
+        buildConfigField("String", "RA_API_KEY",
+            "\"${(project.findProperty("ra.apiKey") as String?) ?: ""}\"")
+        buildConfigField("String", "RA_API_USER",
+            "\"${(project.findProperty("ra.apiUser") as String?) ?: ""}\"")
     }
 
     buildTypes {
@@ -38,6 +44,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Room schema export directory — keep schemas in source control for migration audits
@@ -80,6 +87,12 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-svg:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
+
+    // Retrofit + Moshi — RetroAchievements API client
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
 
     // Jetpack Glance — home screen widget
     implementation("androidx.glance:glance-appwidget:1.1.0")

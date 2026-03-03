@@ -21,4 +21,12 @@ interface PeerProfileSnapshotDao {
     /** Retrieve a single snapshot by its primary key. */
     @Query("SELECT * FROM peer_profile_snapshot WHERE id = :id")
     suspend fun getById(id: Long): PeerProfileSnapshot?
+
+    /** Update RetroAchievements stats after a background fetch. */
+    @Query("""
+        UPDATE peer_profile_snapshot
+        SET retroTotalPoints = :points, retroRecentlyPlayedCount = :recentCount
+        WHERE id = :id
+    """)
+    suspend fun updateRetroStats(id: Long, points: Long, recentCount: Int)
 }

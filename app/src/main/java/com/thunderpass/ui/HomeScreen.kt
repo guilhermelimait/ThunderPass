@@ -50,6 +50,7 @@ fun HomeScreen(
     val serviceRunning by vm.serviceRunning.collectAsState()
     val encounterCount by vm.encounterCount.collectAsState()
     val encounterStreak by vm.encounterStreak.collectAsState()
+    val joulesTotal     by vm.joulesTotal.collectAsState()
     val installationId by vm.installationId.collectAsState()
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
@@ -215,7 +216,7 @@ fun HomeScreen(
                 // ── Stats row ──────────────────────────────────────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     StatCard(
                         modifier = Modifier.weight(1f),
@@ -231,6 +232,11 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         label    = "Streak 🔥",
                         value    = if (encounterStreak > 0) "${encounterStreak}d" else "—",
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label    = "⚡ Energy",
+                        value    = "${joulesTotal}J",
                     )
                 }
 

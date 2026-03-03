@@ -22,6 +22,9 @@
     <!-- INTERNET required to fetch DiceBear avatars from api.dicebear.com -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- VIBRATE required for "The Spark" haptic feedback on successful BLE exchange -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Require BLE hardware; set required="false" if you also want to support non-BLE devices -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"

@@ -185,6 +185,10 @@ class GattServer(
                 put("kind", profile.avatarKind)
                 put("color", profile.avatarColor)
             })
+            // Include RetroAchievements username if the user has set one
+            if (profile.retroUsername.isNotBlank()) {
+                put("retroUsername", profile.retroUsername)
+            }
         }
         return org.json.JSONObject().apply {
             put("v", BleConstants.PROTOCOL_VERSION)
