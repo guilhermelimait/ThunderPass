@@ -86,6 +86,7 @@ class BleService : Service() {
             encounterDao = db.encounterDao(),
             snapshotDao  = db.peerProfileSnapshotDao(),
             scope        = serviceScope,
+            onProfileReceived = { encId, name -> updateEncounterNotification(encId, name) },
         )
         gattServer = GattServer(
             context            = this,
@@ -329,6 +330,26 @@ class BleService : Service() {
         val notif = NotificationCompat.Builder(this, BleConstants.ENCOUNTER_CHANNEL_ID)
             .setContentTitle(getString(R.string.encounter_notif_title))
             .setContentText(getString(R.string.encounter_notif_text))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(tapIntent)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java)
+            .notify(BleConstants.NOTIF_ID + 1, notif)
+    }
+
+    /** Update the encounter notification once we know the peer's display name. */
+    private fun updateEncounterNotification(encounterId: Long, displayName: String) {
+        val tapIntent = PendingIntent.getActivity(
+            this, encounterId.toInt(),
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notif = NotificationCompat.Builder(this, BleConstants.ENCOUNTER_CHANNEL_ID)
+            .setContentTitle("👋 $displayName is nearby!")
+            .setContentText("Tap to see their profile")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
             .setAutoCancel(true)
