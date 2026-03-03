@@ -266,6 +266,7 @@ class BleService : Service() {
                     val encounterId = encounterDedup.onDeviceSeen(rotatingId, rssi)
                     if (encounterId != null) {
                         Log.i(TAG, "New encounter #$encounterId — initiating GATT exchange with ${device.address}")
+                        showEncounterNotification(encounterId)
                         gattClient.connect(device, encounterId)
                     }
                 }
@@ -291,15 +292,49 @@ class BleService : Service() {
     // ── Notification ──────────────────────────────────────────────────────────
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            BleConstants.NOTIF_CHANNEL_ID,
-            getString(R.string.notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "ThunderPass BLE foreground service"
-            setShowBadge(false)
-        }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val nm = getSystemService(NotificationManager::class.java)
+        // Foreground service channel (silent)
+        nm.createNotificationChannel(
+            NotificationChannel(
+                BleConstants.NOTIF_CHANNEL_ID,
+                getString(R.string.notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "ThunderPass BLE foreground service"
+                setShowBadge(false)
+            }
+        )
+        // Encounter alert channel (heads-up)
+        nm.createNotificationChannel(
+            NotificationChannel(
+                BleConstants.ENCOUNTER_CHANNEL_ID,
+                getString(R.string.encounter_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Alerts when a new traveler is discovered nearby"
+                setShowBadge(true)
+            }
+        )
+    }
+
+    /** Show a dismissible notification when a new encounter is recorded. */
+    private fun showEncounterNotification(encounterId: Long) {
+        val tapIntent = PendingIntent.getActivity(
+            this, encounterId.toInt(),
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notif = NotificationCompat.Builder(this, BleConstants.ENCOUNTER_CHANNEL_ID)
+            .setContentTitle(getString(R.string.encounter_notif_title))
+            .setContentText(getString(R.string.encounter_notif_text))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(tapIntent)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java)
+            .notify(BleConstants.NOTIF_ID + 1, notif)
     }
 
     private fun buildNotification(): Notification {
