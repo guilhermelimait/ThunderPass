@@ -36,6 +36,9 @@ object SupabaseManager {
         install(Auth) {
             alwaysAutoRefresh = true   // silently refreshes token before it expires
             autoLoadFromStorage = true // restores session from SharedPreferences on cold start
+            // Magic links will redirect to thunderpass://callback, intercepted by MainActivity
+            // and processed by handleDeeplinks() — no browser detour.
+            defaultRedirectUrl = "thunderpass://callback"
         }
         install(Postgrest)
         install(ComposeAuth) {
