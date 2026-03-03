@@ -1,0 +1,24 @@
+# Android / Gradle
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Kotlin
+*.class
+
+# Signing keystores (never commit private keys)
+*.jks
+*.keystore
+
+# Room schema exports ARE committed intentionally (migration audit trail).
+# Do not ignore app/schemas/
