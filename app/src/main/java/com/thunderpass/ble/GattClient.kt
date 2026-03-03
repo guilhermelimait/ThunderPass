@@ -103,8 +103,7 @@ class GattClient(
             gatt?.setCharacteristicNotification(responseChar, true)
 
             val cccd = responseChar.getDescriptor(CCCD_UUID)
-            cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            gatt?.writeDescriptor(cccd)
+            gatt?.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
         }
 
         override fun onDescriptorWrite(
@@ -121,27 +120,29 @@ class GattClient(
                 ?.getService(THUNDERPASS_SERVICE_UUID)
                 ?.getCharacteristic(REQUEST_CHAR_UUID) ?: return
 
-            requestChar.value = byteArrayOf(0x01) // request type 0x01 = profile
-            requestChar.writeType =
+            gatt.writeCharacteristic(
+                requestChar,
+                byteArrayOf(0x01), // request type 0x01 = profile
                 BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            gatt.writeCharacteristic(requestChar)
+            )
             Log.d(TAG, "REQUEST written to ${gatt.device?.address}")
         }
 
         override fun onCharacteristicChanged(
-            gatt: BluetoothGatt?,
-            characteristic: BluetoothGattCharacteristic?
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
         ) {
-            if (characteristic?.uuid != RESPONSE_CHAR_UUID) return
-            val raw = characteristic.value?.toString(Charsets.UTF_8) ?: return
-            Log.d(TAG, "RESPONSE received (${raw.length} chars) from ${gatt?.device?.address}")
+            if (characteristic.uuid != RESPONSE_CHAR_UUID) return
+            val raw = value.toString(Charsets.UTF_8)
+            Log.d(TAG, "RESPONSE received (${raw.length} chars) from ${gatt.device?.address}")
 
             scope.launch(Dispatchers.IO) {
                 parseAndPersist(raw, encounterId)
             }
 
             // Exchange complete — disconnect
-            gatt?.disconnect()
+            gatt.disconnect()
         }
     }
 

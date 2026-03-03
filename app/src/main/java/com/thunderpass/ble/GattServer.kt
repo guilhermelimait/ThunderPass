@@ -160,8 +160,7 @@ class GattServer(
             ?.getCharacteristic(RESPONSE_CHAR_UUID) ?: return
 
         // TODO: chunk if bytes.size > negotiated MTU
-        responseChar.value = bytes
-        val notified = gattServer?.notifyCharacteristicChanged(device, responseChar, false)
+        val notified = gattServer?.notifyCharacteristicChanged(device, responseChar, false, bytes)
         Log.d(TAG, "Notified ${device.address} with ${bytes.size} bytes (success=$notified)")
     }
 

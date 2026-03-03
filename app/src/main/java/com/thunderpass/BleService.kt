@@ -268,6 +268,7 @@ class BleService : Service() {
                     if (encounterId != null) {
                         Log.i(TAG, "New encounter #$encounterId — initiating GATT exchange with ${device.address}")
                         showEncounterNotification(encounterId)
+                        com.thunderpass.widget.EncounterWidget.refresh(applicationContext)
                         gattClient.connect(device, encounterId)
                     }
                 }

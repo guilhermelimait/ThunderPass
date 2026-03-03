@@ -37,4 +37,12 @@ interface EncounterDao {
     /** Count of all encounters (displayed on the home screen). */
     @Query("SELECT COUNT(*) FROM encounter")
     fun observeCount(): Flow<Int>
+
+    /** Synchronous count — used by home screen widget (off main thread). */
+    @Query("SELECT COUNT(*) FROM encounter")
+    suspend fun countAll(): Int
+
+    /** Number of encounters since [sinceMs] epoch ms — for "today" widget cell. */
+    @Query("SELECT COUNT(*) FROM encounter WHERE seenAt >= :sinceMs")
+    suspend fun countSince(sinceMs: Long): Int
 }
