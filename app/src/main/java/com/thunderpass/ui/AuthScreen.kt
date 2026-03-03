@@ -1,0 +1,191 @@
+package com.thunderpass.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+/**
+ * Two-step email OTP auth screen:
+ *   Step 1 — user enters their email address → Supabase sends a 6-digit code
+ *   Step 2 — user types the code from their inbox → session is established for ~30 days
+ *
+ * [onAuthenticated] is called once the session is confirmed. Navigation happens there.
+ */
+@Composable
+fun AuthScreen(
+    onAuthenticated: () -> Unit,
+    vm: AuthViewModel = viewModel(),
+) {
+    val state by vm.state.collectAsState()
+
+    // Auto-navigate when auth succeeds (e.g. session already exists on relaunch)
+    LaunchedEffect(state) {
+        if (state is AuthState.Authenticated) onAuthenticated()
+    }
+
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier              = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
+            verticalArrangement   = Arrangement.Center,
+            horizontalAlignment   = Alignment.CenterHorizontally,
+        ) {
+            // ── Logo / title ─────────────────────────────────────────────────
+            Text(
+                text       = "⚡",
+                style      = MaterialTheme.typography.displayLarge,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text       = "ThunderPass",
+                style      = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text  = "Sign in with your email to sync your profile card",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(40.dp))
+
+            when (val s = state) {
+                // ── Step 1: email input ───────────────────────────────────────
+                is AuthState.Idle, is AuthState.Error -> {
+                    var email by remember { mutableStateOf("") }
+
+                    if (s is AuthState.Error) {
+                        Text(
+                            text  = s.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    OutlinedTextField(
+                        value         = email,
+                        onValueChange = { email = it },
+                        label         = { Text("Email address") },
+                        singleLine    = true,
+                        modifier      = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction    = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { if (email.isNotBlank()) vm.requestOtp(email) }
+                        ),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick  = { vm.requestOtp(email) },
+                        enabled  = email.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Send code")
+                    }
+                }
+
+                // ── Loading spinner ───────────────────────────────────────────
+                is AuthState.Loading -> {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text  = "Please wait…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+
+                // ── Step 2: OTP code input ────────────────────────────────────
+                is AuthState.AwaitingOtp -> {
+                    val focusRequester = remember { FocusRequester() }
+                    var code by remember { mutableStateOf("") }
+                    var codeError by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+                    Text(
+                        text      = "Check your inbox",
+                        style     = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text      = "We sent a 6-digit code to\n${s.email}",
+                        style     = MaterialTheme.typography.bodySmall,
+                        color     = MaterialTheme.colorScheme.outline,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    OutlinedTextField(
+                        value         = code,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all(Char::isDigit)) {
+                                code      = it
+                                codeError = false
+                                if (it.length == 6) vm.verifyOtp(s.email, it)
+                            }
+                        },
+                        label         = { Text("6-digit code") },
+                        isError       = codeError,
+                        singleLine    = true,
+                        modifier      = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.NumberPassword,
+                            imeAction    = ImeAction.Done,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (code.length == 6) vm.verifyOtp(s.email, code)
+                                else codeError = true
+                            }
+                        ),
+                        textStyle = MaterialTheme.typography.headlineMedium.copy(
+                            textAlign = TextAlign.Center,
+                            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
+                        ),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick  = {
+                            if (code.length == 6) vm.verifyOtp(s.email, code)
+                            else codeError = true
+                        },
+                        enabled  = code.length == 6,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Confirm")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { vm.resetToEmail() }) {
+                        Text("Use a different email")
+                    }
+                }
+
+                // Authenticated — LaunchedEffect handles navigation
+                is AuthState.Authenticated -> {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+    }
+}

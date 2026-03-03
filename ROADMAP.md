@@ -45,15 +45,13 @@ Milestone 3 — Fun Layer + Game Sync
 [x] Visual Shop: Unlock "CRT Scanlines", "Pixelated Aura", and "Thunder Trail" profile effects using Joules.
 
 Milestone 4 — Accounts + Cloud Sync
-[x] GitHub OAuth Device Flow sign-in (no password, no Firebase)
-[x] Gist Sync: profile card pushed to a public GitHub Gist after each save
-[x] Web dashboard (GitHub Pages — docs/index.html) — look up any user by GitHub username
-[ ] Opt-in automatic background sync after each Spark encounter
-[ ] Passwordless Auth: Firebase Magic Link sign-in (alternative, if > 1k users)
-[ ] Deep Link Integration: Handle thunderpass.page.link to auto-verify Gmail links
+[x] Supabase Email OTP sign-in (6-digit code, no password, 30-day session)
+[x] Auto-sync profile to Supabase `profiles` table after every save
+[x] Web dashboard (GitHub Pages — docs/index.html) — look up any user by Installation ID via Supabase REST API
+[x] Profile sync triggered automatically after Spark encounters
 [ ] Optional encounter backup/restore
-[ ] GitHub-managed deployment automation (infra-as-code)
 [ ] Remote blocklist / privacy controls
+[ ] GitHub-managed deployment automation (infra-as-code)
 
 Milestone 5 — Platform (future)
 [ ] Public “payload provider” API / SDK for other apps

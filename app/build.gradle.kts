@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
 
@@ -21,6 +22,12 @@ android {
             "\"${(project.findProperty("ra.apiKey") as String?) ?: ""}\"")
         buildConfigField("String", "RA_API_USER",
             "\"${(project.findProperty("ra.apiUser") as String?) ?: ""}\"")
+
+        // Supabase — set in local.properties (supabase.url / supabase.anonKey)
+        buildConfigField("String", "SUPABASE_URL",
+            "\"${(project.findProperty("supabase.url") as String?) ?: ""}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY",
+            "\"${(project.findProperty("supabase.anonKey") as String?) ?: ""}\"")
     }
 
     buildTypes {
@@ -101,6 +108,14 @@ dependencies {
 
     // Encrypted SharedPreferences — secure storage for RA API key
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Supabase — cloud auth (Email OTP) + profile sync
+    val supabaseBom = platform("io.github.jan-tennert.supabase:bom:3.1.4")
+    implementation(supabaseBom)
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    // Ktor HTTP client engine required by Supabase SDK on Android
+    implementation("io.ktor:ktor-client-android:3.0.3")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
