@@ -128,6 +128,28 @@ fun ProfileScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+            // ── Badges ───────────────────────────────────────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text       = "BADGES",
+                    style      = MaterialTheme.typography.labelSmall,
+                    color      = MaterialTheme.colorScheme.outline,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                )
+                RarityLegend()
+                BadgeShelf(modifier = Modifier.fillMaxWidth())
+                Text(
+                    text  = "Unlock badges by playing, exploring, and connecting.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
             OutlinedTextField(
                 value          = draftName,
                 onValueChange  = { draftName = it; saved = false },
