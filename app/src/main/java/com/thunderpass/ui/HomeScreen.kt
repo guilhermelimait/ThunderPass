@@ -260,19 +260,24 @@ fun HomeScreen(
 
                 // ── Scan intensity segmented control ───────────────────────────
                 Text(
-                    text  = "Scan intensity",
+                    text  = "Battery Mode",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
-                        shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                        selected = scanMode == ScanMode.OFF,
+                        onClick  = { vm.setScanMode(ScanMode.OFF) },
+                    ) { Text("Off 🌙") }
+                    SegmentedButton(
+                        shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                         selected = scanMode == ScanMode.BALANCED,
                         onClick  = { vm.setScanMode(ScanMode.BALANCED) },
                     ) { Text("Balanced ⚡") }
                     SegmentedButton(
-                        shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        shape    = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                         selected = scanMode == ScanMode.AGGRESSIVE,
                         onClick  = { vm.setScanMode(ScanMode.AGGRESSIVE) },
                     ) { Text("Aggressive 🔥") }

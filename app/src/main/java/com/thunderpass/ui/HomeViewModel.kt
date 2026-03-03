@@ -54,7 +54,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val serviceRunning: StateFlow<Boolean> = _serviceRunning
 
     // ── Scan mode ─────────────────────────────────────────────────────────────
-    private val _scanMode = MutableStateFlow(ScanMode.BALANCED)
+    private val _scanMode = MutableStateFlow(
+        runCatching { ScanMode.valueOf(prefs.getString(BleService.PREF_SCAN_MODE, ScanMode.BALANCED.name)!!) }
+            .getOrDefault(ScanMode.BALANCED)
+    )
     val scanMode: StateFlow<ScanMode> = _scanMode
 
     // ── Encounter count for the badge on the home screen ─────────────────────

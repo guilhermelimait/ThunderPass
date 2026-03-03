@@ -58,6 +58,7 @@ class BleService : Service() {
         /** SharedPreferences file and key used by both Service and ViewModel. */
         const val PREFS_NAME         = "thunderpass_prefs"
         const val PREF_SAFE_ZONE     = "safe_zone_active"
+        const val PREF_SCAN_MODE     = "scan_mode"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -85,9 +86,12 @@ class BleService : Service() {
         val btManager = getSystemService(BluetoothManager::class.java)
         bluetoothAdapter = btManager?.adapter
 
-        // Restore persisted Safe Zone state
-        _safeZoneActive = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getBoolean(PREF_SAFE_ZONE, false)
+        // Restore persisted Safe Zone + scan mode state
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        _safeZoneActive = prefs.getBoolean(PREF_SAFE_ZONE, false)
+        _scanMode = runCatching {
+            ScanMode.valueOf(prefs.getString(PREF_SCAN_MODE, ScanMode.BALANCED.name)!!)
+        }.getOrDefault(ScanMode.BALANCED)
 
         // Wire up components
         rotatingIdManager = RotatingIdManager(this)
@@ -155,7 +159,12 @@ class BleService : Service() {
                 val newMode  = runCatching { ScanMode.valueOf(modeName) }.getOrNull() ?: return START_STICKY
                 if (newMode != _scanMode) {
                     _scanMode = newMode
-                    if (_isActive && !_safeZoneActive) { stopScanning(); startScanning() }
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                        .putString(PREF_SCAN_MODE, newMode.name).apply()
+                    if (_isActive && !_safeZoneActive) {
+                        stopScanning()
+                        if (newMode != ScanMode.OFF) startScanning()
+                    }
                     Log.i(TAG, "Scan mode changed to $_scanMode")
                 }
             }
@@ -268,6 +277,11 @@ class BleService : Service() {
             .setServiceUuid(BleConstants.THUNDERPASS_SERVICE_PARCEL)
             .build()
 
+        if (_scanMode == ScanMode.OFF) {
+            Log.i(TAG, "Battery mode OFF — scan skipped.")
+            return
+        }
+
         val settings = when (_scanMode) {
             ScanMode.AGGRESSIVE -> ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)  // ~100% duty cycle
@@ -275,6 +289,7 @@ class BleService : Service() {
             ScanMode.BALANCED   -> ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_BALANCED)     // ~50% duty cycle
                 .build()
+            ScanMode.OFF        -> return  // unreachable — handled above
         }
 
         val cb = object : ScanCallback() {
