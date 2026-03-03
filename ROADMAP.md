@@ -1,19 +1,22 @@
 # ThunderPass Roadmap
 
-## Milestone 0 — Repository + Android App Scaffold (MVP foundation)
-- Create Android Studio project (Kotlin)
-- Jetpack Compose UI
-- Foreground service skeleton + notification
-- Permissions flows for Android 13 BLE
-- Local storage (Room)
-- CI workflow on GitHub to build debug APK
+## Milestone 0 — Repository + Android App Scaffold ✅
+- [x] Android project scaffold (Kotlin + Jetpack Compose)
+- [x] Foreground service (`BleService`) + persistent notification
+- [x] Runtime permission flow for Android 13 BLE + POST_NOTIFICATIONS
+- [x] Local storage with Room (MyProfile, Encounter, PeerProfileSnapshot)
+- [x] CI workflow (GitHub Actions) — assembles debug APK on every push/PR
 
-## Milestone 1 — StreetPass MVP (usable)
-- BLE advertise + scan
-- Dedup + encounter logging
-- GATT exchange of “Profile Card”
-- UI: My Card, Encounters, Status/Debug
-- Export/import local data (optional)
+## Milestone 1 — StreetPass MVP ✅
+- [x] BLE advertise + scan (concurrent, low-power)
+- [x] Rotating ID via HMAC-SHA256 (30-min window, never broadcasts raw install ID)
+- [x] Encounter dedup (10-min cooldown per rotating ID)
+- [x] GATT server + client (profile card exchange over REQUEST/RESPONSE characteristics)
+- [x] Presence packet binary format `[version:1][flags:1][rotatingId:16]`
+- [x] UI: Home (status + start/stop), Encounters list, Profile edit, Navigation
+- [x] Brand theme (ThunderYellow + ThunderGray, dark/light, adaptive icon)
+- [x] Unit tests: RotatingIdUtils, EncounterDedup (JVM, no Android runtime)
+- [ ] Export / import local data (optional, deferred to M2)
 
 ## Milestone 2 — Trust + Quality
 - “Safe Zones” (manual toggle + Wi‑Fi SSID based)
