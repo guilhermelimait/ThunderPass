@@ -43,11 +43,13 @@ private val BLE_PERMISSIONS = arrayOf(
 fun HomeScreen(
     onNavigateToEncounters: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToDetail: (Long) -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context        = LocalContext.current
     val serviceRunning by vm.serviceRunning.collectAsState()
     val encounterCount by vm.encounterCount.collectAsState()
+    val encounterStreak by vm.encounterStreak.collectAsState()
     val installationId by vm.installationId.collectAsState()
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
@@ -185,11 +187,13 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         encounters.take(20).forEach { ewp ->
-                            val seed = ewp.encounter.rotatingId
+                            val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
                             val name = ewp.snapshot?.displayName ?: "Unknown"
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier            = Modifier.width(64.dp),
+                                modifier            = Modifier
+                                    .width(64.dp)
+                                    .clickable { onNavigateToDetail(ewp.encounter.id) },
                             ) {
                                 DiceBearAvatar(seed = seed, size = 52.dp)
                                 Spacer(Modifier.height(4.dp))
@@ -215,13 +219,18 @@ fun HomeScreen(
                 ) {
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        label    = "Total Encounters",
+                        label    = "Total",
                         value    = encounterCount.toString(),
                     )
                     StatCard(
                         modifier = Modifier.weight(1f),
                         label    = "Today",
                         value    = todayCount.toString(),
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label    = "Streak 🔥",
+                        value    = if (encounterStreak > 0) "${encounterStreak}d" else "—",
                     )
                 }
 

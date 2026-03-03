@@ -61,6 +61,7 @@ fun ThunderPassNavGraph(
             HomeScreen(
                 onNavigateToEncounters = { navController.navigate(Routes.ENCOUNTERS) },
                 onNavigateToProfile    = { navController.navigate(Routes.PROFILE) },
+                onNavigateToDetail     = { id -> navController.navigate(Routes.encounterDetail(id)) },
                 vm = homeVm,
             )
         }
