@@ -52,6 +52,12 @@ class BleService : Service() {
         const val ACTION_STOP          = "com.thunderpass.ble.STOP"
         const val ACTION_SET_SCAN_MODE = "com.thunderpass.SET_SCAN_MODE"
         const val EXTRA_SCAN_MODE      = "EXTRA_SCAN_MODE"
+        const val ACTION_SET_SAFE_ZONE = "com.thunderpass.SET_SAFE_ZONE"
+        const val EXTRA_SAFE_ZONE      = "EXTRA_SAFE_ZONE"
+
+        /** SharedPreferences file and key used by both Service and ViewModel. */
+        const val PREFS_NAME         = "thunderpass_prefs"
+        const val PREF_SAFE_ZONE     = "safe_zone_active"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -59,7 +65,8 @@ class BleService : Service() {
     // ── Scan mode ─────────────────────────────────────────────────────────────
     private var _scanMode: ScanMode = ScanMode.BALANCED
     private var _isActive: Boolean  = false
-
+    // ── Safe Zone ───────────────────────────────────────────────────
+    private var _safeZoneActive: Boolean = false
     // ── BLE handles ───────────────────────────────────────────────────────────
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bleScanner: BluetoothLeScanner? = null
@@ -77,6 +84,10 @@ class BleService : Service() {
 
         val btManager = getSystemService(BluetoothManager::class.java)
         bluetoothAdapter = btManager?.adapter
+
+        // Restore persisted Safe Zone state
+        _safeZoneActive = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getBoolean(PREF_SAFE_ZONE, false)
 
         // Wire up components
         rotatingIdManager = RotatingIdManager(this)
@@ -122,8 +133,12 @@ class BleService : Service() {
                         ThunderPassDatabase.getInstance(this@BleService).myProfileDao().get()
                     }
                 }
-                startAdvertising()
-                startScanning()
+                if (!_safeZoneActive) {
+                    startAdvertising()
+                    startScanning()
+                } else {
+                    Log.i(TAG, "Service started in Safe Zone — BLE paused until zone deactivated.")
+                }
                 Log.i(TAG, "ThunderPass BLE service started.")
             }
             ACTION_STOP -> {
@@ -140,9 +155,29 @@ class BleService : Service() {
                 val newMode  = runCatching { ScanMode.valueOf(modeName) }.getOrNull() ?: return START_STICKY
                 if (newMode != _scanMode) {
                     _scanMode = newMode
-                    if (_isActive) { stopScanning(); startScanning() }
+                    if (_isActive && !_safeZoneActive) { stopScanning(); startScanning() }
                     Log.i(TAG, "Scan mode changed to $_scanMode")
                 }
+            }
+            ACTION_SET_SAFE_ZONE -> {
+                val active = intent.getBooleanExtra(EXTRA_SAFE_ZONE, false)
+                _safeZoneActive = active
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(PREF_SAFE_ZONE, active).apply()
+                if (_isActive) {
+                    if (active) {
+                        stopScanning()
+                        stopAdvertising()
+                        Log.i(TAG, "Safe Zone activated — BLE paused.")
+                    } else {
+                        startAdvertising()
+                        startScanning()
+                        Log.i(TAG, "Safe Zone deactivated — BLE resumed.")
+                    }
+                }
+                // Refresh the persistent notification to reflect Safe Zone state
+                getSystemService(android.app.NotificationManager::class.java)
+                    .notify(BleConstants.NOTIF_ID, buildNotification())
             }
         }
         return START_STICKY
@@ -373,9 +408,13 @@ class BleService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val text = if (_safeZoneActive)
+            "\uD83D\uDEE1\uFE0F Safe Zone active — BLE paused"
+        else
+            getString(R.string.notification_text)
         return NotificationCompat.Builder(this, BleConstants.NOTIF_CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_text))
+            .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
             .setOngoing(true)

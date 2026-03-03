@@ -31,6 +31,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val snapshotDao  = db.peerProfileSnapshotDao()
     private val profileDao   = db.myProfileDao()
 
+    // ── SharedPreferences (Safe Zone persistence) ─────────────────────────────
+    private val prefs = app.getSharedPreferences(BleService.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+
     // ── Own profile observables ───────────────────────────────────────────────
     val installationId: StateFlow<String> = profileDao.observe()
         .filterNotNull()
@@ -41,6 +44,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .filterNotNull()
         .map { it.displayName }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Traveler")
+
+    // ── Safe Zone ─────────────────────────────────────────────────────────────
+    private val _safeZoneActive = MutableStateFlow(prefs.getBoolean(BleService.PREF_SAFE_ZONE, false))
+    val safeZoneActive: StateFlow<Boolean> = _safeZoneActive
 
     // ── Service running state ─────────────────────────────────────────────────
     private val _serviceRunning = MutableStateFlow(false)
@@ -144,5 +151,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 putExtra(BleService.EXTRA_SCAN_MODE, mode.name)
             }
         )
+    }
+
+    // ── Safe Zone ─────────────────────────────────────────────────────────────
+
+    fun setSafeZone(active: Boolean) {
+        _safeZoneActive.value = active
+        prefs.edit().putBoolean(BleService.PREF_SAFE_ZONE, active).apply()
+        if (_serviceRunning.value) {
+            val ctx = getApplication<Application>()
+            ctx.startService(
+                Intent(ctx, BleService::class.java).apply {
+                    action = BleService.ACTION_SET_SAFE_ZONE
+                    putExtra(BleService.EXTRA_SAFE_ZONE, active)
+                }
+            )
+        }
     }
 }
