@@ -10,11 +10,15 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -75,11 +79,7 @@ fun EncounterListScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "No encounters yet.\nGo outside! \uD83D\uDEB6",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                EmptyEncountersState()
             }
         } else {
             LazyColumn(
@@ -93,6 +93,7 @@ fun EncounterListScreen(
                     EncounterCard(
                         item = item,
                         onClick = { onNavigateToDetail(item.encounter.id) },
+                        modifier = Modifier.animateItem(),
                     )
                 }
             }
@@ -101,9 +102,60 @@ fun EncounterListScreen(
 }
 
 @Composable
+private fun EmptyEncountersState() {
+    val infiniteTransition = rememberInfiniteTransition(label = "bolt-pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.82f,
+        targetValue  = 1.18f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(950, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "scale",
+    )
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue  = 1f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(950, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "alpha",
+    )
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(32.dp),
+    ) {
+        Text(
+            text     = "\u26A1",
+            fontSize = 72.sp,
+            modifier = Modifier.graphicsLayer {
+                scaleX     = scale
+                scaleY     = scale
+                this.alpha = alpha
+            },
+        )
+        Text(
+            text       = "No Sparks yet",
+            style      = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color      = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text      = "Head outside and let ThunderPass\ndetect other Travelers nearby.",
+            style     = MaterialTheme.typography.bodyMedium,
+            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
 private fun EncounterCard(
     item: EncounterWithProfile,
     onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val enc      = item.encounter
     val snapshot = item.snapshot
@@ -112,7 +164,7 @@ private fun EncounterCard(
     }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
