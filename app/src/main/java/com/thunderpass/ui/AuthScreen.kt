@@ -18,6 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thunderpass.R
+import com.thunderpass.supabase.SupabaseManager
+import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
+import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
+import io.github.jan.supabase.compose.auth.composeAuth
 
 /**
  * Two-step email OTP auth screen:
@@ -32,6 +36,18 @@ fun AuthScreen(
     vm: AuthViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
+
+    // Google One-Tap sign-in launcher (wired to Supabase ComposeAuth)
+    val googleSignInState = SupabaseManager.client.composeAuth.rememberSignInWithGoogle(
+        onResult = { result ->
+            when (result) {
+                is NativeSignInResult.Success     -> vm.onGoogleSignInSuccess()
+                is NativeSignInResult.Error       -> vm.onGoogleSignInError(result.message)
+                is NativeSignInResult.ClosedByUser -> { /* user dismissed — do nothing */ }
+                is NativeSignInResult.NetworkError -> vm.onGoogleSignInError("Network error, please try again")
+            }
+        }
+    )
 
     // Auto-navigate when auth succeeds (e.g. session already exists on relaunch)
     LaunchedEffect(state) {
@@ -98,6 +114,36 @@ fun AuthScreen(
                     ) {
                         Text("Send code")
                     }
+
+                    // ── OR divider ────────────────────────────────────────────
+                    Spacer(Modifier.height(20.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier          = Modifier.fillMaxWidth(),
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(
+                            text     = "  or  ",
+                            style    = MaterialTheme.typography.bodySmall,
+                            color    = MaterialTheme.colorScheme.outline,
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(16.dp))
+
+                    // ── Google One-Tap ────────────────────────────────────────
+                    OutlinedButton(
+                        onClick  = { googleSignInState.startFlow() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Image(
+                            painter            = painterResource(R.drawable.ic_google),
+                            contentDescription = null,
+                            modifier           = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text("Continue with Google")
+                    }
                 }
 
                 // ── Loading spinner ───────────────────────────────────────────
@@ -126,7 +172,7 @@ fun AuthScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text      = "We sent a 6-digit code to\n${s.email}",
+                        text      = "We sent an 8-digit code to\n${s.email}",
                         style     = MaterialTheme.typography.bodySmall,
                         color     = MaterialTheme.colorScheme.outline,
                         textAlign = TextAlign.Center,
@@ -135,13 +181,13 @@ fun AuthScreen(
                     OutlinedTextField(
                         value         = code,
                         onValueChange = {
-                            if (it.length <= 6 && it.all(Char::isDigit)) {
+                            if (it.length <= 8 && it.all(Char::isDigit)) {
                                 code      = it
                                 codeError = false
-                                if (it.length == 6) vm.verifyOtp(s.email, it)
+                                if (it.length == 8) vm.verifyOtp(s.email, it)
                             }
                         },
-                        label         = { Text("6-digit code") },
+                        label         = { Text("8-digit code") },
                         isError       = codeError,
                         singleLine    = true,
                         modifier      = Modifier
@@ -153,7 +199,7 @@ fun AuthScreen(
                         ),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                if (code.length == 6) vm.verifyOtp(s.email, code)
+                                if (code.length == 8) vm.verifyOtp(s.email, code)
                                 else codeError = true
                             }
                         ),
@@ -165,10 +211,10 @@ fun AuthScreen(
                     Spacer(Modifier.height(16.dp))
                     Button(
                         onClick  = {
-                            if (code.length == 6) vm.verifyOtp(s.email, code)
+                            if (code.length == 8) vm.verifyOtp(s.email, code)
                             else codeError = true
                         },
-                        enabled  = code.length == 6,
+                        enabled  = code.length == 8,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Confirm")
