@@ -288,7 +288,7 @@ class BleService : Service() {
         return NotificationCompat.Builder(this, BleConstants.NOTIF_CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_text))
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // TODO: custom icon
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
             .setOngoing(true)
             .build()

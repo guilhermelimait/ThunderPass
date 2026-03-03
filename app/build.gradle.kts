@@ -64,6 +64,9 @@ dependencies {
     // Lifecycle + ViewModel for Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
 
+    // Compose Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.3")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
