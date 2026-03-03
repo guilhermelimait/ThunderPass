@@ -4,7 +4,7 @@ import android.os.ParcelUuid
 import java.util.UUID
 
 /** BLE scan intensity mode. */
-enum class ScanMode { AGGRESSIVE, BALANCED }
+enum class ScanMode { OFF, BALANCED, AGGRESSIVE }
 
 /**
  * All ThunderPass BLE/GATT UUIDs and protocol constants.
