@@ -21,6 +21,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.thunderpass.ble.BleConstants
 import com.thunderpass.ble.EncounterDedup
+import com.thunderpass.ble.ScanMode
 import com.thunderpass.ble.GattClient
 import com.thunderpass.ble.GattServer
 import com.thunderpass.ble.RotatingIdManager
@@ -45,11 +46,17 @@ private const val TAG = "ThunderPass/BleService"
 class BleService : Service() {
 
     companion object {
-        const val ACTION_START = "com.thunderpass.ble.START"
-        const val ACTION_STOP  = "com.thunderpass.ble.STOP"
+        const val ACTION_START         = "com.thunderpass.ble.START"
+        const val ACTION_STOP          = "com.thunderpass.ble.STOP"
+        const val ACTION_SET_SCAN_MODE = "com.thunderpass.SET_SCAN_MODE"
+        const val EXTRA_SCAN_MODE      = "EXTRA_SCAN_MODE"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // ── Scan mode ─────────────────────────────────────────────────────────────
+    private var _scanMode: ScanMode = ScanMode.BALANCED
+    private var _isActive: Boolean  = false
 
     // ── BLE handles ───────────────────────────────────────────────────────────
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -103,6 +110,7 @@ class BleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
+                _isActive = true
                 startForeground(BleConstants.NOTIF_ID, buildNotification())
                 gattServer.start {
                     // Provide the current profile synchronously (ok: DB on IO thread)
@@ -115,12 +123,22 @@ class BleService : Service() {
                 Log.i(TAG, "ThunderPass BLE service started.")
             }
             ACTION_STOP -> {
+                _isActive = false
                 stopScanning()
                 stopAdvertising()
                 gattServer.stop()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 Log.i(TAG, "ThunderPass BLE service stopped.")
+            }
+            ACTION_SET_SCAN_MODE -> {
+                val modeName = intent.getStringExtra(EXTRA_SCAN_MODE) ?: return START_STICKY
+                val newMode  = runCatching { ScanMode.valueOf(modeName) }.getOrNull() ?: return START_STICKY
+                if (newMode != _scanMode) {
+                    _scanMode = newMode
+                    if (_isActive) { stopScanning(); startScanning() }
+                    Log.i(TAG, "Scan mode changed to $_scanMode")
+                }
             }
         }
         return START_STICKY
@@ -211,9 +229,14 @@ class BleService : Service() {
             .setServiceUuid(BleConstants.THUNDERPASS_SERVICE_PARCEL)
             .build()
 
-        val settings = ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
-            .build()
+        val settings = when (_scanMode) {
+            ScanMode.AGGRESSIVE -> ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)  // ~100% duty cycle
+                .build()
+            ScanMode.BALANCED   -> ScanSettings.Builder()
+                .setScanMode(ScanSettings.SCAN_MODE_BALANCED)     // ~50% duty cycle
+                .build()
+        }
 
         val cb = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult?) {

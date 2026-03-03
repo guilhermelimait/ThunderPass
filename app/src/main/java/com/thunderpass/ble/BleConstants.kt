@@ -3,6 +3,9 @@ package com.thunderpass.ble
 import android.os.ParcelUuid
 import java.util.UUID
 
+/** BLE scan intensity mode. */
+enum class ScanMode { AGGRESSIVE, BALANCED }
+
 /**
  * All ThunderPass BLE/GATT UUIDs and protocol constants.
  * Keep UUIDs stable — changing them breaks interoperability with older builds.
