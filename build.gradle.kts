@@ -1,14 +1,8 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// Top-level build file — plugin declarations only (no dependencyResolutionManagement here;
+// that belongs in settings.gradle.kts).
 plugins {
-    id("com.android.application") version "8.0.0" apply false
-    id("com.android.library") version "8.0.0" apply false
-    id("org.jetbrains.kotlin.android") version "1.8.0" apply false
-}
-
-// Configure dependency resolution management for all sub-projects
-dependencyResolutionManagement {
-    repositories {
-        google()
-        mavenCentral()
-    }
+    id("com.android.application")         version "8.5.2"  apply false
+    id("org.jetbrains.kotlin.android")    version "2.0.21" apply false
+    // Compose compiler plugin is separate from the Kotlin plugin in Kotlin 2.x
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
 }
