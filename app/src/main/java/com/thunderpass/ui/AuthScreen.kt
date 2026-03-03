@@ -38,14 +38,19 @@ fun AuthScreen(
 ) {
     val state by vm.state.collectAsState()
 
+    var googleLoading by remember { mutableStateOf(false) }
+    var googleErrorMsg by remember { mutableStateOf<String?>(null) }
+
     // Google One-Tap sign-in launcher (wired to Supabase ComposeAuth)
     val googleSignInState = SupabaseManager.client.composeAuth.rememberSignInWithGoogle(
         onResult = { result ->
+            googleLoading = false
             when (result) {
-                is NativeSignInResult.Success     -> vm.onGoogleSignInSuccess()
-                is NativeSignInResult.Error       -> vm.onGoogleSignInError(result.message)
-                is NativeSignInResult.ClosedByUser -> { /* user dismissed — do nothing */ }
-                is NativeSignInResult.NetworkError -> vm.onGoogleSignInError("Network error, please try again")
+                is NativeSignInResult.Success      -> vm.onGoogleSignInSuccess()
+                is NativeSignInResult.Error        -> googleErrorMsg = result.message
+                is NativeSignInResult.ClosedByUser -> googleErrorMsg =
+                    "Google sign-in unavailable. Make sure a Google account is signed in on this device and that Google sign-in is enabled in the app dashboard."
+                is NativeSignInResult.NetworkError -> googleErrorMsg = "Network error — check your connection and try again."
             }
         }
     )
@@ -53,6 +58,18 @@ fun AuthScreen(
     // Auto-navigate when auth succeeds (e.g. session already exists on relaunch)
     LaunchedEffect(state) {
         if (state is AuthState.Authenticated) onAuthenticated()
+    }
+
+    // Show Google error as a snackbar-style overlay
+    if (googleErrorMsg != null) {
+        AlertDialog(
+            onDismissRequest = { googleErrorMsg = null },
+            title = { Text("Google Sign-In") },
+            text  = { Text(googleErrorMsg!!) },
+            confirmButton = {
+                TextButton(onClick = { googleErrorMsg = null }) { Text("OK") }
+            },
+        )
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -134,16 +151,30 @@ fun AuthScreen(
 
                     // ── Google One-Tap ────────────────────────────────────────
                     OutlinedButton(
-                        onClick  = { googleSignInState.startFlow() },
+                        onClick  = {
+                            googleLoading = true
+                            googleErrorMsg = null
+                            googleSignInState.startFlow()
+                        },
+                        enabled  = !googleLoading,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Image(
-                            painter            = painterResource(R.drawable.ic_google),
-                            contentDescription = null,
-                            modifier           = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text("Continue with Google")
+                        if (googleLoading) {
+                            CircularProgressIndicator(
+                                modifier  = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Signing in…")
+                        } else {
+                            Image(
+                                painter            = painterResource(R.drawable.ic_google),
+                                contentDescription = null,
+                                modifier           = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text("Continue with Google")
+                        }
                     }
 
                     // ── Skip option ───────────────────────────────────────────
