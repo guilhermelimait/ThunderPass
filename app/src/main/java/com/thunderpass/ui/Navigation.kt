@@ -16,10 +16,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 
 private object Routes {
-    const val SPLASH     = "splash"
-    const val HOME       = "home"
-    const val ENCOUNTERS = "encounters"
-    const val PROFILE    = "profile"
+    const val SPLASH            = "splash"
+    const val HOME              = "home"
+    const val ENCOUNTERS        = "encounters"
+    const val ENCOUNTER_DETAIL  = "encounter_detail/{encounterId}"
+    const val PROFILE           = "profile"
+    fun encounterDetail(id: Long) = "encounter_detail/$id"
 }
 
 /**
@@ -73,7 +75,23 @@ fun ThunderPassNavGraph(
                     }
                 },
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
+                onNavigateToDetail  = { id -> navController.navigate(Routes.encounterDetail(id)) },
                 vm                  = homeVm,
+            )
+        }
+
+        // ── Encounter Detail ──────────────────────────────────────────────────
+        composable(
+            route     = Routes.ENCOUNTER_DETAIL,
+            arguments = listOf(
+                navArgument("encounterId") { type = NavType.LongType }
+            ),
+        ) { backStack ->
+            val id = backStack.arguments?.getLong("encounterId") ?: return@composable
+            EncounterDetailScreen(
+                encounterId = id,
+                onBack      = { navController.popBackStack() },
+                vm          = homeVm,
             )
         }
 
