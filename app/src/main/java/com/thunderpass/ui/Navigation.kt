@@ -1,5 +1,10 @@
 package com.thunderpass.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -14,8 +19,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.thunderpass.supabase.SupabaseManager
-import io.github.jan.supabase.auth.auth
 
 private object Routes {
     const val SPLASH            = "splash"
@@ -44,24 +47,37 @@ fun ThunderPassNavGraph(
 ) {
     val homeVm: HomeViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = Routes.SPLASH) {
+    NavHost(
+        navController    = navController,
+        startDestination = Routes.SPLASH,
+        enterTransition  = {
+            slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+            fadeIn(animationSpec = tween(280))
+        },
+        exitTransition   = {
+            slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(280)) +
+            fadeOut(animationSpec = tween(200))
+        },
+        popEnterTransition = {
+            slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(280)) +
+            fadeIn(animationSpec = tween(280))
+        },
+        popExitTransition  = {
+            slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+            fadeOut(animationSpec = tween(200))
+        },
+    ) {
 
         // ── Splash / onboarding gate ──────────────────────────────────────────
+        // Auth is optional — app is fully offline-first. Skip straight to
+        // onboarding (first run) or home (returning user).
         composable(Routes.SPLASH) {
             val profileVm: ProfileViewModel = viewModel()
             LaunchedEffect(Unit) {
-                val session = SupabaseManager.client.auth.currentSessionOrNull()
-                if (session == null) {
-                    // No session — go to auth screen
-                    navController.navigate(Routes.AUTH) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
-                } else {
-                    val firstRun = profileVm.isFirstRun()
-                    val target   = if (firstRun) Routes.ONBOARDING else Routes.HOME
-                    navController.navigate(target) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                    }
+                val firstRun = profileVm.isFirstRun()
+                val target   = if (firstRun) Routes.ONBOARDING else Routes.HOME
+                navController.navigate(target) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
                 }
             }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -57,3 +57,9 @@ Milestone 5 — Platform (future)
 [ ] Public “payload provider” API / SDK for other apps
 [ ] Versioned protocol extensions
 [ ] Power Surge Events: Location-based 2x Energy multipliers
+
+
+
+a few things to include/change :
+1- use the usersname on the android to name the user on the app instead of traveler, if no name is found, call him by the android device name, Thor, ODin and so on
+2- instead of scanning and idle , make it 
