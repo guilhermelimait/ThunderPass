@@ -55,6 +55,7 @@ fun HomeScreen(
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
     val scanMode       by vm.scanMode.collectAsState()
+    val safeZoneActive by vm.safeZoneActive.collectAsState()
 
     var allGranted by remember {
         mutableStateOf(
@@ -155,7 +156,22 @@ fun HomeScreen(
                     onDeactivate = { vm.stopService() },
                 )
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(12.dp))
+
+                // ── Safe Zone chip ────────────────────────────────────────────
+                FilterChip(
+                    selected = safeZoneActive,
+                    onClick  = { vm.setSafeZone(!safeZoneActive) },
+                    label    = {
+                        Text(
+                            if (safeZoneActive) "\uD83D\uDEE1\uFE0F Safe Zone — BLE paused"
+                            else "\uD83D\uDEE1\uFE0F Safe Zone"
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(Modifier.height(16.dp))
 
                 // ── Recent Encounters ──────────────────────────────────────────
                 Text(
