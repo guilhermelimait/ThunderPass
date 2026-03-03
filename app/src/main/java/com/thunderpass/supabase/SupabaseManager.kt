@@ -1,6 +1,5 @@
 package com.thunderpass.supabase
 
-import com.thunderpass.BuildConfig
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -17,9 +16,16 @@ import io.github.jan.supabase.postgrest.Postgrest
  */
 object SupabaseManager {
 
+    // Anon key is safe to commit — all access control is enforced by RLS policies in Supabase.
+    private const val URL     = "https://wrunnzrxuapqpxoxvzpa.supabase.co"
+    private const val ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" +
+        ".eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndydW5uenJ4dWFwcXB4b3h2enBhIiwicm9s" +
+        "ZSI6ImFub24iLCJpYXQiOjE3NzI1NTgyMjcsImV4cCI6MjA4ODEzNDIyN30" +
+        ".IwgF-1KZg1wzaFvny0RidcU_Yw0qronKt_HSEW7-3K0"
+
     val client = createSupabaseClient(
-        supabaseUrl = BuildConfig.SUPABASE_URL,
-        supabaseKey = BuildConfig.SUPABASE_ANON_KEY,
+        supabaseUrl = URL,
+        supabaseKey = ANON_KEY,
     ) {
         install(Auth) {
             alwaysAutoRefresh = true   // silently refreshes token before it expires
