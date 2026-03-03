@@ -236,6 +236,7 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     // Stats
+                    EnergyCard(joulesTotal = joulesTotal)
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -243,7 +244,6 @@ fun HomeScreen(
                         StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
                         StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
                         StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
-                        StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
                     }
                     OutlinedButton(
                         onClick  = onNavigateToStickerBook,
@@ -417,6 +417,10 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(28.dp))
 
+                EnergyCard(joulesTotal = joulesTotal)
+
+                Spacer(Modifier.height(4.dp))
+
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -424,7 +428,6 @@ fun HomeScreen(
                     StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
                     StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
                     StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
-                    StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
                 }
                 OutlinedButton(
                     onClick  = onNavigateToStickerBook,

@@ -1,5 +1,6 @@
 package com.thunderpass.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -9,12 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.R
 
 /**
  * Two-step email OTP auth screen:
@@ -43,18 +46,13 @@ fun AuthScreen(
             verticalArrangement   = Arrangement.Center,
             horizontalAlignment   = Alignment.CenterHorizontally,
         ) {
-            // ── Logo / title ─────────────────────────────────────────────────
-            Text(
-                text       = "⚡",
-                style      = MaterialTheme.typography.displayLarge,
+            // ── Logo ─────────────────────────────────────────────────────────
+            Image(
+                painter            = painterResource(R.drawable.logo),
+                contentDescription = "ThunderPass",
+                modifier           = Modifier.height(90.dp),
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text       = "ThunderPass",
-                style      = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 text  = "Sign in with your email to sync your profile card",
                 style = MaterialTheme.typography.bodyMedium,

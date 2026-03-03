@@ -2,6 +2,7 @@ package com.thunderpass.ui
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,10 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thunderpass.R
 
 private val GridBlack  = Color(0xFF0D1117)
 private val GridPurple = Color(0xFF7C3AED)
@@ -114,20 +117,14 @@ fun OnboardingScreen(onEnter: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            // Logo glyph
-            Text(
-                text      = "⚡",
-                fontSize  = 72.sp,
-                modifier  = Modifier.padding(bottom = 4.dp),
-                color     = Color.White.copy(alpha = contentAlpha),
-            )
-
-            Text(
-                text       = "ThunderPass",
-                style      = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color      = Color.White.copy(alpha = contentAlpha),
-                textAlign  = TextAlign.Center,
+            // Logo
+            Image(
+                painter            = painterResource(R.drawable.logo),
+                contentDescription = "ThunderPass",
+                modifier           = Modifier
+                    .height(110.dp)
+                    .padding(bottom = 4.dp),
+                alpha              = contentAlpha,
             )
 
             Text(
