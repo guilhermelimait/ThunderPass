@@ -40,4 +40,14 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
     }
+
+    /**
+     * Returns true if this is a first-run (profile is null or still has all defaults).
+     * Called synchronously from the splash navigation check.
+     */
+    suspend fun isFirstRun(): Boolean {
+        val profile = profileDao.get() ?: return true
+        return profile.displayName == "Traveler" &&
+               profile.greeting    == "Hey, greetings from ThunderPass!"
+    }
 }

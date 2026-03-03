@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.thunderpass.BleService
+import com.thunderpass.ble.ScanMode
 import com.thunderpass.data.db.ThunderPassDatabase
 import com.thunderpass.data.db.entity.Encounter
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
@@ -28,14 +29,22 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val snapshotDao  = db.peerProfileSnapshotDao()
     private val profileDao   = db.myProfileDao()
 
-    // ── Own avatar seed for the top-bar avatar ────────────────────────────────
+    // ── Own profile observables ───────────────────────────────────────────────
     val installationId: StateFlow<String> = profileDao.observe()
         .map { it.installationId }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
+    val displayName: StateFlow<String> = profileDao.observe()
+        .map { it.displayName }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Traveler")
+
     // ── Service running state ─────────────────────────────────────────────────
     private val _serviceRunning = MutableStateFlow(false)
     val serviceRunning: StateFlow<Boolean> = _serviceRunning
+
+    // ── Scan mode ─────────────────────────────────────────────────────────────
+    private val _scanMode = MutableStateFlow(ScanMode.BALANCED)
+    val scanMode: StateFlow<ScanMode> = _scanMode
 
     // ── Encounter count for the badge on the home screen ─────────────────────
     val encounterCount: StateFlow<Int> = encounterDao.observeCount()
@@ -61,19 +70,31 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startService() {
         val ctx = getApplication<Application>()
-        val intent = Intent(ctx, BleService::class.java).apply {
-            action = BleService.ACTION_START
-        }
-        ContextCompat.startForegroundService(ctx, intent)
+        ContextCompat.startForegroundService(
+            ctx,
+            Intent(ctx, BleService::class.java).apply { action = BleService.ACTION_START }
+        )
         _serviceRunning.value = true
     }
 
     fun stopService() {
         val ctx = getApplication<Application>()
-        val intent = Intent(ctx, BleService::class.java).apply {
-            action = BleService.ACTION_STOP
-        }
-        ctx.startService(intent)
+        ctx.startService(
+            Intent(ctx, BleService::class.java).apply { action = BleService.ACTION_STOP }
+        )
         _serviceRunning.value = false
+    }
+
+    // ── Scan mode ─────────────────────────────────────────────────────────────
+
+    fun setScanMode(mode: ScanMode) {
+        _scanMode.value = mode
+        val ctx = getApplication<Application>()
+        ctx.startService(
+            Intent(ctx, BleService::class.java).apply {
+                action = BleService.ACTION_SET_SCAN_MODE
+                putExtra(BleService.EXTRA_SCAN_MODE, mode.name)
+            }
+        )
     }
 }
