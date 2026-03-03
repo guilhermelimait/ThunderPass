@@ -28,6 +28,11 @@ android {
             "\"${(project.findProperty("supabase.url") as String?) ?: ""}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY",
             "\"${(project.findProperty("supabase.anonKey") as String?) ?: ""}\"")
+
+        // Google Sign-In — set google.webClientId in local.properties after
+        // creating OAuth 2.0 credentials in Google Cloud Console
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID",
+            "\"${(project.findProperty("google.webClientId") as String?) ?: ""}\"")
     }
 
     buildTypes {
@@ -109,13 +114,19 @@ dependencies {
     // Encrypted SharedPreferences — secure storage for RA API key
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Supabase — cloud auth (Email OTP) + profile sync
+    // Supabase — cloud auth (Email OTP + Google Sign-In) + profile sync
     val supabaseBom = platform("io.github.jan-tennert.supabase:bom:3.1.4")
     implementation(supabaseBom)
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:compose-auth")  // native Google One-Tap
     // Ktor HTTP client engine required by Supabase SDK on Android
     implementation("io.ktor:ktor-client-android:3.0.3")
+
+    // Google Sign-In via Credential Manager (Android 13+ / minSdk 33)
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

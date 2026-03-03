@@ -72,6 +72,16 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /** Called by AuthScreen after a successful Google One-Tap sign-in. */
+    fun onGoogleSignInSuccess() {
+        _state.value = AuthState.Authenticated
+    }
+
+    /** Called by AuthScreen when Google sign-in returns an error. */
+    fun onGoogleSignInError(message: String) {
+        _state.value = AuthState.Error(message)
+    }
+
     /** Reset the OTP step so the user can re-enter their email. */
     fun resetToEmail() {
         _state.value = AuthState.Idle
