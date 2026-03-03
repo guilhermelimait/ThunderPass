@@ -66,8 +66,14 @@ fun ThunderPassNavGraph(
         // ── Encounters ────────────────────────────────────────────────────────
         composable(Routes.ENCOUNTERS) {
             EncounterListScreen(
-                onBack = { navController.popBackStack() },
-                vm     = homeVm,
+                onBack              = { navController.popBackStack() },
+                onNavigateToHome    = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = false }
+                    }
+                },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
+                vm                  = homeVm,
             )
         }
 
