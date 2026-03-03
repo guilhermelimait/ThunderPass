@@ -55,5 +55,20 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
+        <!--
+            EncounterWidget: Glance-based home screen widget.
+            Shows total + today encounter counts; updated on each new encounter.
+        -->
+        <receiver
+            android:name=".widget.EncounterWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/encounter_widget_info" />
+        </receiver>
+
     </application>
 </manifest>
