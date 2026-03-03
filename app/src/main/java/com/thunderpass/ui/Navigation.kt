@@ -89,9 +89,15 @@ fun ThunderPassNavGraph(
         ) { backStack ->
             val firstRun = backStack.arguments?.getBoolean("firstRun") ?: false
             ProfileScreen(
-                onBack     = { navController.popBackStack() },
-                firstRun   = firstRun,
-                onComplete = if (firstRun) {
+                onBack                 = { navController.popBackStack() },
+                onNavigateToHome       = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = false }
+                    }
+                },
+                onNavigateToEncounters = { navController.navigate(Routes.ENCOUNTERS) },
+                firstRun               = firstRun,
+                onComplete             = if (firstRun) {
                     {
                         navController.navigate(Routes.HOME) {
                             popUpTo(Routes.PROFILE) { inclusive = true }

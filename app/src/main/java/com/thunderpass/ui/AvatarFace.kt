@@ -1,8 +1,11 @@
 package com.thunderpass.ui
 
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -10,6 +13,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DiceBear "big-smile" avatar loader
@@ -32,10 +37,7 @@ fun diceBearUrl(seed: String): String =
 
 /**
  * Loads a unique, deterministic DiceBear "big-smile" avatar for [seed].
- * Use installationId for the user's own avatar, rotatingId for peers.
- *
- * The image is fetched once and cached by Coil. The seed is URL-encoded
- * but never directly exposes the raw installationId to any peer.
+ * Shows a muted circle placeholder while loading / on error.
  */
 @Composable
 fun DiceBearAvatar(
@@ -43,12 +45,25 @@ fun DiceBearAvatar(
     size:     Dp       = 72.dp,
     modifier: Modifier = Modifier,
 ) {
-    AsyncImage(
-        model              = diceBearUrl(seed),
-        contentDescription = "Avatar",
-        contentScale       = ContentScale.Fit,
-        modifier           = modifier
-            .size(size)
-            .clip(CircleShape),
-    )
+    val painter = rememberAsyncImagePainter(model = diceBearUrl(seed))
+    val state   = painter.state
+
+    val clipMod = modifier
+        .size(size)
+        .clip(CircleShape)
+
+    if (state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Empty) {
+        // Placeholder — muted circle matching the surface colour family
+        Box(
+            modifier = clipMod
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        )
+    } else {
+        AsyncImage(
+            painter            = painter,
+            contentDescription = "Avatar",
+            contentScale       = ContentScale.Fit,
+            modifier           = clipMod,
+        )
+    }
 }
