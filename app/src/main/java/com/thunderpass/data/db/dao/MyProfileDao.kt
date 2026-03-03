@@ -25,4 +25,8 @@ interface MyProfileDao {
     /** Atomically add [amount] joules to the energy total. */
     @Query("UPDATE my_profile SET joulesTotal = joulesTotal + :amount WHERE id = 1")
     suspend fun addJoules(amount: Long)
+
+    /** Atomically spend [amount] joules, clamping to zero (never goes negative). */
+    @Query("UPDATE my_profile SET joulesTotal = MAX(0, joulesTotal - :amount) WHERE id = 1")
+    suspend fun spendJoules(amount: Long)
 }

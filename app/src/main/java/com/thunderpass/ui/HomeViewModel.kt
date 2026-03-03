@@ -45,6 +45,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.displayName }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Traveler")
 
+    // ── Visual Shop unlocks ───────────────────────────────────────────────────
+    private val _unlockedEffects = MutableStateFlow(
+        prefs.getStringSet(PREF_SHOP_UNLOCKS, emptySet())?.toSet() ?: emptySet()
+    )
+    val unlockedEffects: StateFlow<Set<String>> = _unlockedEffects
+
     // ── Safe Zone ─────────────────────────────────────────────────────────────
     private val _safeZoneActive = MutableStateFlow(prefs.getBoolean(BleService.PREF_SAFE_ZONE, false))
     val safeZoneActive: StateFlow<Boolean> = _safeZoneActive
@@ -94,6 +100,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // ─────────────────────────────────────────────────────────────────────────
 
     companion object {
+        const val PREF_SHOP_UNLOCKS = "shop_unlocks"
+
         /** Compute current encounter streak in days. */
         private fun computeStreak(encounters: List<com.thunderpass.data.db.entity.Encounter>): Int {
             if (encounters.isEmpty()) return 0
@@ -154,6 +162,23 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 putExtra(BleService.EXTRA_SCAN_MODE, mode.name)
             }
         )
+    }
+
+    // ── Visual Shop ───────────────────────────────────────────────────────────
+
+    /**
+     * Attempts to spend [amount] joules and unlock [effectKey].
+     * Returns true on success, false if the balance is insufficient.
+     */
+    fun spendJoules(amount: Long, effectKey: String): Boolean {
+        if (joulesTotal.value < amount) return false
+        viewModelScope.launch {
+            profileDao.spendJoules(amount)
+            val newSet = _unlockedEffects.value + effectKey
+            _unlockedEffects.value = newSet
+            prefs.edit().putStringSet(PREF_SHOP_UNLOCKS, newSet).apply()
+        }
+        return true
     }
 
     // ── Safe Zone ─────────────────────────────────────────────────────────────
