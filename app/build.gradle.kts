@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
+
+// Load local.properties (not automatically visible to project.findProperty)
+val localProps = Properties().also { props ->
+    val f = rootProject.file("local.properties")
+    if (f.exists()) props.load(f.inputStream())
+}
+fun localProp(key: String): String = localProps.getProperty(key) ?: ""
 
 android {
     namespace = "com.thunderpass"
@@ -18,21 +27,15 @@ android {
         versionName = "0.1.0"
 
         // RetroAchievements API credentials — set in local.properties or CI secrets
-        buildConfigField("String", "RA_API_KEY",
-            "\"${(project.findProperty("ra.apiKey") as String?) ?: ""}\"")
-        buildConfigField("String", "RA_API_USER",
-            "\"${(project.findProperty("ra.apiUser") as String?) ?: ""}\"")
+        buildConfigField("String", "RA_API_KEY",  "\"${localProp("ra.apiKey")}\"")
+        buildConfigField("String", "RA_API_USER", "\"${localProp("ra.apiUser")}\"")
 
         // Supabase — set in local.properties (supabase.url / supabase.anonKey)
-        buildConfigField("String", "SUPABASE_URL",
-            "\"${(project.findProperty("supabase.url") as String?) ?: ""}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY",
-            "\"${(project.findProperty("supabase.anonKey") as String?) ?: ""}\"")
+        buildConfigField("String", "SUPABASE_URL",      "\"${localProp("supabase.url")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProp("supabase.anonKey")}\"")
 
-        // Google Sign-In — set google.webClientId in local.properties after
-        // creating OAuth 2.0 credentials in Google Cloud Console
-        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID",
-            "\"${(project.findProperty("google.webClientId") as String?) ?: ""}\"")
+        // Google Sign-In — set google.webClientId in local.properties
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${localProp("google.webClientId")}\"")
     }
 
     buildTypes {
