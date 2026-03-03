@@ -98,6 +98,9 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.0")
     implementation("androidx.glance:glance-material3:1.1.0")
 
+    // Encrypted SharedPreferences — secure storage for RA API key
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 

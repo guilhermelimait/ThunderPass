@@ -16,7 +16,8 @@ import com.thunderpass.data.db.dao.EncounterDao
 import com.thunderpass.data.db.dao.MyProfileDao
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
-import com.thunderpass.retro.RetroRetrofitClient
+import com.thunderpass.retro.RetroAuthManager
+import com.thunderpass.retro.RetroRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,6 +42,7 @@ class GattClient(
     private val snapshotDao: PeerProfileSnapshotDao,
     private val profileDao: MyProfileDao,
     private val scope: CoroutineScope,
+    private val retroAuth: RetroAuthManager,
     /** Called on the IO dispatcher after a profile exchange succeeds. */
     private val onProfileReceived: ((encounterId: Long, displayName: String) -> Unit)? = null,
 ) {
@@ -192,13 +194,18 @@ class GattClient(
             Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId, +100J)")
             onProfileReceived?.invoke(encounterId, displayName)
 
-            // Background RetroAchievements fetch if the peer shared their username
+            // Background RetroAchievements fetch + achievement detection
             if (retroUsername != null) {
                 scope.launch(Dispatchers.IO) {
-                    RetroRetrofitClient.fetchRetroMetadata(retroUsername).onSuccess { retro ->
-                        snapshotDao.updateRetroStats(snapshotId, retro.totalPoints, retro.recentlyPlayedCount)
-                        Log.i(TAG, "RA stats for $retroUsername: ${retro.totalPoints} pts stored")
-                    }
+                    val ownUsername = profileDao.get()?.retroUsername?.takeIf { it.isNotBlank() }
+                    RetroRepository.fetchAndCache(
+                        context      = context,
+                        peerUsername = retroUsername,
+                        snapshotId   = snapshotId,
+                        snapshotDao  = snapshotDao,
+                        auth         = retroAuth,
+                        ownUsername  = ownUsername,
+                    )
                 }
             }
         } catch (e: Exception) {

@@ -23,7 +23,7 @@ interface RetroApiService {
         @Query("z") apiUser: String,
         @Query("y") apiKey: String,
         @Query("u") user: String,
-        @Query("g") recentGames: Int = 0,
+        @Query("g") recentGames: Int = 5,
         @Query("a") recentAchievements: Int = 0,
     ): RetroProfile
 }

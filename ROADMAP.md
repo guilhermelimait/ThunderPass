@@ -21,8 +21,8 @@ Milestone 2 — Trust, Quality + Energy Base
 [x] Widget: "new encounters" indicator (Glance widget — total + today counts)
 [x] Energy Engine: Implement "Joules" counter logic in Room (100 J per unique Spark)
 [x] Haptic Feedback: Double-pulse vibration ("The Spark") on successful GATT exchange
-[ ] "Safe Zones" (manual toggle + Wi‑Fi SSID + GPS Geofencing)
-[ ] Battery modes: aggressive (foreground), balanced (timed), off
+[x] "Safe Zones" manual toggle (Wi‑Fi SSID + GPS Geofencing deferred)
+[x] Battery modes: aggressive (foreground), balanced (timed), off
 [ ] Better UX copy + onboarding (The "Grid" introduction)
 
 Milestone 3 — Fun Layer + Game Sync
@@ -33,15 +33,15 @@ Milestone 3 — Fun Layer + Game Sync
 [x] RetroProfile + RetroRetrofitClient (Retrofit + Moshi) — fetchRetroMetadata(username)
 [x] Peer RA username shared via GATT BLE profile card
 [x] Auto-fetch peer RA stats after exchange, shown on Spark Card (EncounterDetailScreen)
-[ ] Create RetroAuthManager to securely store the user's RA API Key.
-[ ] Build RetroRepository (OOD) to fetch and cache peer data (Points, Rank, Recent Mastery).
+[x] Create RetroAuthManager to securely store the user's RA API Key.
+[x] Build RetroRepository (OOD) to fetch and cache peer data (Points, Rank, Recent Mastery).
 [ ] Dynamic Profile Card:
-[ ] Implement RetroSparkCard (Compose) to show RA Rank and Points alongside the ThunderBolt.
+[x] Implement RetroSparkCard (Compose) to show RA Rank and Points alongside the ThunderBolt.
 [ ] Add "Mastery Icons" (scrolling row) to the encounter detail view.
 [ ] Famous Reference Achievements:
-[ ] Platinum Pulse: Trigger if peer has TotalPoints > 20,000 (High Energy).
-[ ] Legendary Encounter: Trigger if both users have the same game in their "Recently Played" list.
-[ ] Retro Circuit: Trigger if peer is an "Active Master" (Mastered a game in the last 30 days).
+[x] Platinum Pulse: Trigger if peer has TotalPoints > 20,000 (High Energy).
+[x] Legendary Encounter: Trigger if both users have the same game in their "Recently Played" list.
+[x] Retro Circuit: Trigger if peer is an "Active Master" (Mastered a game in the last 30 days).
 [ ] Visual Shop: - [ ] Unlock "CRT Scanlines" or "Pixelated Aura" profile effects using Joules.
 
 Milestone 4 — Accounts + Cloud Sync
