@@ -40,4 +40,17 @@ data class MyProfile(
      * in the BLE profile exchange so peers can see your RA stats on your Spark Card.
      */
     val retroUsername: String = "",
+
+    // ── Ghost Payload ────────────────────────────────────────────────────────
+
+    /** Short name of the game the user is sharing a ghost for (e.g. "Super Mario World"). */
+    val ghostGame: String = "",
+
+    /** The score or time (in ms) the user is sharing as their ghost. 0 = not set. */
+    val ghostScore: Long = 0L,
+
+    // ── Sticker Book ─────────────────────────────────────────────────────
+
+    /** Comma-separated sticker keys the user has earned (e.g. "first_spark,player_2"). */
+    val stickersJson: String = "",
 )

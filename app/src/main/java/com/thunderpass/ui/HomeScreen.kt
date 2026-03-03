@@ -48,6 +48,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToDetail: (Long) -> Unit = {},
     onNavigateToShop: () -> Unit = {},
+    onNavigateToStickerBook: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context        = LocalContext.current
@@ -55,6 +56,7 @@ fun HomeScreen(
     val encounterCount by vm.encounterCount.collectAsState()
     val encounterStreak by vm.encounterStreak.collectAsState()
     val joulesTotal     by vm.joulesTotal.collectAsState()
+    val ownedStickers   by vm.ownedStickers.collectAsState()
     val installationId by vm.installationId.collectAsState()
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
@@ -243,6 +245,10 @@ fun HomeScreen(
                         StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
                         StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
                     }
+                    OutlinedButton(
+                        onClick  = onNavigateToStickerBook,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("🃴 Sticker Book · ${ownedStickers.size} collected") }
                     // Encounters
                     Text(
                         text       = "Recent Encounters",
@@ -420,6 +426,10 @@ fun HomeScreen(
                     StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
                     StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
                 }
+                OutlinedButton(
+                    onClick  = onNavigateToStickerBook,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("🃴 Sticker Book · ${ownedStickers.size} collected") }
 
                 Spacer(Modifier.height(24.dp))
 

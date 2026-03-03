@@ -171,18 +171,22 @@ class GattClient(
             val avatarKind  = avatar.optString("kind", "defaultBolt")
             val avatarColor = avatar.optString("color", "#FFFFFF")
             val retroUsername = data.optString("retroUsername", "").takeIf { it.isNotBlank() }
+            val ghostGame  = data.optString("ghostGame",  "").takeIf { it.isNotBlank() }
+            val ghostScore = data.optLong("ghostScore", 0L).takeIf { it > 0L }
 
             val snapshotId = snapshotDao.insert(
                 PeerProfileSnapshot(
-                    rotatingId     = rotatingId,
-                    displayName    = displayName,
-                    greeting       = greeting,
-                    avatarKind     = avatarKind,
-                    avatarColor    = avatarColor,
+                    rotatingId      = rotatingId,
+                    displayName     = displayName,
+                    greeting        = greeting,
+                    avatarKind      = avatarKind,
+                    avatarColor     = avatarColor,
                     protocolVersion = version,
-                    receivedAt     = ts * 1000,
-                    rawJson        = raw,
-                    retroUsername  = retroUsername,
+                    receivedAt      = ts * 1000,
+                    rawJson         = raw,
+                    retroUsername   = retroUsername,
+                    ghostGame       = ghostGame,
+                    ghostScore      = ghostScore,
                 )
             )
 
@@ -190,6 +194,24 @@ class GattClient(
 
             // Award 100 Joules for each successful Spark
             profileDao.addJoules(100)
+
+            // Award stickers based on this encounter
+            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val totalEncounters = encounterDao.countAll()
+            val todayStart = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val stickerKeys = mutableListOf("first_spark")
+            if (retroUsername != null)                       stickerKeys += "player_2"
+            if (hour >= 21)                                  stickerKeys += "dusk_patrol"
+            if (hour < 8)                                    stickerKeys += "early_bird"
+            if (totalEncounters >= 100)                      stickerKeys += "thunder_god"
+            else if (totalEncounters >= 50)                  stickerKeys += "marathon"
+            if (encounterDao.countSince(todayStart) >= 3)    stickerKeys += "on_fire"
+            com.thunderpass.data.StickerManager.award(context, *stickerKeys.toTypedArray())
 
             Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId, +100J)")
             onProfileReceived?.invoke(encounterId, displayName)

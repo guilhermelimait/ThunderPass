@@ -23,6 +23,7 @@ private object Routes {
     const val ENCOUNTER_DETAIL  = "encounter_detail/{encounterId}"
     const val PROFILE           = "profile"
     const val SHOP              = "shop"
+    const val STICKER_BOOK      = "sticker_book"
     fun encounterDetail(id: Long) = "encounter_detail/$id"
 }
 
@@ -72,10 +73,11 @@ fun ThunderPassNavGraph(
         // ── Home ──────────────────────────────────────────────────────────────
         composable(Routes.HOME) {
             HomeScreen(
-                onNavigateToEncounters = { navController.navigate(Routes.ENCOUNTERS) },
-                onNavigateToProfile    = { navController.navigate(Routes.PROFILE) },
-                onNavigateToDetail     = { id -> navController.navigate(Routes.encounterDetail(id)) },
-                onNavigateToShop       = { navController.navigate(Routes.SHOP) },
+                onNavigateToEncounters  = { navController.navigate(Routes.ENCOUNTERS) },
+                onNavigateToProfile     = { navController.navigate(Routes.PROFILE) },
+                onNavigateToDetail      = { id -> navController.navigate(Routes.encounterDetail(id)) },
+                onNavigateToShop        = { navController.navigate(Routes.SHOP) },
+                onNavigateToStickerBook = { navController.navigate(Routes.STICKER_BOOK) },
                 vm = homeVm,
             )
         }
@@ -113,6 +115,11 @@ fun ThunderPassNavGraph(
         // ── Visual Shop ───────────────────────────────────────────────────────
         composable(Routes.SHOP) {
             ShopScreen(onBack = { navController.popBackStack() }, vm = homeVm)
+        }
+
+        // ── Sticker Book ──────────────────────────────────────────────────────
+        composable(Routes.STICKER_BOOK) {
+            StickerBookScreen(onBack = { navController.popBackStack() }, vm = homeVm)
         }
 
         // ── Profile (with optional firstRun flag) ─────────────────────────────

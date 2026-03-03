@@ -135,7 +135,13 @@ fun EncounterDetailScreen(
                     if (snapshot != null) {
                         MetaCard(label = "Protocol version", value = "v${snapshot.protocolVersion}")
                     }
-
+                    // ── Ghost Score ─────────────────────────────────────────────────────
+                    if (snapshot?.ghostGame != null) {
+                        Spacer(Modifier.height(8.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(8.dp))
+                        GhostScoreCard(snapshot)
+                    }
                     // ── RetroAchievements ─────────────────────────────────────
                     if (snapshot?.retroUsername != null) {
                         Spacer(Modifier.height(8.dp))
@@ -170,6 +176,45 @@ private fun MetaCard(label: String, value: String) {
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GhostScoreCard(snapshot: com.thunderpass.data.db.entity.PeerProfileSnapshot) {
+    val game  = snapshot.ghostGame  ?: return
+    val score = snapshot.ghostScore
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Row(
+            modifier            = Modifier.padding(12.dp).fillMaxWidth(),
+            verticalAlignment   = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("👻", style = MaterialTheme.typography.headlineMedium)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = game,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (score != null && score > 0L) {
+                    Text(
+                        text  = "Score: $score",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
+            Text(
+                text  = "beat it!",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
             )
         }
     }

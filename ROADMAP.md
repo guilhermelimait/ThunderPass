@@ -26,8 +26,8 @@ Milestone 2 — Trust, Quality + Energy Base
 [x] Better UX copy + onboarding (The "Grid" introduction)
 
 Milestone 3 — Fun Layer + Game Sync
-[ ] Ghost payload type (score/time)
-[ ] Sticker book (basic, non-location-based first)
+[x] Ghost payload type (score/time)
+[x] Sticker book (basic, non-location-based first)
 [x] Encounter stats (counts, streaks, energy/Joules shown on HomeScreen)
 [x] RetroAchievements Integration (Phase 1):
 [x] RetroProfile + RetroRetrofitClient (Retrofit + Moshi) — fetchRetroMetadata(username)
