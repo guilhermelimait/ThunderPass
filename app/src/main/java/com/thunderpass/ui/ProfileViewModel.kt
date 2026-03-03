@@ -29,7 +29,13 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      * Persist the user's edited profile.
      * Preserves installationId and id from the existing row.
      */
-    fun save(displayName: String, greeting: String, retroUsername: String = "") {
+    fun save(
+        displayName:   String,
+        greeting:      String,
+        retroUsername: String = "",
+        ghostGame:     String = "",
+        ghostScore:    Long   = 0L,
+    ) {
         viewModelScope.launch {
             val current = profileDao.get()
                 ?: MyProfile(installationId = RotatingIdManager(getApplication()).installationId)
@@ -38,6 +44,8 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                     displayName   = displayName.trim().ifEmpty { "Traveler" },
                     greeting      = greeting.trim(),
                     retroUsername = retroUsername.trim(),
+                    ghostGame     = ghostGame.trim(),
+                    ghostScore    = ghostScore,
                     updatedAt     = System.currentTimeMillis() / 1000,
                 )
             )

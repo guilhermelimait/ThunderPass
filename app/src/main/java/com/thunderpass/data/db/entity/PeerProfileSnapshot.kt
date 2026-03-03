@@ -49,4 +49,12 @@ data class PeerProfileSnapshot(
 
     /** Number of games the peer has recently played on RA. */
     val retroRecentlyPlayedCount: Int? = null,
+
+    // ── Ghost Payload ──────────────────────────────────────────────────
+
+    /** Game name from the peer's ghost payload (null if peer didn't share one). */
+    val ghostGame: String? = null,
+
+    /** Peer's ghost score or time in ms (null if not shared). */
+    val ghostScore: Long? = null,
 )

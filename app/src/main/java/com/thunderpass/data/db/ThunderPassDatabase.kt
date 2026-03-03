@@ -17,7 +17,7 @@ import com.thunderpass.data.db.entity.PeerProfileSnapshot
         Encounter::class,
         PeerProfileSnapshot::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class ThunderPassDatabase : RoomDatabase() {

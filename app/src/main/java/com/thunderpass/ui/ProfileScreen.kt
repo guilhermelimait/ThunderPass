@@ -35,8 +35,10 @@ fun ProfileScreen(
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
     val context = LocalContext.current
     val retroAuth = remember { RetroAuthManager.getInstance(context) }
-    var draftRaApiKey  by remember { mutableStateOf(retroAuth.getApiKey()) }
-    var draftRaApiUser by remember { mutableStateOf(retroAuth.getApiUser()) }
+    var draftRaApiKey   by remember { mutableStateOf(retroAuth.getApiKey()) }
+    var draftRaApiUser  by remember { mutableStateOf(retroAuth.getApiUser()) }
+    var draftGhostGame  by remember(profile.ghostGame)  { mutableStateOf(profile.ghostGame) }
+    var draftGhostScore by remember(profile.ghostScore) { mutableStateOf(profile.ghostScore.takeIf { it > 0L }?.toString() ?: "") }
     var saved by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -170,10 +172,37 @@ fun ProfileScreen(
                 supportingText = { Text("Usually the same as your RA username") },
             )
 
+            OutlinedTextField(
+                value          = draftGhostGame,
+                onValueChange  = { draftGhostGame = it; saved = false },
+                label          = { Text("Ghost Game") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                supportingText = { Text("Game you're playing now (shared via BLE)") },
+            )
+
+            OutlinedTextField(
+                value          = draftGhostScore,
+                onValueChange  = { draftGhostScore = it; saved = false },
+                label          = { Text("Ghost Score") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                ),
+                supportingText = { Text("Your current score or playtime (number)") },
+            )
+
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick  = {
-                    vm.save(draftName, draftGreeting, draftRetroUsername)
+                    vm.save(
+                        displayName   = draftName,
+                        greeting      = draftGreeting,
+                        retroUsername = draftRetroUsername,
+                        ghostGame     = draftGhostGame,
+                        ghostScore    = draftGhostScore.trim().toLongOrNull() ?: 0L,
+                    )
                     if (draftRaApiKey.isNotBlank() && draftRaApiUser.isNotBlank()) {
                         retroAuth.saveCredentials(draftRaApiKey.trim(), draftRaApiUser.trim())
                     }

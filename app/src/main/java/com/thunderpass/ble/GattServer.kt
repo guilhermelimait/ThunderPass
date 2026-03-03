@@ -189,6 +189,10 @@ class GattServer(
             if (profile.retroUsername.isNotBlank()) {
                 put("retroUsername", profile.retroUsername)
             }
+            if (profile.ghostGame.isNotBlank()) {
+                put("ghostGame", profile.ghostGame)
+                if (profile.ghostScore > 0L) put("ghostScore", profile.ghostScore)
+            }
         }
         return org.json.JSONObject().apply {
             put("v", BleConstants.PROTOCOL_VERSION)

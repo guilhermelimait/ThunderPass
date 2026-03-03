@@ -75,6 +75,7 @@ object RetroRepository {
         if (profile.totalPoints > 20_000L) {
             triggers += AchievementTrigger.PlatinumPulse(peerUsername, profile.totalPoints)
             Log.i(TAG, "🏆 Platinum Pulse triggered! $peerUsername has ${profile.totalPoints} pts")
+            com.thunderpass.data.StickerManager.award(context, "high_roller")
         }
 
         // Legendary Encounter — both players share a recently played game
@@ -86,6 +87,7 @@ object RetroRepository {
                 ?.let { shared ->
                     triggers += AchievementTrigger.LegendaryEncounter(peerUsername, shared.title)
                     Log.i(TAG, "⚡ Legendary Encounter! Shared game: ${shared.title}")
+                    com.thunderpass.data.StickerManager.award(context, "legendary")
                 }
         }
 

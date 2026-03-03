@@ -81,6 +81,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.joulesTotal }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
+    // ── Owned Stickers ────────────────────────────────────────────────────────
+    val ownedStickers: StateFlow<Set<String>> = profileDao.observe()
+        .filterNotNull()
+        .map { it.stickersJson.split(",").filter { k -> k.isNotBlank() }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     // ── Full encounter list with resolved snapshots ───────────────────────────
     val encounters: StateFlow<List<EncounterWithProfile>> =
         MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
