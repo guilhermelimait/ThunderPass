@@ -38,6 +38,8 @@ class GattClient(
     private val encounterDao: EncounterDao,
     private val snapshotDao: PeerProfileSnapshotDao,
     private val scope: CoroutineScope,
+    /** Called on the IO dispatcher after a profile exchange succeeds. */
+    private val onProfileReceived: ((encounterId: Long, displayName: String) -> Unit)? = null,
 ) {
 
     // Track active connections to avoid duplicate GATTs to the same device
@@ -178,6 +180,7 @@ class GattClient(
 
             encounterDao.linkSnapshot(encounterId, snapshotId)
             Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId)")
+            onProfileReceived?.invoke(encounterId, displayName)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse/persist GATT payload: ${e.message}")
         }
