@@ -15,7 +15,7 @@ interface PeerProfileSnapshotDao {
     fun observeAll(): Flow<List<PeerProfileSnapshot>>
 
     /** Insert a snapshot. Returns the new row id (used to link an encounter). */
-    @Insert(onConflictStrategy = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(snapshot: PeerProfileSnapshot): Long
 
     /** Retrieve a single snapshot by its primary key. */

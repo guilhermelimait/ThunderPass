@@ -13,6 +13,7 @@ import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,10 +33,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Own profile observables ───────────────────────────────────────────────
     val installationId: StateFlow<String> = profileDao.observe()
+        .filterNotNull()
         .map { it.installationId }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     val displayName: StateFlow<String> = profileDao.observe()
+        .filterNotNull()
         .map { it.displayName }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Traveler")
 

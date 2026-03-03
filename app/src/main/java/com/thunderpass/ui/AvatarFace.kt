@@ -3,6 +3,7 @@ package com.thunderpass.ui
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -12,9 +13,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import coil3.compose.AsyncImagePainter
-import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.SubcomposeAsyncImage
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DiceBear "big-smile" avatar loader
@@ -45,25 +44,19 @@ fun DiceBearAvatar(
     size:     Dp       = 72.dp,
     modifier: Modifier = Modifier,
 ) {
-    val painter = rememberAsyncImagePainter(model = diceBearUrl(seed))
-    val state   = painter.state
-
-    val clipMod = modifier
-        .size(size)
-        .clip(CircleShape)
-
-    if (state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Empty) {
-        // Placeholder — muted circle matching the surface colour family
-        Box(
-            modifier = clipMod
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-    } else {
-        AsyncImage(
-            painter            = painter,
-            contentDescription = "Avatar",
-            contentScale       = ContentScale.Fit,
-            modifier           = clipMod,
-        )
-    }
+    SubcomposeAsyncImage(
+        model              = diceBearUrl(seed),
+        contentDescription = "Avatar",
+        contentScale       = ContentScale.Fit,
+        modifier           = modifier
+            .size(size)
+            .clip(CircleShape),
+        loading = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        },
+    )
 }
