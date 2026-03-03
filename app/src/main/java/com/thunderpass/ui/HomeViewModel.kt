@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class EncounterWithProfile(
     val encounter: Encounter,
@@ -50,6 +51,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val encounterCount: StateFlow<Int> = encounterDao.observeCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    // ── Encounter streak ─────────────────────────────────────────────────────
+    val encounterStreak: StateFlow<Int> = encounterDao.observeAll()
+        .map { list -> computeStreak(list) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     // ── Full encounter list with resolved snapshots ───────────────────────────
     val encounters: StateFlow<List<EncounterWithProfile>> =
         MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
@@ -65,6 +71,39 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    companion object {
+        /** Compute current encounter streak in days. */
+        private fun computeStreak(encounters: List<com.thunderpass.data.db.entity.Encounter>): Int {
+            if (encounters.isEmpty()) return 0
+            // Collect unique calendar-day start timestamps
+            val seenDays = encounters.map { enc ->
+                Calendar.getInstance().apply {
+                    timeInMillis = enc.seenAt
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+            }.toSet()
+            // Start from today (or yesterday if today has no encounters)
+            var checkDay = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            if (checkDay !in seenDays) checkDay -= 86_400_000L
+            var streak = 0
+            while (checkDay in seenDays) {
+                streak++
+                checkDay -= 86_400_000L
+            }
+            return streak
+        }
+    }
 
     // ── Start / Stop BLE service ──────────────────────────────────────────────
 
