@@ -121,6 +121,11 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            CompactVoltBadge(
+                joulesTotal = profile.joulesTotal,
+                modifier    = Modifier.fillMaxWidth(),
+            )
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             OutlinedTextField(
