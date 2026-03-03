@@ -21,8 +21,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import android.content.res.Configuration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -106,20 +108,197 @@ fun HomeScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
-        ) {
-            Spacer(Modifier.height(20.dp))
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-            if (!allGranted) {
+        if (!allGranted) {
+            Box(
+                modifier         = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 PermissionPrompt { permLauncher.launch(BLE_PERMISSIONS) }
-            } else {
-                // ── Greeting + avatar row ─────────────────────────────────────
+            }
+        } else if (isLandscape) {
+            // ── Landscape: two-panel layout ──────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // Left panel — identity + controls
+                Column(
+                    modifier = Modifier
+                        .weight(0.42f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    // Greeting row
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier              = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text       = "Hi, $displayName 👋",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onBackground,
+                            )
+                            Text(
+                                text  = if (serviceRunning) "Scanning nearby…" else "Tap to start scanning",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DiceBearAvatar(
+                            seed     = installationId.ifEmpty { "default" },
+                            size     = 40.dp,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onNavigateToProfile() },
+                        )
+                    }
+                    // Pill toggle
+                    PillToggle(
+                        active       = serviceRunning,
+                        onActivate   = { vm.startService() },
+                        onDeactivate = { vm.stopService() },
+                    )
+                    // Safe Zone
+                    FilterChip(
+                        selected = safeZoneActive,
+                        onClick  = { vm.setSafeZone(!safeZoneActive) },
+                        label    = {
+                            Text(
+                                if (safeZoneActive) "\uD83D\uDEE1\uFE0F Safe Zone — BLE paused"
+                                else "\uD83D\uDEE1\uFE0F Safe Zone"
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    // Battery mode
+                    Text(
+                        text  = "Battery Mode",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                            selected = scanMode == ScanMode.OFF,
+                            onClick  = { vm.setScanMode(ScanMode.OFF) },
+                        ) { Text("Off 🌙") }
+                        SegmentedButton(
+                            shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                            selected = scanMode == ScanMode.BALANCED,
+                            onClick  = { vm.setScanMode(ScanMode.BALANCED) },
+                        ) { Text("Balanced ⚡") }
+                        SegmentedButton(
+                            shape    = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                            selected = scanMode == ScanMode.AGGRESSIVE,
+                            onClick  = { vm.setScanMode(ScanMode.AGGRESSIVE) },
+                        ) { Text("Aggressive 🔥") }
+                    }
+                }
+
+                VerticalDivider(
+                    modifier  = Modifier
+                        .fillMaxHeight()
+                        .padding(vertical = 12.dp),
+                    thickness = 1.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant,
+                )
+
+                // Right panel — stats + encounters
+                Column(
+                    modifier = Modifier
+                        .weight(0.58f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    // Stats
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
+                        StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
+                        StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
+                        StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
+                    }
+                    // Encounters
+                    Text(
+                        text       = "Recent Encounters",
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onBackground,
+                    )
+                    if (encounters.isEmpty()) {
+                        Box(
+                            modifier         = Modifier.fillMaxWidth().height(72.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text      = "None yet — go out and encounter someone!",
+                                style     = MaterialTheme.typography.bodySmall,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier              = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            encounters.take(20).forEach { ewp ->
+                                val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
+                                val name = ewp.snapshot?.displayName ?: "Unknown"
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier            = Modifier
+                                        .width(56.dp)
+                                        .clickable { onNavigateToDetail(ewp.encounter.id) },
+                                ) {
+                                    DiceBearAvatar(seed = seed, size = 44.dp)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text      = name,
+                                        style     = MaterialTheme.typography.labelSmall,
+                                        maxLines  = 1,
+                                        overflow  = TextOverflow.Ellipsis,
+                                        color     = MaterialTheme.colorScheme.onBackground,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // ── Portrait layout (original) ───────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+            ) {
+                Spacer(Modifier.height(20.dp))
+
+                // ── Greeting + avatar row
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     verticalAlignment     = Alignment.CenterVertically,
@@ -149,7 +328,6 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // ── Large pill scanning toggle ─────────────────────────────────
                 PillToggle(
                     active       = serviceRunning,
                     onActivate   = { vm.startService() },
@@ -158,7 +336,6 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── Safe Zone chip ────────────────────────────────────────────
                 FilterChip(
                     selected = safeZoneActive,
                     onClick  = { vm.setSafeZone(!safeZoneActive) },
@@ -173,7 +350,6 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                // ── Recent Encounters ──────────────────────────────────────────
                 Text(
                     text       = "Recent Encounters",
                     style      = MaterialTheme.typography.titleMedium,
@@ -184,9 +360,7 @@ fun HomeScreen(
 
                 if (encounters.isEmpty()) {
                     Box(
-                        modifier         = Modifier
-                            .fillMaxWidth()
-                            .height(96.dp),
+                        modifier         = Modifier.fillMaxWidth().height(96.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -229,36 +403,18 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(28.dp))
 
-                // ── Stats row ──────────────────────────────────────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        label    = "Total",
-                        value    = encounterCount.toString(),
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        label    = "Today",
-                        value    = todayCount.toString(),
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        label    = "Streak 🔥",
-                        value    = if (encounterStreak > 0) "${encounterStreak}d" else "—",
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        label    = "⚡ Energy",
-                        value    = "${joulesTotal}J",
-                    )
+                    StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
+                    StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
+                    StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
+                    StatCard(modifier = Modifier.weight(1f), label = "⚡ Energy",  value = "${joulesTotal}J")
                 }
 
                 Spacer(Modifier.height(24.dp))
 
-                // ── Scan intensity segmented control ───────────────────────────
                 Text(
                     text  = "Battery Mode",
                     style = MaterialTheme.typography.labelLarge,
