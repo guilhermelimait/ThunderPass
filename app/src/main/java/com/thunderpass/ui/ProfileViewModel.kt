@@ -27,7 +27,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      * Persist the user's edited profile.
      * Preserves installationId and id from the existing row.
      */
-    fun save(displayName: String, greeting: String, avatarColor: String) {
+    fun save(displayName: String, greeting: String) {
         viewModelScope.launch {
             val current = profileDao.get()
                 ?: MyProfile(installationId = RotatingIdManager(getApplication()).installationId)
@@ -35,7 +35,6 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 current.copy(
                     displayName = displayName.trim().ifEmpty { "Traveler" },
                     greeting    = greeting.trim(),
-                    avatarColor = avatarColor,
                     updatedAt   = System.currentTimeMillis() / 1000,
                 )
             )

@@ -4,14 +4,16 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ fun HomeScreen(
     val context          = LocalContext.current
     val serviceRunning   by vm.serviceRunning.collectAsState()
     val encounterCount   by vm.encounterCount.collectAsState()
+    val installationId   by vm.installationId.collectAsState()
 
     var allGranted by remember {
         mutableStateOf(
@@ -57,9 +60,15 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToEncounters) {
                         Icon(Icons.Default.List, contentDescription = "Encounters")
                     }
-                    IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
-                    }
+                    // Tappable avatar leads to the Profile screen
+                    DiceBearAvatar(
+                        seed = installationId.ifEmpty { "default" },
+                        size = 36.dp,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { onNavigateToProfile() }
+                    )
+                    Spacer(Modifier.width(8.dp))
                 }
             )
         }

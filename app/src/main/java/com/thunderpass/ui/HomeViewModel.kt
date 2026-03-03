@@ -12,6 +12,7 @@ import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,6 +26,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val db = ThunderPassDatabase.getInstance(app)
     private val encounterDao = db.encounterDao()
     private val snapshotDao  = db.peerProfileSnapshotDao()
+    private val profileDao   = db.myProfileDao()
+
+    // ── Own avatar seed for the top-bar avatar ────────────────────────────────
+    val installationId: StateFlow<String> = profileDao.observe()
+        .map { it.installationId }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     // ── Service running state ─────────────────────────────────────────────────
     private val _serviceRunning = MutableStateFlow(false)

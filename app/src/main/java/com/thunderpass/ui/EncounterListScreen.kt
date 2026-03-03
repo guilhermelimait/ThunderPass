@@ -1,17 +1,14 @@
 package com.thunderpass.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,10 +78,10 @@ private fun EncounterCard(item: EncounterWithProfile) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Avatar circle
-            AvatarCircle(
-                color = parseColor(snapshot?.avatarColor ?: "#FFD400"),
-                label = (snapshot?.displayName ?: "?").take(1).uppercase(),
+            // Auto-generated peer avatar (seed = rotatingId seen at encounter time)
+            DiceBearAvatar(
+                seed = snapshot?.rotatingId ?: enc.rotatingId,
+                size = 48.dp,
             )
 
             Spacer(Modifier.width(16.dp))
@@ -123,26 +120,4 @@ private fun EncounterCard(item: EncounterWithProfile) {
     }
 }
 
-@Composable
-private fun AvatarCircle(color: Color, label: String) {
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .background(color, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium,
-        )
-    }
-}
 
-/** Parses a "#RRGGBB" or "#AARRGGBB" string into a Compose [Color]. */
-private fun parseColor(hex: String): Color = try {
-    Color(android.graphics.Color.parseColor(hex))
-} catch (e: Exception) {
-    Color(0xFFFFD400)
-}

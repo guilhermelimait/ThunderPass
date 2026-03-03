@@ -19,6 +19,9 @@
     <!-- POST_NOTIFICATIONS required for the persistent service notification (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- INTERNET required to fetch DiceBear avatars from api.dicebear.com -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Require BLE hardware; set required="false" if you also want to support non-BLE devices -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
