@@ -13,6 +13,6 @@
     </string>
     <!-- Encounter notification -->
     <string name="encounter_channel_name">New Encounters</string>
-    <string name="encounter_notif_title">New traveler encountered! \uD83D\uDC4B</string>
+    <string name="encounter_notif_title">New traveler encountered! &#x1F44B;</string>
     <string name="encounter_notif_text">Someone nearby is running ThunderPass. Tap to check who it is!</string>
 </resources>
