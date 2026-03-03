@@ -18,18 +18,21 @@ Milestone 1 — StreetPass MVP ✅
 [ ] Export / import local data (optional, deferred to M2)
 
 Milestone 2 — Trust, Quality + Energy Base
-[ ] “Safe Zones” (manual toggle + Wi‑Fi SSID + GPS Geofencing)
+[x] Widget: "new encounters" indicator (Glance widget — total + today counts)
+[x] Energy Engine: Implement "Joules" counter logic in Room (100 J per unique Spark)
+[x] Haptic Feedback: Double-pulse vibration ("The Spark") on successful GATT exchange
+[ ] "Safe Zones" (manual toggle + Wi‑Fi SSID + GPS Geofencing)
 [ ] Battery modes: aggressive (foreground), balanced (timed), off
-[ ] Energy Engine: Implement "Joules" counter logic in Room (100 J per unique Spark)
-[ ] Haptic Feedback: Double-pulse vibration ("The Spark") on successful GATT exchange
-[ ] Widget: “new encounters” indicator
 [ ] Better UX copy + onboarding (The "Grid" introduction)
 
 Milestone 3 — Fun Layer + Game Sync
 [ ] Ghost payload type (score/time)
 [ ] Sticker book (basic, non-location-based first)
-[ ] Encounter stats (counts, streaks)
-[ ]RetroAchievements Integration:
+[x] Encounter stats (counts, streaks, energy/Joules shown on HomeScreen)
+[x] RetroAchievements Integration (Phase 1):
+[x] RetroProfile + RetroRetrofitClient (Retrofit + Moshi) — fetchRetroMetadata(username)
+[x] Peer RA username shared via GATT BLE profile card
+[x] Auto-fetch peer RA stats after exchange, shown on Spark Card (EncounterDetailScreen)
 [ ] Create RetroAuthManager to securely store the user's RA API Key.
 [ ] Build RetroRepository (OOD) to fetch and cache peer data (Points, Rank, Recent Mastery).
 [ ] Dynamic Profile Card:
