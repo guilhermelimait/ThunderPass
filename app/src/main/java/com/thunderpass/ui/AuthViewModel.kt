@@ -44,6 +44,7 @@ class AuthViewModel : ViewModel() {
             try {
                 auth.signInWith(OTP) {
                     this.email = email.trim()
+                    this.createUser = true
                 }
                 _state.value = AuthState.AwaitingOtp(email.trim())
             } catch (e: Exception) {
