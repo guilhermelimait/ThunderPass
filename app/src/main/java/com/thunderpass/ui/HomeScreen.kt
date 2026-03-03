@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ fun HomeScreen(
     onNavigateToEncounters: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToDetail: (Long) -> Unit = {},
+    onNavigateToShop: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context        = LocalContext.current
@@ -104,6 +106,12 @@ fun HomeScreen(
                     onClick  = onNavigateToProfile,
                     icon     = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
                     label    = { Text("Profile") },
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick  = onNavigateToShop,
+                    icon     = { Icon(Icons.Filled.ShoppingCart, contentDescription = "Shop") },
+                    label    = { Text("Shop") },
                 )
             }
         }

@@ -1,6 +1,8 @@
 package com.thunderpass.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -64,6 +66,29 @@ fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
                             RetroStat(label = "Rank", value = "\u2B50 Veteran")
                         else ->
                             RetroStat(label = "Rank", value = "\uD83C\uDFAE Player")
+                    }
+                }
+
+                // ── Mastery icons — one chip per recently played game ────────
+                val gameCount = snapshot.retroRecentlyPlayedCount ?: 0
+                if (gameCount > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Text(
+                        text  = "Recently Played",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    val icons = listOf("\uD83C\uDFAE", "\uD83D\uDD79\uFE0F", "\uD83D\uDC7E", "\uD83C\uDFC6", "\u2694\uFE0F", "\uD83C\uDF1F", "\uD83D\uDD25", "\uD83D\uDC8E")
+                    Row(
+                        modifier              = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        repeat(gameCount.coerceAtMost(8)) { i ->
+                            SuggestionChip(
+                                onClick = {},
+                                label   = { Text(icons[i % icons.size]) },
+                            )
+                        }
                     }
                 }
             } else {

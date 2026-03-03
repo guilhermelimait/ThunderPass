@@ -17,10 +17,12 @@ import androidx.navigation.navArgument
 
 private object Routes {
     const val SPLASH            = "splash"
+    const val ONBOARDING        = "onboarding"
     const val HOME              = "home"
     const val ENCOUNTERS        = "encounters"
     const val ENCOUNTER_DETAIL  = "encounter_detail/{encounterId}"
     const val PROFILE           = "profile"
+    const val SHOP              = "shop"
     fun encounterDetail(id: Long) = "encounter_detail/$id"
 }
 
@@ -45,7 +47,7 @@ fun ThunderPassNavGraph(
             val profileVm: ProfileViewModel = viewModel()
             LaunchedEffect(Unit) {
                 val firstRun = profileVm.isFirstRun()
-                val target   = if (firstRun) "${Routes.PROFILE}?firstRun=true" else Routes.HOME
+                val target   = if (firstRun) Routes.ONBOARDING else Routes.HOME
                 navController.navigate(target) {
                     popUpTo(Routes.SPLASH) { inclusive = true }
                 }
@@ -56,12 +58,24 @@ fun ThunderPassNavGraph(
             }
         }
 
+        // ── The Grid — first-run onboarding ───────────────────────────────────
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(
+                onEnter = {
+                    navController.navigate("${Routes.PROFILE}?firstRun=true") {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // ── Home ──────────────────────────────────────────────────────────────
         composable(Routes.HOME) {
             HomeScreen(
                 onNavigateToEncounters = { navController.navigate(Routes.ENCOUNTERS) },
                 onNavigateToProfile    = { navController.navigate(Routes.PROFILE) },
                 onNavigateToDetail     = { id -> navController.navigate(Routes.encounterDetail(id)) },
+                onNavigateToShop       = { navController.navigate(Routes.SHOP) },
                 vm = homeVm,
             )
         }
@@ -94,6 +108,11 @@ fun ThunderPassNavGraph(
                 onBack      = { navController.popBackStack() },
                 vm          = homeVm,
             )
+        }
+
+        // ── Visual Shop ───────────────────────────────────────────────────────
+        composable(Routes.SHOP) {
+            ShopScreen(onBack = { navController.popBackStack() }, vm = homeVm)
         }
 
         // ── Profile (with optional firstRun flag) ─────────────────────────────
