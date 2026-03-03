@@ -8,6 +8,7 @@ import com.thunderpass.data.db.ThunderPassDatabase
 import com.thunderpass.data.db.entity.MyProfile
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -17,6 +18,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Current profile, always emits at least the default. */
     val profile: StateFlow<MyProfile> = profileDao.observe()
+        .filterNotNull()
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),

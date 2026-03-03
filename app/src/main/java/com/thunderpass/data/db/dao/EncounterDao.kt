@@ -16,7 +16,7 @@ interface EncounterDao {
     fun observeAll(): Flow<List<Encounter>>
 
     /** Insert a raw encounter (before GATT exchange). Returns new row id. */
-    @Insert(onConflictStrategy = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(encounter: Encounter): Long
 
     /**
