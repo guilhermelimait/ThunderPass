@@ -23,7 +23,7 @@ Milestone 2 — Trust, Quality + Energy Base
 [x] Haptic Feedback: Double-pulse vibration ("The Spark") on successful GATT exchange
 [x] "Safe Zones" manual toggle (Wi‑Fi SSID + GPS Geofencing deferred)
 [x] Battery modes: aggressive (foreground), balanced (timed), off
-[ ] Better UX copy + onboarding (The "Grid" introduction)
+[x] Better UX copy + onboarding (The "Grid" introduction)
 
 Milestone 3 — Fun Layer + Game Sync
 [ ] Ghost payload type (score/time)
@@ -37,12 +37,12 @@ Milestone 3 — Fun Layer + Game Sync
 [x] Build RetroRepository (OOD) to fetch and cache peer data (Points, Rank, Recent Mastery).
 [ ] Dynamic Profile Card:
 [x] Implement RetroSparkCard (Compose) to show RA Rank and Points alongside the ThunderBolt.
-[ ] Add "Mastery Icons" (scrolling row) to the encounter detail view.
+[x] Add "Mastery Icons" (scrolling row) to the encounter detail view.
 [ ] Famous Reference Achievements:
 [x] Platinum Pulse: Trigger if peer has TotalPoints > 20,000 (High Energy).
 [x] Legendary Encounter: Trigger if both users have the same game in their "Recently Played" list.
 [x] Retro Circuit: Trigger if peer is an "Active Master" (Mastered a game in the last 30 days).
-[ ] Visual Shop: - [ ] Unlock "CRT Scanlines" or "Pixelated Aura" profile effects using Joules.
+[x] Visual Shop: Unlock "CRT Scanlines", "Pixelated Aura", and "Thunder Trail" profile effects using Joules.
 
 Milestone 4 — Accounts + Cloud Sync
 [ ] Passwordless Auth: Firebase Magic Link sign-in (Sync Bio-ID)
