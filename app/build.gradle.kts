@@ -76,6 +76,11 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
     // org.json is part of Android's runtime — no extra dep needed
 
+    // Coil 3 — image loading with SVG support for DiceBear avatars
+    implementation("io.coil-kt.coil3:coil-compose:3.0.4")
+    implementation("io.coil-kt.coil3:coil-svg:3.0.4")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
