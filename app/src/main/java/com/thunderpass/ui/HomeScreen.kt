@@ -14,7 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -92,7 +92,7 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick  = onNavigateToEncounters,
-                    icon     = { Icon(Icons.Filled.List, contentDescription = "Encounters") },
+                    icon     = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Encounters") },
                     label    = { Text("Encounters") },
                 )
                 NavigationBarItem(
