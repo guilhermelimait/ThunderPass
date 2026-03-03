@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -56,7 +56,7 @@ fun EncounterListScreen(
                 NavigationBarItem(
                     selected = true,
                     onClick  = { /* already here */ },
-                    icon     = { Icon(Icons.Filled.List, contentDescription = "Encounters") },
+                    icon     = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Encounters") },
                     label    = { Text("Encounters") },
                 )
                 NavigationBarItem(
