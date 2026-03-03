@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ThunderPass · Profile Card</title>
+  <style>
+    :root {
+      --yellow:  #FFD700;
+      --yellow2: #F5C518;
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --green:   #3fb950;
+      --red:     #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 4px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: -.5px;
+    }
+    .tagline {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .search-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 32px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus { border-color: var(--yellow); }
+    input[type="text"]::placeholder { color: var(--muted); }
+    button {
+      background: var(--yellow);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 10px 20px;
+      transition: background .15s;
+    }
+    button:hover { background: var(--yellow2); }
+    button:disabled { background: var(--border); color: var(--muted); cursor: default; }
+    .error {
+      color: var(--red);
+      font-size: 14px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #1c2128 0%, #161b22 100%);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+    }
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,.15);
+    }
+    .card-header-info { flex: 1; min-width: 0; }
+    .display-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--yellow);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .gh-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+    }
+    .gh-link:hover { color: var(--text); }
+    .greeting {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .card-body { padding: 20px; }
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--yellow);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    /* Ghost section */
+    .ghost-row {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    .ghost-icon { font-size: 24px; }
+    .ghost-game { font-size: 15px; font-weight: 600; }
+    .ghost-beat {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+    /* Stickers */
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .stickers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .sticker {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11px;
+      padding: 5px 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sticker-icon { font-size: 16px; }
+    .no-stickers { color: var(--muted); font-size: 13px; }
+    /* RetroAchievements row */
+    .retro-row {
+      border-top: 1px solid var(--border);
+      margin-top: 16px;
+      padding-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .retro-icon { font-size: 18px; }
+    .retro-text { font-size: 13px; color: var(--muted); }
+    .retro-text a { color: var(--yellow); text-decoration: none; }
+    .retro-text a:hover { text-decoration: underline; }
+    /* Updated at */
+    .updated-at {
+      border-top: 1px solid var(--border);
+      margin-top: 14px;
+      padding-top: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+    /* Gist link */
+    .gist-link-row {
+      text-align: center;
+      margin-top: 16px;
+    }
+    .gist-link-row a {
+      color: var(--muted);
+      font-size: 12px;
+      text-decoration: none;
+    }
+    .gist-link-row a:hover { color: var(--text); text-decoration: underline; }
+    /* Loading spinner */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--yellow);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 32px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+    footer {
+      margin-top: 40px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    footer a { color: var(--yellow); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">⚡</div>
+  <h1>ThunderPass</h1>
+  <p class="tagline">Look up any ThunderPass traveler by their GitHub username</p>
+</header>
+
+<div class="search-row">
+  <input type="text" id="usernameInput" placeholder="GitHub username…" autocomplete="off" />
+  <button id="lookupBtn" onclick="lookup()">Look up</button>
+</div>
+
+<div id="errorMsg" class="error hidden"></div>
+<div id="spinner"  class="spinner hidden"></div>
+<div id="cardArea"></div>
+
+<div class="gist-link-row" id="gistLinkRow" style="display:none">
+  <a id="gistLink" href="#" target="_blank">View raw Gist →</a>
+</div>
+
+<footer>
+  Powered by <a href="https://github.com/guilhermelimait/ThunderPass" target="_blank">ThunderPass</a> &amp; GitHub Gists
+</footer>
+
+<script>
+const STICKERS = {
+  first_spark:    { icon: '🌩️', name: 'First Spark' },
+  player_2:       { icon: '🎮', name: 'Player 2' },
+  high_roller:    { icon: '🏆', name: 'High Roller' },
+  sharp_signal:   { icon: '📡', name: 'Sharp Signal' },
+  dusk_patrol:    { icon: '⭐', name: 'Dusk Patrol' },
+  early_bird:     { icon: '🌅', name: 'Early Bird' },
+  on_fire:        { icon: '🔥', name: 'On Fire' },
+  crystal_clear:  { icon: '💎', name: 'Crystal Clear' },
+  double_trouble: { icon: '🎲', name: 'Double Trouble' },
+  legendary:      { icon: '👾', name: 'Legendary' },
+  marathon:       { icon: '♾️', name: 'Marathon Runner' },
+  thunder_god:    { icon: '⚡', name: 'Thunder God' },
+};
+
+const AVATAR_ICONS = {
+  defaultBolt: '⚡', bolt: '⚡', ghost: '👻', flame: '🔥',
+  star: '⭐', diamond: '💎', default: '🌩️',
+};
+
+function avatarIcon(kind) {
+  return AVATAR_ICONS[kind] || AVATAR_ICONS.default;
+}
+
+function show(id)  { document.getElementById(id).classList.remove('hidden'); }
+function hide(id)  { document.getElementById(id).classList.add('hidden'); }
+function setError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function clearError() { hide('errorMsg'); }
+
+async function lookup() {
+  const username = document.getElementById('usernameInput').value.trim();
+  if (!username) return;
+
+  clearError();
+  document.getElementById('cardArea').innerHTML = '';
+  document.getElementById('gistLinkRow').style.display = 'none';
+  show('spinner');
+  document.getElementById('lookupBtn').disabled = true;
+
+  try {
+    // 1. Find the ThunderPass gist for this user
+    const gistsResp = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/gists`, {
+      headers: { 'Accept': 'application/vnd.github+json' },
+    });
+    if (!gistsResp.ok) {
+      if (gistsResp.status === 404) throw new Error(`GitHub user "${username}" not found.`);
+      throw new Error(`GitHub API error ${gistsResp.status}.`);
+    }
+    const gists = await gistsResp.json();
+    const tpGist = gists.find(g =>
+      g.description === 'ThunderPass profile card' && g.files && g.files['thunderpass.json']
+    );
+    if (!tpGist) {
+      throw new Error(`No ThunderPass card found for @${username}. They may not have synced yet.`);
+    }
+
+    // 2. Load the raw JSON
+    const rawUrl = tpGist.files['thunderpass.json'].raw_url;
+    const cardResp = await fetch(rawUrl);
+    if (!cardResp.ok) throw new Error('Could not load card data.');
+    const card = await cardResp.json();
+
+    if (card.schema !== 'thunderpass/v1') {
+      throw new Error('Unknown card schema version.');
+    }
+
+    // 3. Render
+    renderCard(username, card, tpGist.html_url);
+
+    // Gist link
+    const link = document.getElementById('gistLink');
+    link.href = tpGist.html_url;
+    document.getElementById('gistLinkRow').style.display = 'block';
+
+    // Update URL so it's shareable
+    const url = new URL(window.location);
+    url.searchParams.set('u', username);
+    window.history.replaceState({}, '', url);
+
+  } catch (err) {
+    setError('⚠ ' + err.message);
+  } finally {
+    hide('spinner');
+    document.getElementById('lookupBtn').disabled = false;
+  }
+}
+
+function renderCard(githubUser, card, gistUrl) {
+  const p = card.profile || {};
+  const s = card.stats   || {};
+  const stickers = s.stickers || [];
+  const updatedAt = card.updatedAt
+    ? new Date(card.updatedAt * 1000).toLocaleDateString(undefined, { dateStyle: 'medium' })
+    : null;
+
+  const stickerHtml = stickers.length
+    ? stickers.map(key => {
+        const st = STICKERS[key];
+        if (!st) return '';
+        return `<span class="sticker"><span class="sticker-icon">${st.icon}</span>${st.name}</span>`;
+      }).join('')
+    : `<span class="no-stickers">No stickers yet</span>`;
+
+  const ghostHtml = p.ghostGame
+    ? `<div class="ghost-row">
+        <span class="ghost-icon">👻</span>
+        <span class="ghost-game">${escHtml(p.ghostGame)}</span>
+        <span class="ghost-beat">beat it!</span>
+      </div>`
+    : '';
+
+  const retroHtml = p.retroUsername
+    ? `<div class="retro-row">
+        <span class="retro-icon">🎮</span>
+        <span class="retro-text">RetroAchievements:
+          <a href="https://retroachievements.org/user/${escHtml(p.retroUsername)}" target="_blank">@${escHtml(p.retroUsername)}</a>
+        </span>
+      </div>`
+    : '';
+
+  const updatedHtml = updatedAt
+    ? `<div class="updated-at">Last synced ${updatedAt}</div>`
+    : '';
+
+  const icon = avatarIcon(p.avatarKind);
+  const color = p.avatarColor || '#FFD700';
+
+  document.getElementById('cardArea').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar" style="background:${escHtml(color)}22; border-color:${escHtml(color)}44;">
+          <span>${icon}</span>
+        </div>
+        <div class="card-header-info">
+          <div class="display-name">${escHtml(p.displayName || 'Traveler')}</div>
+          <a class="gh-link" href="https://github.com/${encodeURIComponent(githubUser)}" target="_blank">@${escHtml(githubUser)}</a>
+          ${p.greeting ? `<div class="greeting">"${escHtml(p.greeting)}"</div>` : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value">${s.encounterCount ?? 0}</div>
+            <div class="stat-label">Sparks</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${s.encounterStreak ?? 0}d</div>
+            <div class="stat-label">Streak</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${s.joules ?? 0}J</div>
+            <div class="stat-label">Energy</div>
+          </div>
+        </div>
+        ${ghostHtml}
+        <div class="section-title">Stickers (${stickers.length} / ${Object.keys(STICKERS).length})</div>
+        <div class="stickers">${stickerHtml}</div>
+        ${retroHtml}
+        ${updatedHtml}
+      </div>
+    </div>`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;');
+}
+
+// Auto-load from ?u= query param
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const u = params.get('u');
+  if (u) {
+    document.getElementById('usernameInput').value = u;
+    lookup();
+  }
+  document.getElementById('usernameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') lookup();
+  });
+})();
+</script>
+</body>
+</html>
