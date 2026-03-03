@@ -29,6 +29,7 @@ fun ProfileScreen(
 
     var draftName     by remember(profile.displayName) { mutableStateOf(profile.displayName) }
     var draftGreeting by remember(profile.greeting)     { mutableStateOf(profile.greeting) }
+    var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
     var saved by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -132,10 +133,21 @@ fun ProfileScreen(
                 supportingText = { Text("Exchanged when you meet someone") },
             )
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            OutlinedTextField(
+                value          = draftRetroUsername,
+                onValueChange  = { draftRetroUsername = it; saved = false },
+                label          = { Text("🎮 RetroAchievements Username") },
+                singleLine     = true,
+                modifier       = Modifier.fillMaxWidth(),
+                supportingText = { Text("Optional — share your RA stats on your Spark Card") },
+            )
+
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick  = {
-                    vm.save(draftName, draftGreeting)
+                    vm.save(draftName, draftGreeting, draftRetroUsername)
                     saved = true
                     if (firstRun) onComplete?.invoke()
                 },
