@@ -33,6 +33,7 @@ import io.github.jan.supabase.compose.auth.composeAuth
 @Composable
 fun AuthScreen(
     onAuthenticated: () -> Unit,
+    onSkip: () -> Unit = {},
     vm: AuthViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -143,6 +144,18 @@ fun AuthScreen(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text("Continue with Google")
+                    }
+
+                    // ── Skip option ───────────────────────────────────────────
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick  = onSkip,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text  = "Skip for now",
+                            color = MaterialTheme.colorScheme.outline,
+                        )
                     }
                 }
 

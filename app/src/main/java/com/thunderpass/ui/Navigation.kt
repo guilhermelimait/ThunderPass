@@ -76,7 +76,12 @@ fun ThunderPassNavGraph(
                     navController.navigate(Routes.SPLASH) {
                         popUpTo(Routes.AUTH) { inclusive = true }
                     }
-                }
+                },
+                onSkip = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.AUTH) { inclusive = true }
+                    }
+                },
             )
         }
 
