@@ -6,6 +6,7 @@ import com.thunderpass.supabase.SupabaseManager
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.OTP
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +34,21 @@ class AuthViewModel : ViewModel() {
         if (auth.currentSessionOrNull() != null) AuthState.Authenticated else AuthState.Idle
     )
     val state: StateFlow<AuthState> = _state.asStateFlow()
+
+    init {
+        // React to session changes triggered externally — e.g. magic link deep link
+        // processed by handleDeeplinks() in MainActivity before the ViewModel existed,
+        // or arriving while the app is already open.
+        viewModelScope.launch {
+            auth.sessionStatus.collect { status ->
+                if (status is SessionStatus.Authenticated &&
+                    _state.value !is AuthState.Authenticated
+                ) {
+                    _state.value = AuthState.Authenticated
+                }
+            }
+        }
+    }
 
     /**
      * Step 1 — send a 6-digit OTP to [email].
