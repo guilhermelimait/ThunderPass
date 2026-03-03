@@ -28,4 +28,16 @@ data class MyProfile(
 
     /** Unix epoch seconds when the profile was last edited. */
     val updatedAt: Long = 0L,
+
+    /**
+     * Accumulated energy in Joules. Each successful Spark (GATT profile exchange)
+     * earns 100 J. Displayed on the Home screen as a game mechanic.
+     */
+    val joulesTotal: Long = 0L,
+
+    /**
+     * User's RetroAchievements username (optional). When set, it is included
+     * in the BLE profile exchange so peers can see your RA stats on your Spark Card.
+     */
+    val retroUsername: String = "",
 )

@@ -17,6 +17,8 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.thunderpass.ble.BleConstants
@@ -85,6 +87,7 @@ class BleService : Service() {
             context     = this,
             encounterDao = db.encounterDao(),
             snapshotDao  = db.peerProfileSnapshotDao(),
+            profileDao   = db.myProfileDao(),
             scope        = serviceScope,
             onProfileReceived = { encId, name -> updateEncounterNotification(encId, name) },
         )
@@ -341,6 +344,11 @@ class BleService : Service() {
 
     /** Update the encounter notification once we know the peer's display name. */
     private fun updateEncounterNotification(encounterId: Long, displayName: String) {
+        // ⚡ "The Spark" — double-pulse haptic feedback on successful profile exchange
+        val vibrator = getSystemService(VibratorManager::class.java).defaultVibrator
+        // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
+        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
+
         val tapIntent = PendingIntent.getActivity(
             this, encounterId.toInt(),
             Intent(this, MainActivity::class.java).apply {
