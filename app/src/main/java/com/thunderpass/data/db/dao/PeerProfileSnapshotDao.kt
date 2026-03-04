@@ -29,4 +29,12 @@ interface PeerProfileSnapshotDao {
         WHERE id = :id
     """)
     suspend fun updateRetroStats(id: Long, points: Long, recentCount: Int)
+
+    /**
+     * Mark that a RA fetch has been attempted for this snapshot.
+     * Called after every fetch attempt — success or failure — so the UI can
+     * distinguish "still in-flight" from "fetch failed / credentials missing".
+     */
+    @Query("UPDATE peer_profile_snapshot SET retroFetchAttempted = 1 WHERE id = :id")
+    suspend fun markRetroFetchAttempted(id: Long)
 }

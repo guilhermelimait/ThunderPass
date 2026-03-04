@@ -72,8 +72,12 @@ fun EncounterDetailScreen(
                 Spacer(Modifier.height(32.dp))
 
                 // ── Avatar ────────────────────────────────────────────────────
+                // Prefer the peer's own avatarSeed (so it matches their profile view);
+                // fall back to rotatingId for pre-fix / seed-less snapshots.
                 DiceBearAvatar(
-                    seed = snapshot?.rotatingId ?: enc.rotatingId,
+                    seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                        ?: snapshot?.rotatingId
+                        ?: enc.rotatingId,
                     size = 120.dp,
                 )
 

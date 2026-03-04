@@ -438,7 +438,7 @@ internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Un
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             DiceBearAvatar(
-                seed     = seed,
+                seed     = encounter.snapshot?.avatarSeed?.takeIf { it.isNotBlank() } ?: seed,
                 size     = 40.dp,
                 modifier = Modifier.clip(CircleShape),
             )

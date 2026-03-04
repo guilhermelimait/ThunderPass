@@ -141,9 +141,12 @@ private fun EncounterCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Auto-generated peer avatar (seed = rotatingId seen at encounter time)
+            // Peer avatar — prefer their own avatarSeed so it matches what they see on
+            // their device; fall back to rotatingId for pre-fix snapshots.
             DiceBearAvatar(
-                seed = snapshot?.rotatingId ?: enc.rotatingId,
+                seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                    ?: snapshot?.rotatingId
+                    ?: enc.rotatingId,
                 size = 52.dp,
             )
 

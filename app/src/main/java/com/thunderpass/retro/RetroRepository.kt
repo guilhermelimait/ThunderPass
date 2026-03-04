@@ -56,6 +56,7 @@ object RetroRepository {
         val result = RetroRetrofitClient.fetchRetroMetadata(peerUsername, auth)
         val profile = result.getOrElse {
             Log.w(TAG, "Could not fetch RA for $peerUsername: ${it.message}")
+            snapshotDao.markRetroFetchAttempted(snapshotId)
             return emptyList()
         }
 
@@ -100,6 +101,7 @@ object RetroRepository {
         // Fire notifications for all triggered achievements
         triggers.forEach { fireAchievementNotification(context, it) }
 
+        snapshotDao.markRetroFetchAttempted(snapshotId)
         return triggers
     }
 

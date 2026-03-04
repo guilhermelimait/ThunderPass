@@ -254,6 +254,7 @@ class GattClient(
             val avatar      = data.optJSONObject("avatar") ?: org.json.JSONObject()
             val avatarKind  = avatar.optString("kind", "defaultBolt")
             val avatarColor = avatar.optString("color", "#FFFFFF")
+            val avatarSeed  = avatar.optString("seed", "").takeIf { it.isNotBlank() }
             val retroUsername = data.optString("retroUsername", "").takeIf { it.isNotBlank() }
             val ghostGame  = data.optString("ghostGame",  "").takeIf { it.isNotBlank() }
             val ghostScore = data.optLong("ghostScore", 0L).takeIf { it > 0L }
@@ -265,6 +266,7 @@ class GattClient(
                     greeting        = greeting,
                     avatarKind      = avatarKind,
                     avatarColor     = avatarColor,
+                    avatarSeed      = avatarSeed,
                     protocolVersion = version,
                     receivedAt      = ts * 1000,
                     rawJson         = raw,

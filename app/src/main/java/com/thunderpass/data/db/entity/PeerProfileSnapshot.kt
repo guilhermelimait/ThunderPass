@@ -27,6 +27,13 @@ data class PeerProfileSnapshot(
     /** Avatar accent color hex string. */
     val avatarColor: String,
 
+    /**
+     * The peer's DiceBear seed string (from their own profile settings).
+     * Used to render the same avatar on this device as on the peer's device.
+     * Falls back to [rotatingId] when null (old peers / pre-fix builds).
+     */
+    val avatarSeed: String? = null,
+
     /** Protocol version reported by the peer. */
     val protocolVersion: Int,
 
@@ -49,6 +56,12 @@ data class PeerProfileSnapshot(
 
     /** Number of games the peer has recently played on RA. */
     val retroRecentlyPlayedCount: Int? = null,
+
+    /**
+     * True once a RA fetch has been attempted (regardless of success/failure).
+     * Lets the UI distinguish "still in-flight" from "permanently unavailable".
+     */
+    val retroFetchAttempted: Boolean = false,
 
     // ── Ghost Payload ──────────────────────────────────────────────────
 

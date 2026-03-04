@@ -91,10 +91,16 @@ fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
                         }
                     }
                 }
-            } else {
+            } else if (!snapshot.retroFetchAttempted) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
                     text  = "Fetching RA stats\u2026",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    text  = "RA stats unavailable — set up your RetroAchievements account to see stats.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
