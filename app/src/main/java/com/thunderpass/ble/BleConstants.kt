@@ -62,6 +62,19 @@ object BleConstants {
      */
     const val DEDUP_COOLDOWN_MS = 10L * 60 * 1000
 
+    /** Preferred MTU requested by the GATT client (Android max = 517 but 512 is safe). */
+    const val PREFERRED_MTU = 512
+
+    /** Default ATT MTU when no negotiation has happened. */
+    const val DEFAULT_MTU = 23
+
+    /**
+     * Magic byte that marks a chunked notification.
+     * 0xCA never appears as the first byte of a valid UTF-8/JSON payload (which starts with '{').
+     * Chunk format: [CHUNK_MAGIC:1][totalChunks:1][chunkIndex:1][data…]
+     */
+    const val CHUNK_MAGIC: Byte = 0xCA.toByte()
+
     /** Maximum GATT MTU payload size (safe conservative value). */
     const val GATT_MAX_MTU = 512
 

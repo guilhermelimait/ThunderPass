@@ -35,6 +35,9 @@ class GattServer(
 
     private var gattServer: BluetoothGattServer? = null
 
+    /** Negotiated MTU per remote device address (set in [onMtuChanged]). */
+    private val deviceMtu = mutableMapOf<String, Int>()
+
     /** Call once from [BleService.onCreate] or before advertising starts. */
     fun start(profileProvider: () -> MyProfile?) {
         val btManager = context.getSystemService(BluetoothManager::class.java) ?: return
@@ -50,6 +53,7 @@ class GattServer(
     fun stop() {
         gattServer?.close()
         gattServer = null
+        deviceMtu.clear()
         Log.i(TAG, "GATT server stopped.")
     }
 
@@ -100,7 +104,18 @@ class GattServer(
                 device: BluetoothDevice?, status: Int, newState: Int
             ) {
                 val state = if (newState == BluetoothProfile.STATE_CONNECTED) "CONNECTED" else "DISCONNECTED"
-                Log.d(TAG, "Device ${device?.address} → $state")
+                Log.d(TAG, "Device ${device?.address} → $state (status=$status)")
+                if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    deviceMtu.remove(device?.address)
+                }
+            }
+
+            /** Track the MTU that the client negotiated so we chunk correctly. */
+            override fun onMtuChanged(device: BluetoothDevice?, mtu: Int) {
+                device?.address?.let {
+                    deviceMtu[it] = mtu
+                    Log.d(TAG, "Server MTU updated for $it: $mtu")
+                }
             }
 
             override fun onCharacteristicWriteRequest(
@@ -122,8 +137,11 @@ class GattServer(
                     )
                 }
 
-                // Build and send our profile as a notification
-                device?.let { sendProfileNotification(it, profileProvider()) }
+                // Build and send our profile as (possibly chunked) notifications
+                device?.let { dev ->
+                    val mtu = deviceMtu[dev.address] ?: BleConstants.DEFAULT_MTU
+                    sendProfileNotification(dev, profileProvider(), mtu)
+                }
             }
 
             override fun onDescriptorWriteRequest(
@@ -146,22 +164,47 @@ class GattServer(
 
     // ── Payload builder ───────────────────────────────────────────────────────
 
-    private fun sendProfileNotification(device: BluetoothDevice, profile: MyProfile?) {
+    /**
+     * Sends the local profile to [device] as one or more chunked GATT notifications.
+     *
+     * Chunk format: [CHUNK_MAGIC:1][totalChunks:1][chunkIndex:1][data…]
+     * The magic byte (0xCA) never appears as the first byte of valid JSON, so the
+     * client can distinguish chunked vs. legacy single-notification payloads.
+     *
+     * @param mtu  The negotiated ATT MTU for this device. Each notification payload must
+     *             be ≤ (mtu - 3) bytes (3 bytes for the ATT op-code + handle overhead).
+     */
+    private fun sendProfileNotification(device: BluetoothDevice, profile: MyProfile?, mtu: Int) {
         if (profile == null) {
             Log.w(TAG, "No local profile; skipping GATT notification.")
             return
         }
 
-        val payload = buildPayloadJson(profile)
-        val bytes = payload.toByteArray(Charsets.UTF_8)
-
         val responseChar = gattServer
             ?.getService(THUNDERPASS_SERVICE_UUID)
             ?.getCharacteristic(RESPONSE_CHAR_UUID) ?: return
 
-        // TODO: chunk if bytes.size > negotiated MTU
-        val notified = gattServer?.notifyCharacteristicChanged(device, responseChar, false, bytes)
-        Log.d(TAG, "Notified ${device.address} with ${bytes.size} bytes (success=$notified)")
+        val payload = buildPayloadJson(profile).toByteArray(Charsets.UTF_8)
+
+        // ATT notification overhead: 3 bytes (opcode 1 + handle 2).
+        // Chunk header: 3 bytes (magic 1 + totalChunks 1 + chunkIndex 1).
+        val maxDataPerChunk = maxOf(1, mtu - 3 - 3)
+
+        val chunks = payload.toList().chunked(maxDataPerChunk) { it.toByteArray() }
+        val totalChunks = chunks.size.coerceAtMost(255)  // uint8 cap — profiles won't exceed this
+
+        Log.d(TAG, "Sending ${payload.size} bytes to ${device.address} in $totalChunks chunk(s) (mtu=$mtu)")
+
+        chunks.forEachIndexed { index, data ->
+            if (index >= 255) return@forEachIndexed  // safety guard
+            val packet = byteArrayOf(
+                BleConstants.CHUNK_MAGIC,
+                totalChunks.toByte(),
+                index.toByte(),
+            ) + data
+            val ok = gattServer?.notifyCharacteristicChanged(device, responseChar, false, packet)
+            Log.v(TAG, "  chunk $index/$totalChunks → ${packet.size} bytes sent=$ok")
+        }
     }
 
     /**
@@ -184,6 +227,8 @@ class GattServer(
             put("avatar", org.json.JSONObject().apply {
                 put("kind", profile.avatarKind)
                 put("color", profile.avatarColor)
+                // Include DiceBear seed so peers can render the same avatar
+                if (profile.avatarSeed.isNotBlank()) put("seed", profile.avatarSeed)
             })
             // Include RetroAchievements username if the user has set one
             if (profile.retroUsername.isNotBlank()) {
