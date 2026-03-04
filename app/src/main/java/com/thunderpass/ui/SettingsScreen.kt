@@ -48,6 +48,10 @@ fun SettingsScreen(
     val availableUpdate by vm.availableUpdate.collectAsState()
     var advancedExpanded by remember { mutableStateOf(false) }
 
+    // ── Hardware (AYN Thor LED flash) ─────────────────────────────────────────
+    var ledFlashEnabled  by remember { mutableStateOf(prefs.getBoolean("led_flash_enabled", true)) }
+    var canWriteSettings by remember { mutableStateOf(AndroidSettings.System.canWrite(context)) }
+
     // ── Permission state — re-checked on every recomposition ──────────────────
     var notifGranted by remember {
         mutableStateOf(
@@ -245,6 +249,38 @@ fun SettingsScreen(
                     }
                 },
             )
+        }
+
+        // ── Hardware ─────────────────────────────────────────────────────────
+        SettingsSection("Hardware") {
+            SettingToggleRow(
+                label           = "Flash LEDs on Encounter",
+                subtitle        = "Blink the joystick LEDs yellow 3× when a Traveler is found nearby (AYN Thor)",
+                checked         = ledFlashEnabled,
+                onCheckedChange = { enabled ->
+                    ledFlashEnabled = enabled
+                    prefs.edit().putBoolean("led_flash_enabled", enabled).apply()
+                    if (enabled) canWriteSettings = AndroidSettings.System.canWrite(context)
+                },
+            )
+            if (ledFlashEnabled && !canWriteSettings) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SettingActionRow(
+                    label       = "Modify System Settings",
+                    subtitle    = "Required for LED control — tap to grant \"Modify system settings\" access",
+                    buttonLabel = "Grant",
+                    onClick     = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(AndroidSettings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                            )
+                        }
+                    },
+                )
+            }
         }
 
         // ── App Management ────────────────────────────────────────────────────

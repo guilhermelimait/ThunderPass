@@ -441,6 +441,8 @@ class BleService : Service() {
      * Silently no-ops on other devices or if permission not granted.
      */
     private fun flashThorLeds() {
+        val settingsPrefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
+        if (!settingsPrefs.getBoolean("led_flash_enabled", true)) return
         if (!Settings.System.canWrite(this)) return
         val cr = contentResolver
         val prevColor   = Settings.System.getString(cr, "joystick_led_light_picker_color") ?: return
