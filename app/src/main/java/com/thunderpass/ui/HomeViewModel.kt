@@ -42,8 +42,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     val displayName: StateFlow<String> = profileDao.observe()
         .filterNotNull()
-        .map { it.displayName }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "Traveler")
+        .map { p ->
+            p.displayName.ifBlank {
+                android.provider.Settings.Global.getString(
+                    getApplication<Application>().contentResolver,
+                    android.provider.Settings.Global.DEVICE_NAME
+                )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), android.os.Build.MODEL)
 
     // ── Visual Shop unlocks ───────────────────────────────────────────────────
     private val _unlockedEffects = MutableStateFlow(
