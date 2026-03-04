@@ -235,19 +235,19 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                             trackColor = Color.White.copy(alpha = 0.08f),
                         )
 
-                        // Tier dots: 3 dots — filled = category color, hollow = not yet
+                        // Tier dots: 3 always shown — category color if achieved, gray if not
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             (1..3).forEach { t ->
                                 val achieved = badge.tier >= t
                                 Box(
                                     modifier = Modifier
-                                        .size(7.dp)
+                                        .size(8.dp)
                                         .clip(CircleShape)
                                         .background(
                                             color = if (achieved)
                                                 catColor.copy(alpha = 0.9f)
                                             else
-                                                Color.White.copy(alpha = 0.12f),
+                                                Color(0xFF6B6B6B).copy(alpha = 0.55f),
                                         ),
                                 )
                             }
@@ -319,24 +319,24 @@ fun ThunderShield(
             )
         }
 
-        // ── 4. Chevrons — lower portion of shield ─────────────────────────────
-        if (tier > 0) {
-            val chevStart   = shieldTop + shieldH * 0.55f
-            val chevSpacing = shieldH * 0.14f
-            val chevW       = stroke * 0.9f
-            repeat(tier) { i ->
-                val cy = chevStart + i * chevSpacing
-                val chevPath = Path().apply {
-                    moveTo(w * 0.22f, cy - shieldH * 0.05f)
-                    lineTo(w * 0.50f, cy + shieldH * 0.05f)
-                    lineTo(w * 0.78f, cy - shieldH * 0.05f)
-                }
-                drawPath(
-                    path  = chevPath,
-                    color = catC,
-                    style = Stroke(width = chevW, cap = StrokeCap.Round, join = StrokeJoin.Round),
-                )
+        // ── 4. Chevrons — all 3 always visible, achieved=category, else gray ────────
+        val chevStart   = shieldTop + shieldH * 0.53f
+        val chevSpacing = shieldH * 0.15f
+        val chevW       = stroke * 0.9f
+        val grayC       = Color(0xFF5D5D5D).copy(alpha = 0.4f)
+        for (i in 0..2) {
+            val cy       = chevStart + i * chevSpacing
+            val achieved = tier > i   // tier 1 = first chevron lit, tier 3 = all lit
+            val chevPath = Path().apply {
+                moveTo(w * 0.22f, cy - shieldH * 0.05f)
+                lineTo(w * 0.50f, cy + shieldH * 0.05f)
+                lineTo(w * 0.78f, cy - shieldH * 0.05f)
             }
+            drawPath(
+                path  = chevPath,
+                color = if (achieved) catC else grayC,
+                style = Stroke(width = chevW, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
         }
 
         // ── 5. Shield border ──────────────────────────────────────────────────
@@ -346,18 +346,16 @@ fun ThunderShield(
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // ── 6. Horizontal bar below bolt zone ─────────────────────────────────
-        if (tier > 0) {
-            val barY = shieldTop + shieldH * 0.36f
-            drawPath(
-                path  = Path().apply {
-                    moveTo(w * 0.28f, barY)
-                    lineTo(w * 0.72f, barY)
-                },
-                color = catC.copy(alpha = 0.7f),
-                style = Stroke(width = stroke * 0.5f, cap = StrokeCap.Round),
-            )
-        }
+        // ── 6. Horizontal bar — always shown (gray if locked, colored if earned) ───────
+        val barY = shieldTop + shieldH * 0.36f
+        drawPath(
+            path  = Path().apply {
+                moveTo(w * 0.28f, barY)
+                lineTo(w * 0.72f, barY)
+            },
+            color = if (tier > 0) catC.copy(alpha = 0.7f) else Color(0xFF5D5D5D).copy(alpha = 0.3f),
+            style = Stroke(width = stroke * 0.5f, cap = StrokeCap.Round),
+        )
 
         // ── 7. ⚡ Bolt centered INSIDE the shield (upper zone) ────────────────
         val boltColor = if (tier == 0) Color(0xFF9E9E9E).copy(alpha = 0.45f) else categoryColor
