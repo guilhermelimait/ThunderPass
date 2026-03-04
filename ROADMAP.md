@@ -57,7 +57,7 @@
 - [x] Read Android account display name at startup; fall back to device model name (Thor, Odin, etc.) — replace hardcoded "Traveler" if user not informed on the profile page.
 - [x] Replace Installation ID with a human-readable name-based share ID. Show as "Private User" when privacy toggle is on.
 - [x] Profile fields trimmed to essentials: Display Name, RA Username, RA API Key. Saved locally + synced to Supabase; included in BLE ghost payload.
-- ´[] once it the friend profile is open, we will be able to see last games played, their achievements, consoles most used, and everything that can be used to make the badges works
+- - [x] once it the friend profile is open, we will be able to see last games played, their achievements, consoles most used, and everything that can be used to make the badges works
 
 ### 5.2 ThunderPass Toggle & Foreground Service
 - [x] Replace Scan / Idle states with a single ON / OFF toggle. Foreground service persists state when app is closed.
@@ -134,18 +134,18 @@
 ## Milestone 6 — Platform (future)
 - [ ] Versioned protocol extensions
 - [ ] Power Surge Events: Location-based 2x Energy multipliers
-- [ ] keep an unique user recognized if devices are nearby, to avoid creating volts to users that are together
+- [x] keep an unique user recognized if devices are nearby, to avoid creating volts to users that are together
 = [x] change the name of joules to volts and replace it everywhere on the app, documentation and site
 - [x] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
 - [x] app should not start on profile, should go directly to the app homepage always
-- [] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the profile screen. here is an example: https://cdn.dribbble.com/userupload/26934632/file/original-5a33b421dd96feb16154939e3f9827cc.png?resize=1504x1128&vertical=center
-- [ ] fix the part where we create a unique account using the supabase authentication method with google on the profile area
+- - [x] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the profile screen. here is an example: https://cdn.dribbble.com/userupload/26934632/file/original-5a33b421dd96feb16154939e3f9827cc.png?resize=1504x1128&vertical=center
+- [x] fix the part where we create a unique account using the supabase authentication method with google on the profile area
 - [x] when the app loads the users head , show the color of the arms the same as the skin of the head, doesnt matter if it was when the app open or when the profile head was changed.
-- [] on the frontscren, home of the app, show the logo before the hi username, same size as the first and second line on it, remove the hadn after it, make it bigger
+- - [x] on the frontscren, home of the app, show the logo before the hi username, same size as the first and second line on it, remove the hadn after it, make it bigger
 - [x] if the app is on landscape mode, put the last passed by under the animation area
 - [] if the user has inputed the inofrmatoin about his retroachievements, plese save it locally as well, and if i open the app again, it will always be there, use that information to collect username, last games played, badges and so on, and create a view of that in a gallery, one per each kind used on this app below the buttons on the left area of the home screen and on profile of the user.
--[ ] if a user is recognized by the device and the device has leds, blink it on yellow collor three times.
--[ ] add the app management on the settings area as well as any other that might be missing and is used by the app, all related to games of course
+- [x] if a user is recognized by the device and the device has leds, blink it on yellow collor three times.
+- [x] add the app management on the settings area as well as any other that might be missing and is used by the app, all related to games of course
 -[x] on my about area, please show my avatar from the kofi, not the one on the app
 -[x] remove the heads avatars area on the profile, keep the random button but on place of the one on top right of the profile, if the user changes it, always save, even if the user doesnt go to the button to save on the bottom
 -[ ] update the badges view, add the shield badge on it, and remove the edge large as it was created on the previous change, on the user profile there are some badges on it that were as it should be on this badge area format
