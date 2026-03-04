@@ -490,7 +490,7 @@ private fun DrawScope.drawWalker(
 
     // Neck bottom — arms attach visibly below the neck rect
     val neckTopY    = shoulderY - h * 0.042f
-    val neckBottomY = neckTopY + h * 0.048f + h * 0.038f    // larger gap — arms clearly below neck
+    val neckBottomY = neckTopY + h * 0.048f + h * 0.055f    // lowered arm origin
 
     // Arm endpoints — origin at neck bottom
     val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = neckBottomY + uArmLen
@@ -536,14 +536,17 @@ private fun DrawScope.drawWalker(
     val bodyLeft  = pX - torsoW
     val bodyRight = pX + torsoW
     val bodyBot   = bodyTopY + bodyHeight
-    val cr        = torsoW              // only top corners get this radius
+    val cr        = torsoW              // top corner radius
+    val crBot     = torsoW * 0.38f     // slight bottom corner radius
     val bodyPath  = Path().apply {
         moveTo(bodyLeft + cr, bodyTopY)
         lineTo(bodyRight - cr, bodyTopY)
         quadraticBezierTo(bodyRight, bodyTopY, bodyRight, bodyTopY + cr)
-        lineTo(bodyRight, bodyBot)      // bottom-right: square
-        lineTo(bodyLeft, bodyBot)       // bottom edge
-        lineTo(bodyLeft, bodyTopY + cr) // bottom-left: square
+        lineTo(bodyRight, bodyBot - crBot)                           // bottom-right: slight curve
+        quadraticBezierTo(bodyRight, bodyBot, bodyRight - crBot, bodyBot)
+        lineTo(bodyLeft + crBot, bodyBot)
+        quadraticBezierTo(bodyLeft, bodyBot, bodyLeft, bodyBot - crBot)
+        lineTo(bodyLeft, bodyTopY + cr)                              // bottom-left: slight curve
         quadraticBezierTo(bodyLeft, bodyTopY, bodyLeft + cr, bodyTopY)
         close()
     }
@@ -601,23 +604,14 @@ private fun DrawScope.drawWalker(
     // 7. Front arm — anchored at neck bottom, always topmost
     seg(lShX, neckBottomY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
 
-    // 9. Handheld console — landscape-oriented rounded dark-gray device in left hand
-    val devW  = segStroke * 3.4f   // wide landscape body
-    val devH  = segStroke * 1.5f   // low / squat (wider than tall)
+    // 9. Handheld console — small landscape device in left hand, lighter gray
+    val devW  = segStroke * 2.4f
+    val devH  = segStroke * 1.1f
     val devTL = Offset(lHandX - devW * 0.5f, lHandY - devH * 0.5f)
-    // Main body — dark charcoal, generously rounded
     drawRoundRect(
-        Color(0xFF303030),
+        Color(0xFF686868),
         topLeft      = devTL,
         size         = Size(devW, devH),
         cornerRadius = CornerRadius(devH * 0.42f),
     )
-    // Subtle shoulder buttons: two small raised rects on top edge
-    val btnW = devW * 0.18f; val btnH = devH * 0.22f
-    drawRoundRect(Color(0xFF404040),
-        topLeft      = Offset(devTL.x + devW * 0.12f, devTL.y - btnH * 0.6f),
-        size         = Size(btnW, btnH), cornerRadius = CornerRadius(btnH * 0.4f))
-    drawRoundRect(Color(0xFF404040),
-        topLeft      = Offset(devTL.x + devW * 0.70f, devTL.y - btnH * 0.6f),
-        size         = Size(btnW, btnH), cornerRadius = CornerRadius(btnH * 0.4f))
 }
