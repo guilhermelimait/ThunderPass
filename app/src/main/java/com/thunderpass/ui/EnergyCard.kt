@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Volt level definitions
@@ -178,6 +179,16 @@ fun EnergyCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun EnergyCardPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            EnergyCard(joulesTotal = 2500)
         }
     }
 }

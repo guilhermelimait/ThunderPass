@@ -38,19 +38,15 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
         displayName:   String,
         greeting:      String,
         retroUsername: String = "",
-        ghostGame:     String = "",
-        ghostScore:    Long   = 0L,
     ) {
         viewModelScope.launch {
             val current = profileDao.get()
                 ?: MyProfile(installationId = RotatingIdManager(getApplication()).installationId)
             profileDao.upsert(
                 current.copy(
-                    displayName   = displayName.trim().ifEmpty { "Traveler" },
+                    displayName   = displayName.trim().ifEmpty { android.os.Build.MODEL },
                     greeting      = greeting.trim(),
                     retroUsername = retroUsername.trim(),
-                    ghostGame     = ghostGame.trim(),
-                    ghostScore    = ghostScore,
                     updatedAt     = System.currentTimeMillis() / 1000,
                 )
             )
@@ -95,7 +91,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      */
     suspend fun isFirstRun(): Boolean {
         val profile = profileDao.get() ?: return true
-        return profile.displayName == "Traveler" &&
-               profile.greeting    == "Hey, greetings from ThunderPass!"
+        return profile.displayName.isBlank() &&
+               profile.greeting == "Hey, greetings from ThunderPass!"
     }
 }
