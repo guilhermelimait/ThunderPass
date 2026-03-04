@@ -56,7 +56,7 @@ class GattClient(
 ) {
 
     // Tracks addresses that have an active GATT connection attempt in flight.
-    private val activeConnections = mutableSetOf<String>()
+    private val activeConnections = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
     // Chunk reassembly buffers keyed by "$deviceAddress:$encounterId".
     // Value: array of nullable ByteArray — null means chunk not yet received.

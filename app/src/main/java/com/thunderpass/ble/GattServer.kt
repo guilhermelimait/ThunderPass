@@ -40,6 +40,10 @@ class GattServer(
 
     /** Call once from [BleService.onCreate] or before advertising starts. */
     fun start(profileProvider: () -> MyProfile?) {
+        if (gattServer != null) {
+            Log.w(TAG, "GATT server already running — ignoring duplicate start().")
+            return
+        }
         val btManager = context.getSystemService(BluetoothManager::class.java) ?: return
 
         gattServer = btManager.openGattServer(context, buildCallback(profileProvider))

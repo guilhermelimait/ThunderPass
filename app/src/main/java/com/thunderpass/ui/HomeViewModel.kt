@@ -121,6 +121,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // ─────────────────────────────────────────────────────────────────────────
 
+    init {
+        // If the user had the service running before the process was killed
+        // (e.g. system trim, force-stop-then-relaunch during testing), restart it
+        // automatically so the toggle state stays in sync with reality.
+        if (_serviceRunning.value) {
+            startService()
+        }
+    }
+
     companion object {
         const val PREF_SHOP_UNLOCKS = "shop_unlocks"
 

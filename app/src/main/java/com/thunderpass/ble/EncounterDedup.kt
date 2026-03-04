@@ -3,6 +3,8 @@ package com.thunderpass.ble
 import com.thunderpass.ble.BleConstants.DEDUP_COOLDOWN_MS
 import com.thunderpass.data.db.dao.EncounterDao
 import com.thunderpass.data.db.entity.Encounter
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Decides whether a discovered rotating ID should trigger a new encounter.
@@ -18,6 +20,9 @@ import com.thunderpass.data.db.entity.Encounter
  */
 class EncounterDedup(private val encounterDao: EncounterDao) {
 
+    /** Prevents concurrent coroutines from racing past the check-then-insert. */
+    private val mutex = Mutex()
+
     /**
      * Call this when the BLE scanner sees a ThunderPass advertisement.
      *
@@ -31,11 +36,11 @@ class EncounterDedup(private val encounterDao: EncounterDao) {
         rotatingId: String,
         rssi: Int,
         nowMs: Long = System.currentTimeMillis(),
-    ): Long? {
+    ): Long? = mutex.withLock {
         val lastSeen = encounterDao.lastSeenAt(rotatingId)
 
         val shouldRecord = lastSeen == null || (nowMs - lastSeen) >= DEDUP_COOLDOWN_MS
-        if (!shouldRecord) return null
+        if (!shouldRecord) return@withLock null
 
         val encounterId = encounterDao.insert(
             Encounter(
@@ -44,6 +49,6 @@ class EncounterDedup(private val encounterDao: EncounterDao) {
                 rssi = rssi,
             )
         )
-        return encounterId
+        encounterId
     }
 }

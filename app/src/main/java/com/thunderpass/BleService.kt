@@ -132,6 +132,10 @@ class BleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
+                if (_isActive) {
+                    Log.i(TAG, "Already active — ignoring duplicate START.")
+                    return START_STICKY
+                }
                 _isActive = true
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                     .putBoolean(PREF_SERVICE_ACTIVE, true).apply()
@@ -225,19 +229,18 @@ class BleService : Service() {
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW)
             .build()
 
-        // Include current rotating ID in the service data (first 4 bytes)
-        val rotId = rotatingIdManager.currentRotatingId()
-        val serviceData = buildPresencePayload(rotId)
-
+        // NOTE: Only include the service UUID — NOT service data.
+        // A 128-bit UUID AD record is 18 bytes; adding 18 bytes of service data would
+        // exceed the 31-byte BLE advertisement payload limit and cause
+        // ADVERTISE_FAILED_DATA_TOO_LARGE. The dedup layer falls back to device MAC.
         val data = AdvertiseData.Builder()
             .addServiceUuid(BleConstants.THUNDERPASS_SERVICE_PARCEL)
-            .addServiceData(BleConstants.THUNDERPASS_SERVICE_PARCEL, serviceData)
             .setIncludeDeviceName(false)    // omit device name for privacy
             .build()
 
         val cb = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
-                Log.i(TAG, "Advertising started (rotatingId=${rotId.take(8)}…)")
+                Log.i(TAG, "Advertising started.")
             }
             override fun onStartFailure(errorCode: Int) {
                 Log.e(TAG, "Advertising failed: errorCode=$errorCode")
@@ -252,22 +255,6 @@ class BleService : Service() {
         try { bluetoothAdapter?.bluetoothLeAdvertiser?.stopAdvertising(cb) }
         catch (e: Exception) { Log.w(TAG, "stopAdvertising: ${e.message}") }
         advertiseCallback = null
-    }
-
-    /**
-     * Builds the binary presence payload placed in the BLE service data field.
-     *
-     * Layout (little-endian, per SPEC.md § Discovery Layer):
-     * ```
-     * [version:1][flags:1][rotatingId:16]
-     * ```
-     */
-    private fun buildPresencePayload(rotatingIdB64: String): ByteArray {
-        val rotBytes = android.util.Base64.decode(rotatingIdB64, android.util.Base64.URL_SAFE)
-        return byteArrayOf(
-            BleConstants.PROTOCOL_VERSION.toByte(),  // version
-            0x01.toByte(),                           // flags: bit0 = supports GATT exchange
-        ) + rotBytes.copyOf(16)
     }
 
     // ── Scanning ──────────────────────────────────────────────────────────────
