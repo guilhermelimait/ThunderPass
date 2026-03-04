@@ -81,21 +81,13 @@ fun ThunderPassNavGraph(
                 composable(Routes.SPLASH) {
                     val profileVm: ProfileViewModel = viewModel()
                     LaunchedEffect(Unit) {
-                        val target = if (profileVm.isFirstRun()) Routes.ONBOARDING else Routes.HOME
+                        // Skip onboarding entirely — first-run users go straight to profile setup.
+                        val target = if (profileVm.isFirstRun()) "${Routes.PROFILE}?firstRun=true" else Routes.HOME
                         navController.navigate(target) { popUpTo(Routes.SPLASH) { inclusive = true } }
                     }
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                }
-                composable(Routes.ONBOARDING) {
-                    OnboardingScreen(
-                        onEnter = {
-                            navController.navigate("${Routes.PROFILE}?firstRun=true") {
-                                popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
-                        }
-                    )
                 }
                 composable(Routes.HOME) {
                     HomeScreen(
