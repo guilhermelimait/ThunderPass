@@ -75,49 +75,35 @@ fun BadgeCategoryDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // ── Tier legend — two rows so all 8 entries fit neatly ───────────
-            Column(
-                modifier = Modifier
+            // ── Tier legend — one pill per unique rarity ─────────────────────
+            Row(
+                modifier              = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                val legendItems = listOf(
+                listOf(
                     0 to "Locked",
                     1 to "Common",
-                    2 to "Common",
                     3 to "Uncommon",
-                    4 to "Uncommon",
                     5 to "Rare",
                     6 to "Legendary",
                     7 to "Exotic",
-                )
-                // Split into two rows of 4
-                legendItems.chunked(4).forEach { rowItems ->
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ).forEach { (t, name) ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(tierColor(t)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        rowItems.forEach { (t, name) ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier          = Modifier.weight(1f),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(tierColor(t)),
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    text     = name,
-                                    style    = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
+                        Text(
+                            text     = name,
+                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                            color    = if (t == 0) Color.White.copy(alpha = 0.9f) else Color(0xFF1A1A1A),
+                            maxLines = 1,
+                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp),
+                        )
                     }
                 }
             }
