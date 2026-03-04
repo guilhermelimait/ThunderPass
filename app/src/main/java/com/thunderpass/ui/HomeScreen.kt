@@ -1,4 +1,4 @@
-package com.thunderpass.ui
+﻿package com.thunderpass.ui
 
 import android.Manifest
 import android.app.Activity
@@ -131,24 +131,22 @@ fun HomeScreenContent(
                 PermissionPrompt { onGrantPermissions() }
             }
         } else if (isLandscape) {
-            // ── Landscape: two-panel layout ──────────────────────────────────
+            // ── Landscape: exact 50/50 width split ───────────────────────────
+            // weight(1f) on both panels = animation occupies exactly half screen width.
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(innerPadding),
             ) {
-                // Left panel — identity + controls
+                // Left panel — greeting + avatar + last-passed-by
                 Column(
                     modifier = Modifier
-                        .weight(0.42f)
+                        .weight(1f)
                         .fillMaxHeight()
                         .verticalScroll(rememberScrollState())
-                        .padding(vertical = 12.dp),
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Greeting row
                     Row(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,13 +154,13 @@ fun HomeScreenContent(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text       = "Hi, $displayName 👋",
+                                text       = "Hi, $displayName \uD83D\uDC4B",
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color      = MaterialTheme.colorScheme.onBackground,
                             )
                             Text(
-                                text  = if (serviceRunning) "Scanning nearby…" else "Tap to start scanning",
+                                text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -175,56 +173,35 @@ fun HomeScreenContent(
                                 .clickable { onNavigate("profile") },
                         )
                     }
+                    val lastEnc = encounters.firstOrNull()
+                    if (lastEnc != null) {
+                        LastPassedByCard(
+                            encounter = lastEnc,
+                            onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                        )
+                    }
                 }
 
-                VerticalDivider(
-                    modifier  = Modifier
-                        .fillMaxHeight()
-                        .padding(vertical = 12.dp),
-                    thickness = 1.dp,
-                    color     = MaterialTheme.colorScheme.outlineVariant,
-                )
-
-                // Right panel — walking animation fills height, toggle overlaid at bottom
+                // Right panel — animation: exactly 50% screen width, full height
                 Box(
                     modifier = Modifier
-                        .weight(0.58f)
-                        .fillMaxHeight()
-                        .padding(vertical = 12.dp),
+                        .weight(1f)
+                        .fillMaxHeight(),
                 ) {
-                    Column(
-                        modifier            = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        // Animation fills remaining space above last-passed-by
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            WalkingSceneCard(
-                                avatarSeed     = avatarSeed.ifEmpty { "default" },
-                                serviceRunning = serviceRunning,
-                                fillHeight     = true,
-                            )
-                            ThunderPassToggleCard(
-                                active      = serviceRunning,
-                                onToggle    = onToggleService,
-                                transparent = true,
-                                modifier    = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp),
-                            )
-                        }
-                        val lastEnc = encounters.firstOrNull()
-                        if (lastEnc != null) {
-                            LastPassedByCard(
-                                encounter = lastEnc,
-                                onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                            )
-                        }
-                    }
+                    WalkingSceneCard(
+                        avatarSeed     = avatarSeed.ifEmpty { "default" },
+                        serviceRunning = serviceRunning,
+                        fillHeight     = true,
+                    )
+                    ThunderPassToggleCard(
+                        active      = serviceRunning,
+                        onToggle    = onToggleService,
+                        transparent = true,
+                        modifier    = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    )
                 }
             }
         } else {
@@ -284,15 +261,15 @@ fun HomeScreenContent(
                             serviceRunning = serviceRunning,
                             fillHeight     = true,
                         )
-                        // Toggle floats at the bottom, fully transparent
+                        // Toggle floats at the top, fully transparent
                         ThunderPassToggleCard(
                             active      = serviceRunning,
                             onToggle    = onToggleService,
                             transparent = true,
                             modifier    = Modifier
-                                .align(Alignment.BottomCenter)
+                                .align(Alignment.TopCenter)
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp),
+                                .padding(top = 12.dp),
                         )
                     }
 
