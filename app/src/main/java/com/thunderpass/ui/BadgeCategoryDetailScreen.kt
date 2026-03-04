@@ -72,12 +72,11 @@ fun BadgeCategoryDetailScreen(
             Row(
                 modifier              = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment     = Alignment.CenterVertically,
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 listOf(
-                    RARITY_NOT_ACHIEVED to "Not Achieved",
+                    RARITY_NOT_ACHIEVED to "Not\nAchieved",
                     RARITY_COMMON       to "Common",
                     RARITY_UNCOMMON     to "Uncommon",
                     RARITY_RARE         to "Rare",
@@ -85,15 +84,21 @@ fun BadgeCategoryDetailScreen(
                 ).forEach { (color, name) ->
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(color),
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(color)
+                            .padding(vertical = 6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text     = name,
-                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp, fontWeight = FontWeight.Bold),
-                            color    = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            text      = name,
+                            style     = MaterialTheme.typography.labelSmall.copy(
+                                fontSize   = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 10.sp,
+                            ),
+                            color     = Color.White,
+                            textAlign = TextAlign.Center,
                         )
                     }
                 }
@@ -116,149 +121,144 @@ fun BadgeCategoryDetailScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Single badge card — horizontal layout: shield on left, info on right
+// Single badge card — reference style: colored bg, ripple circles, emoji right
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun BadgeListCard(badge: BadgeDef, index: Int) {
     val locked   = badge.tier == 0
     val rarColor = if (locked) RARITY_NOT_ACHIEVED else rarityColor(index)
+    val cardColor = if (locked) RARITY_LOCKED_CARD else rarityCardColor(index)
     val darkBg   = if (locked) RARITY_LOCKED_BG else rarityDarkBg(index)
+    val textAlpha = if (locked) 0.55f else 1f
 
-    // Card background: dark rarity-tinted
-    val cardBg = darkBg
-
-    Surface(
-        shape  = RoundedCornerShape(16.dp),
-        color  = Color.Transparent,
-        modifier = Modifier.fillMaxWidth(),
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(cardColor, cardColor.copy(alpha = 0.75f)),
+                ),
+            )
+            .height(130.dp),
     ) {
+        // ── Ripple circles (right side, like reference) ───────────────────────
+        Canvas(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(160.dp)
+                .align(Alignment.CenterEnd),
+        ) {
+            val cx = size.width * 0.72f
+            val cy = size.height * 0.5f
+            val baseAlpha = if (locked) 0.07f else 0.15f
+            for (i in 4 downTo 1) {
+                drawCircle(
+                    color  = Color.White.copy(alpha = baseAlpha - i * 0.025f + 0.025f),
+                    radius = size.height * (0.38f + i * 0.16f),
+                    center = Offset(cx, cy),
+                )
+            }
+            // Inner solid circle
+            drawCircle(
+                color  = Color.White.copy(alpha = if (locked) 0.12f else 0.22f),
+                radius = size.height * 0.38f,
+                center = Offset(cx, cy),
+            )
+        }
+
+        // ── Shield in right circle ────────────────────────────────────────────
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            cardBg,
-                            cardBg.copy(alpha = 0.7f),
-                        ),
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                )
-                .clip(RoundedCornerShape(16.dp)),
+                .size(90.dp)
+                .align(Alignment.CenterEnd)
+                .offset(x = (-20).dp),
+            contentAlignment = Alignment.Center,
         ) {
-            // Subtle accent stripe on left edge
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .fillMaxHeight()
-                    .background(
-                        color = rarColor.copy(alpha = if (locked) 0.35f else 0.85f),
-                    )
-                    .align(Alignment.CenterStart),
+            ThunderShield(
+                tier          = badge.tier,
+                categoryColor = rarColor,
+                darkBg        = darkBg,
+                size          = 72.dp,
             )
+        }
 
-            Row(
-                modifier          = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // ── Shield ────────────────────────────────────────────────────
-                ThunderShield(
-                    tier          = badge.tier,
-                    categoryColor = rarColor,
-                    darkBg        = darkBg,
-                    size          = 80.dp,
+        // ── Left text block ───────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.62f)
+                .padding(start = 20.dp, top = 16.dp, bottom = 14.dp, end = 8.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column {
+                // Rarity pill
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.White.copy(alpha = if (locked) 0.15f else 0.25f))
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text  = if (locked) "NOT ACHIEVED" else rarityLabel(index),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize   = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Color.White.copy(alpha = textAlpha),
+                    )
+                }
+
+                Spacer(Modifier.height(4.dp))
+
+                // Badge name — large bold
+                Text(
+                    text       = badge.label.uppercase(),
+                    style      = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize   = 20.sp,
+                        lineHeight = 22.sp,
+                    ),
+                    color      = Color.White.copy(alpha = textAlpha),
+                    maxLines   = 2,
+                )
+            }
+
+            Column {
+                // Description
+                Text(
+                    text  = badge.description,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                    color = Color.White.copy(alpha = if (locked) 0.4f else 0.80f),
+                    maxLines = 2,
                 )
 
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.height(6.dp))
 
-                // ── Text info ─────────────────────────────────────────────────
-                Column(modifier = Modifier.weight(1f)) {
-
-                    // Badge name
-                    Text(
-                        text       = badge.label,
-                        style      = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color      = if (locked)
-                            Color.White.copy(alpha = 0.45f)
-                        else
-                            Color.White,
-                        maxLines   = 1,
+                // Progress bar + X/Y
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LinearProgressIndicator(
+                        progress   = { badge.progress.coerceIn(0f, 1f) },
+                        modifier   = Modifier
+                            .weight(1f)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color      = Color.White.copy(alpha = if (locked) 0.3f else 0.9f),
+                        trackColor = Color.White.copy(alpha = 0.18f),
                     )
-
-                    Spacer(Modifier.height(3.dp))
-
-                    // Description
                     Text(
-                        text  = badge.description,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-                        color = if (locked)
-                            Color.White.copy(alpha = 0.28f)
-                        else
-                            Color.White.copy(alpha = 0.72f),
-                        maxLines   = 2,
+                        text  = "${badge.progressCurrent}/${badge.progressMax}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontSize   = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Color.White.copy(alpha = textAlpha),
                     )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // Progress row: X/Y bar + tier dots
-                    Row(
-                        verticalAlignment      = Alignment.CenterVertically,
-                        horizontalArrangement  = Arrangement.spacedBy(10.dp),
-                    ) {
-                        // Progress X/Y label
-                        Text(
-                            text  = "${badge.progressCurrent} / ${badge.progressMax}",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize   = 10.sp,
-                            ),
-                            color = rarColor.copy(alpha = if (locked) 0.5f else 0.9f),
-                        )
-
-                        // Progress bar
-                        LinearProgressIndicator(
-                            progress   = { badge.progress.coerceIn(0f, 1f) },
-                            modifier   = Modifier
-                                .weight(1f)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp)),
-                            color      = rarColor.copy(alpha = if (locked) 0.35f else 0.9f),
-                            trackColor = Color.White.copy(alpha = 0.08f),
-                        )
-
-                        // Tier dots: 3 always shown — rarity color if achieved, gray if not
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            (1..3).forEach { t ->
-                                val achieved = badge.tier >= t
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            color = if (achieved)
-                                                rarColor.copy(alpha = 0.9f)
-                                            else
-                                                Color(0xFF6B6B6B).copy(alpha = 0.55f),
-                                        ),
-                                )
-                            }
-                        }
-
-                        // Rarity label — always shown
-                        Text(
-                            text  = if (locked) "NOT ACHIEVED" else rarityLabel(index),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize   = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = rarColor.copy(alpha = if (locked) 0.6f else 1f),
-                        )
-                    }
                 }
             }
         }
