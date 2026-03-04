@@ -41,8 +41,10 @@ fun SettingsScreen(
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_enabled", true)) }
     var screenOnActive by remember { mutableStateOf(prefs.getBoolean("screen_on_active", true)) }
 
-    val safeZoneActive by vm.safeZoneActive.collectAsState()
-    val scanMode       by vm.scanMode.collectAsState()
+    val safeZoneActive  by vm.safeZoneActive.collectAsState()
+    val scanMode        by vm.scanMode.collectAsState()
+    val privacyMode     by vm.privacyMode.collectAsState()
+    val availableUpdate by vm.availableUpdate.collectAsState()
     var advancedExpanded by remember { mutableStateOf(false) }
 
     // ── Permission state — re-checked on every recomposition ──────────────────
@@ -95,6 +97,47 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Spacer(Modifier.height(8.dp))
+
+        // ── OTA update banner ────────────────────────────────────────────
+        if (availableUpdate != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                ),
+            ) {
+                Row(
+                    modifier              = Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text       = "⚡ Update available: $availableUpdate",
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color      = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                        Text(
+                            text  = "Download the latest release from GitHub.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://github.com/guilhermelimait/ThunderPass/releases/tag/$availableUpdate"),
+                                )
+                            )
+                        },
+                    ) { Text("Download") }
+                }
+            }
+        }
+
         // ── General ─────────────────────────────────────────────────────
         SettingsSection("General") {
             SettingToggleRow(
@@ -117,6 +160,15 @@ fun SettingsScreen(
                     screenOnActive = enabled
                     prefs.edit().putBoolean("screen_on_active", enabled).apply()
                 },
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            SettingToggleRow(
+                label           = "Privacy Mode",
+                subtitle        = "Appear as \"Private User\" to nearby devices — no name, avatar, or greeting is shared",
+                checked         = privacyMode,
+                onCheckedChange = { vm.setPrivacyMode(it) },
             )
         }
 

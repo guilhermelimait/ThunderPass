@@ -27,8 +27,9 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
 
         appScope.launch {
-            val profileDao = ThunderPassDatabase.getInstance(this@ThunderPassApplication)
-                .myProfileDao()
+            val db         = ThunderPassDatabase.getInstance(this@ThunderPassApplication)
+            val profileDao = db.myProfileDao()
+            val encounterDao = db.encounterDao()
 
             if (profileDao.get() == null) {
                 profileDao.upsert(
@@ -37,6 +38,18 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
                             .installationId
                     )
                 )
+            }
+
+            // ── Joules recalculation ──────────────────────────────────────────
+            // Each spark (completed GATT exchange) earns 100 J.  If the counter
+            // fell behind due to a DB wipe, reinstall, or a future data-restore,
+            // top it up so it's always at least encounterCount * 100.
+            val totalEncounters = encounterDao.countAll()
+            val expectedJoules  = totalEncounters.toLong() * 100L
+            profileDao.get()?.let { p ->
+                if (p.joulesTotal < expectedJoules) {
+                    profileDao.addJoules(expectedJoules - p.joulesTotal)
+                }
             }
         }
     }

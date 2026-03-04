@@ -10,6 +10,7 @@ import com.thunderpass.ble.ScanMode
 import com.thunderpass.data.db.ThunderPassDatabase
 import com.thunderpass.data.db.entity.Encounter
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
+import com.thunderpass.supabase.OtaChecker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -103,7 +104,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.stickersJson.split(",").filter { k -> k.isNotBlank() }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    // ── Full encounter list with resolved snapshots ───────────────────────────
+    // ── Privacy mode (from Room MyProfile) ─────────────────────────────────
+    val privacyMode: StateFlow<Boolean> = profileDao.observe()
+        .filterNotNull()
+        .map { it.privacyMode }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    // ── Full encounter list with resolved snapshots ─────────────────────────
     val encounters: StateFlow<List<EncounterWithProfile>> =
         MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
             viewModelScope.launch {
@@ -119,6 +126,27 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // ── Friends list (encounters marked isFriend = true) ──────────────────────
+    val friends: StateFlow<List<EncounterWithProfile>> =
+        MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
+            viewModelScope.launch {
+                encounterDao.observeFriends().collect { list ->
+                    val enriched = list.map { enc ->
+                        EncounterWithProfile(
+                            encounter = enc,
+                            snapshot  = enc.peerSnapshotId?.let { snapshotDao.getById(it) }
+                        )
+                    }
+                    flow.value = enriched
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // ── OTA update check ─────────────────────────────────────────────────────
+    private val _availableUpdate = MutableStateFlow<String?>(null)
+    /** Non-null when a newer GitHub release exists. Value = the new version tag (e.g. "v0.2.0"). */
+    val availableUpdate: StateFlow<String?> = _availableUpdate
+
     // ─────────────────────────────────────────────────────────────────────────
 
     init {
@@ -127,6 +155,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         // automatically so the toggle state stays in sync with reality.
         if (_serviceRunning.value) {
             startService()
+        }
+        // Check for OTA updates in the background on every app launch.
+        viewModelScope.launch {
+            _availableUpdate.value = OtaChecker.checkForUpdate(getApplication())
         }
     }
 
@@ -213,7 +245,24 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
         return true
     }
+    // ── Friends ────────────────────────────────────────────────────────────────
 
+    /** Toggle the friend mark on the given encounter. */
+    fun toggleFriend(encounterId: Long, currentlyFriend: Boolean) {
+        viewModelScope.launch {
+            encounterDao.setFriend(encounterId, !currentlyFriend)
+        }
+    }
+
+    // ── Privacy mode ────────────────────────────────────────────────────────
+
+    /** Toggle privacy mode on/off. Persists in Room and takes effect on the next GATT exchange. */
+    fun setPrivacyMode(enabled: Boolean) {
+        viewModelScope.launch {
+            val current = profileDao.get() ?: return@launch
+            profileDao.upsert(current.copy(privacyMode = enabled))
+        }
+    }
     // ── Safe Zone ─────────────────────────────────────────────────────────────
 
     fun setSafeZone(active: Boolean) {

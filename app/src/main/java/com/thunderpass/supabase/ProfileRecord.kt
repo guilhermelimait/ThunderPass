@@ -26,4 +26,5 @@ data class ProfileRecord(
     @SerialName("stickers_json")   val stickersJson:   String,
     @SerialName("encounter_count") val encounterCount: Int,
     @SerialName("updated_at")      val updatedAt:      Long,
+    @SerialName("avatar_seed")     val avatarSeed:     String = "",
 )

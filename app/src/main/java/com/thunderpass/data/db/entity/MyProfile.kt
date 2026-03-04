@@ -56,4 +56,11 @@ data class MyProfile(
 
     /** Comma-separated sticker keys the user has earned (e.g. "first_spark,player_2"). */
     val stickersJson: String = "",
+
+    /**
+     * When true the BLE profile exchange sends "Private User" instead of the
+     * real display name, greeting, and avatar — so nearby devices see only that
+     * you are present, not who you are.
+     */
+    val privacyMode: Boolean = false,
 )

@@ -75,6 +75,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                         greeting       = p.greeting,
                         avatarKind     = p.avatarKind,
                         avatarColor    = p.avatarColor,
+                        avatarSeed     = p.avatarSeed,
                         joulesTotal    = p.joulesTotal,
                         retroUsername  = p.retroUsername,
                         ghostGame      = p.ghostGame,

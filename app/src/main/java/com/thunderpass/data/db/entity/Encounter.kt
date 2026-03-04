@@ -48,4 +48,10 @@ data class Encounter(
      * Null until a GATT exchange completes.
      */
     val peerSnapshotId: Long? = null,
+
+    /**
+     * True when the user has manually marked this encounter as a friend.
+     * Used to build the Friends list in the Passes screen.
+     */
+    val isFriend: Boolean = false,
 )

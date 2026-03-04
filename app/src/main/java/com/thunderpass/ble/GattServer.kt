@@ -225,7 +225,18 @@ class GattServer(
      * ```
      */
     private fun buildPayloadJson(profile: MyProfile): String {
-        val data = org.json.JSONObject().apply {
+        // Privacy mode: hide identity — peers see only that a ThunderPass device is nearby.
+        val data = if (profile.privacyMode) {
+            org.json.JSONObject().apply {
+                put("displayName", "Private User")
+                put("greeting", "")
+                put("avatar", org.json.JSONObject().apply {
+                    put("kind", "defaultBolt")
+                    put("color", "#888888")
+                })
+                put("private", true)
+            }
+        } else org.json.JSONObject().apply {
             put("displayName", profile.displayName)
             put("greeting", profile.greeting)
             put("avatar", org.json.JSONObject().apply {

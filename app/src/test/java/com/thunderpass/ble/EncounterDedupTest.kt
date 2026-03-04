@@ -114,4 +114,18 @@ class FakeEncounterDao : EncounterDao {
         rows.filter { it.rotatingId == rotatingId }.maxOfOrNull { it.seenAt }
 
     override fun observeCount(): Flow<Int> = MutableStateFlow(rows.size)
+
+    override suspend fun countAll(): Int = rows.size
+
+    override suspend fun countSince(sinceMs: Long): Int = rows.count { it.seenAt >= sinceMs }
+
+    override suspend fun setFriend(id: Long, isFriend: Boolean) {
+        val idx = rows.indexOfFirst { it.id == id }
+        if (idx >= 0) rows[idx] = rows[idx].copy(isFriend = isFriend)
+    }
+
+    override fun observeFriends(): Flow<List<Encounter>> =
+        MutableStateFlow(rows.filter { it.isFriend })
+
+    override suspend fun countFriends(): Int = rows.count { it.isFriend }
 }

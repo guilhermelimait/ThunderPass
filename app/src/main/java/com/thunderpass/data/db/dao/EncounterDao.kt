@@ -45,4 +45,18 @@ interface EncounterDao {
     /** Number of encounters since [sinceMs] epoch ms — for "today" widget cell. */
     @Query("SELECT COUNT(*) FROM encounter WHERE seenAt >= :sinceMs")
     suspend fun countSince(sinceMs: Long): Int
+
+    // ── Friends ────────────────────────────────────────────────────────────────
+
+    /** Toggle the friend flag for a given encounter row. */
+    @Query("UPDATE encounter SET isFriend = :isFriend WHERE id = :id")
+    suspend fun setFriend(id: Long, isFriend: Boolean)
+
+    /** Observe all encounters the user has marked as friends, newest first. */
+    @Query("SELECT * FROM encounter WHERE isFriend = 1 ORDER BY seenAt DESC")
+    fun observeFriends(): Flow<List<Encounter>>
+
+    /** Total friend count — used for Supabase sync. */
+    @Query("SELECT COUNT(*) FROM encounter WHERE isFriend = 1")
+    suspend fun countFriends(): Int
 }
