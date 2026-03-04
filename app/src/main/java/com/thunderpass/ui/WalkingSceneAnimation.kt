@@ -462,17 +462,14 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         cornerRadius = CornerRadius(w * 0.010f),
     )
 
-    // ── 4. Body — tall pill ────────────────────────────────────────────────────
+    // ── 4. Body — tall pill, shifted slightly down ────────────────────────────
+    val bodyTopY   = shoulderY + byOff + h * 0.028f   // pushed a bit down
+    val bodyHeight = h * TORSO_FRAC * 1.50f            // 50% taller than before
     drawRoundRect(
         color        = Color(0xFFB0C8E8),
-        topLeft      = Offset(pX - torsoW, shoulderY + byOff),
-        size         = Size(torsoW * 2f, h * TORSO_FRAC),
+        topLeft      = Offset(pX - torsoW, bodyTopY),
+        size         = Size(torsoW * 2f, bodyHeight),
         cornerRadius = CornerRadius(torsoW),
-    )
-    // Badge dot
-    drawCircle(
-        Color(0xFFFFD060).copy(alpha = 0.85f), radius = w * 0.012f,
-        center = Offset(pX, shoulderY + byOff + h * TORSO_FRAC * 0.42f),
     )
 
     // ── 5. Neck — skin tone, bridges body top to head ─────────────────────────
