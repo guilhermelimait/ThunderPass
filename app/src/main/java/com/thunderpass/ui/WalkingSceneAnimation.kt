@@ -109,26 +109,31 @@ fun WalkingSceneCard(
 ) {
     val inf = rememberInfiniteTransition(label = "walk_scene")
 
-    // Always-running animations — values are only *applied* when serviceRunning
-    val scrollFracAnim by inf.animateFloat(
+    // Infinite animations always tick — never paused
+    val scrollFracLive by inf.animateFloat(
         initialValue  = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(28_000, easing = LinearEasing)),
         label = "scroll",
     )
-    val walkPhaseAnim by inf.animateFloat(
+    val walkPhaseLive by inf.animateFloat(
         initialValue  = 0f, targetValue = (2f * PI).toFloat(),
         animationSpec = infiniteRepeatable(tween(560, easing = LinearEasing)),
         label = "cycle",
     )
 
-    // Frozen display values — stop WHERE they are when serviceRunning becomes false
+    // Display values: updated every frame when running, frozen in place when stopped
+    val serviceRunningState = rememberUpdatedState(serviceRunning)
     var scrollFrac by remember { mutableStateOf(0f) }
     var walkPhase  by remember { mutableStateOf(0f) }
-    SideEffect {
-        if (serviceRunning) {
-            scrollFrac = scrollFracAnim
-            walkPhase  = walkPhaseAnim
-        }
+    LaunchedEffect(Unit) {
+        snapshotFlow { Triple(serviceRunningState.value, scrollFracLive, walkPhaseLive) }
+            .collect { (running, s, p) ->
+                if (running) {
+                    scrollFrac = s
+                    walkPhase  = p
+                }
+                // when !running: scrollFrac/walkPhase hold the last live values → frozen pose
+            }
     }
 
     Card(
