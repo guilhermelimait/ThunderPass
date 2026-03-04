@@ -19,7 +19,7 @@ data class ProfileRecord(
     val greeting:                                     String,
     @SerialName("avatar_kind")     val avatarKind:     String,
     @SerialName("avatar_color")    val avatarColor:    String,
-    @SerialName("joules_total")    val joulesTotal:    Long,
+    @SerialName("joules_total")    val voltsTotal:    Long,
     @SerialName("retro_username")  val retroUsername:  String,
     @SerialName("ghost_game")      val ghostGame:      String,
     @SerialName("ghost_score")     val ghostScore:     Long,

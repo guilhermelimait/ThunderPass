@@ -48,13 +48,13 @@ fun ProfileScreen(
     val profile by vm.profile.collectAsState()
     val encounterCount by homeVm.encounterCount.collectAsState()
     val streak         by homeVm.encounterStreak.collectAsState()
-    val joulesTotal    by homeVm.joulesTotal.collectAsState()
+    val voltsTotal     by homeVm.voltsTotal.collectAsState()
 
     ProfileScreenContent(
         profile = profile,
         encounterCount = encounterCount,
         streak = streak,
-        joulesTotal = joulesTotal,
+        voltsTotal = voltsTotal,
         firstRun = firstRun,
         onSave = { name, retroUser, retroKey, seed ->
             vm.save(name, retroUser, avatarSeed = seed)
@@ -72,7 +72,7 @@ fun ProfileScreenContent(
     profile: MyProfile,
     encounterCount: Int,
     streak: Int,
-    joulesTotal: Long,
+    voltsTotal: Long,
     firstRun: Boolean = false,
     onSave: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onAvatarSeedChange: ((String) -> Unit)? = null,
@@ -193,7 +193,7 @@ fun ProfileScreenContent(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                ProfileStatChip(icon = "⚡", value = joulesTotal.toString(),    label = "Joules")
+                ProfileStatChip(icon = "⚡", value = voltsTotal.toString(),    label = "Volts")
                 ProfileStatChip(icon = "🤝", value = encounterCount.toString(), label = "Passes")
                 ProfileStatChip(icon = "🔥", value = streak.toString(),         label = "Streak")
             }
@@ -365,11 +365,11 @@ fun ProfileScreenPreview() {
                 installationId = "test-id",
                 displayName = "Gui",
                 greeting = "Hey there!",
-                joulesTotal = 2500
+                voltsTotal = 2500
             ),
             encounterCount = 12,
             streak = 3,
-            joulesTotal = 2500
+            voltsTotal = 2500
         )
     }
 }

@@ -62,7 +62,7 @@ fun HomeScreen(
 ) {
     val context        = LocalContext.current
     val serviceRunning by vm.serviceRunning.collectAsState()
-    val joulesTotal     by vm.joulesTotal.collectAsState()
+    val voltsTotal      by vm.voltsTotal.collectAsState()
     val installationId by vm.installationId.collectAsState()
     val avatarSeed     by vm.avatarSeed.collectAsState()
     val displayName    by vm.displayName.collectAsState()
@@ -92,7 +92,7 @@ fun HomeScreen(
         serviceRunning = serviceRunning,
         avatarSeed = avatarSeed.ifEmpty { installationId },
         encounters = encounters,
-        joulesTotal = joulesTotal,
+        voltsTotal = voltsTotal,
         onToggleService = {
             if (serviceRunning) {
                 vm.stopService()
@@ -120,7 +120,7 @@ fun HomeScreenContent(
     serviceRunning: Boolean,
     avatarSeed: String,
     encounters: List<EncounterWithProfile>,
-    joulesTotal: Long,
+    voltsTotal: Long,
     onToggleService: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onNavigate: (String) -> Unit = {},
@@ -380,11 +380,11 @@ private fun ThunderPassToggleCard(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Joules info card
+// Volts info card
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-internal fun JoulesInfoCard() {
+internal fun VoltsInfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors   = CardDefaults.cardColors(
@@ -396,15 +396,15 @@ internal fun JoulesInfoCard() {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text       = "HOW TO EARN JOULES",
+                text       = "HOW TO EARN VOLTS",
                 style      = MaterialTheme.typography.labelSmall,
                 color      = MaterialTheme.colorScheme.primary,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             )
             Text(
-                text  = "⚡ Meet a new Traveler via BLE — 100 J\n" +
-                         "⚡ Unlock a Badge — 50–200 J\n" +
-                         "⚡ RetroAchievements activity — up to 500 J\n" +
+                text  = "⚡ Meet a new Traveler via BLE — 100 V\n" +
+                         "⚡ Unlock a Badge — 50–200 V\n" +
+                         "⚡ RetroAchievements activity — up to 500 V\n" +
                          "⚡ Streak bonuses for daily Sparks",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -613,7 +613,7 @@ fun HomeScreenPreview() {
             serviceRunning = true,
             avatarSeed = "test-id",
             encounters = emptyList(),
-            joulesTotal = 2500,
+            voltsTotal = 2500,
             onToggleService = {},
             onNavigateToDetail = {},
             onGrantPermissions = {}

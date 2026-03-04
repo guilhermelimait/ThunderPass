@@ -33,6 +33,7 @@ import com.thunderpass.ble.ScanMode
 fun SettingsScreen(
     darkMode: Boolean,
     onDarkModeToggle: (Boolean) -> Unit,
+    onMusicChange: (Boolean) -> Unit = {},
     onBack: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
@@ -147,6 +148,7 @@ fun SettingsScreen(
                 onCheckedChange = { enabled ->
                     musicEnabled = enabled
                     prefs.edit().putBoolean("music_enabled", enabled).apply()
+                    onMusicChange(enabled)
                 },
             )
 

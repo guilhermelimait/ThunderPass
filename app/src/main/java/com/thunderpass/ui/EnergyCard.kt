@@ -39,8 +39,8 @@ val VOLT_LEVELS = listOf(
     VoltLevel(5, "OVERCHARGED", "Maximum voltage — you are a legend",          Color(0xFF00FFD0), 10_000L,  null),
 )
 
-fun voltLevelFor(joulesTotal: Long): VoltLevel =
-    VOLT_LEVELS.last { joulesTotal >= it.minJ }
+fun voltLevelFor(voltsTotal: Long): VoltLevel =
+    VOLT_LEVELS.last { voltsTotal >= it.minJ }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EnergyCard — full-width hero card
@@ -48,17 +48,17 @@ fun voltLevelFor(joulesTotal: Long): VoltLevel =
 
 @Composable
 fun EnergyCard(
-    joulesTotal: Long,
+    voltsTotal: Long,
     modifier:    Modifier = Modifier,
 ) {
-    val level    = voltLevelFor(joulesTotal)
+    val level    = voltLevelFor(voltsTotal)
     val accent   = level.color
     val cardBg   = MaterialTheme.colorScheme.surfaceVariant
 
     // Progress fraction within current level
     val progressFraction: Float = when {
         level.maxJ == null -> 1f
-        else -> ((joulesTotal - level.minJ).toFloat() /
+        else -> ((voltsTotal - level.minJ).toFloat() /
                  (level.maxJ    - level.minJ).toFloat()).coerceIn(0f, 1f)
     }
 
@@ -103,20 +103,20 @@ fun EnergyCard(
                 )
             }
 
-            // ── Joules value ─────────────────────────────────────────────────
+            // ── Volts value ───────────────────────────────────────────────────────────────────
             Row(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text       = "%,d".format(joulesTotal),
+                    text       = "%,d".format(voltsTotal),
                     color      = accent,
                     fontWeight = FontWeight.Black,
                     fontSize   = 48.sp,
                     lineHeight = 48.sp,
                 )
                 Text(
-                    text       = "J",
+                    text       = "V",
                     color      = accent.copy(alpha = 0.6f),
                     fontWeight = FontWeight.Bold,
                     fontSize   = 28.sp,
@@ -164,9 +164,9 @@ fun EnergyCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (nextJ != null) {
-                        val remaining = nextJ - joulesTotal
+                        val remaining = nextJ - voltsTotal
                         Text(
-                            text  = "+${"%,d".format(remaining)}J to next",
+                            text  = "+${"%,d".format(remaining)}V to next",
                             color = accent.copy(alpha = 0.55f),
                             fontFamily = FontFamily.Monospace,
                             fontSize   = 10.sp,
@@ -183,7 +183,7 @@ fun EnergyCard(
 fun EnergyCardPreview() {
     MaterialTheme {
         Box(modifier = Modifier.padding(16.dp)) {
-            EnergyCard(joulesTotal = 2500)
+            EnergyCard(voltsTotal = 2500)
         }
     }
 }
@@ -194,11 +194,11 @@ fun EnergyCardPreview() {
 
 @Composable
 fun CompactVoltBadge(
-    joulesTotal: Long,
+    voltsTotal: Long,
     modifier:    Modifier = Modifier,
     height:      Dp       = 36.dp,
 ) {
-    val level  = voltLevelFor(joulesTotal)
+    val level  = voltLevelFor(voltsTotal)
     val accent = level.color
 
     Row(
@@ -220,7 +220,7 @@ fun CompactVoltBadge(
                 letterSpacing = 0.5.sp,
             )
             Text(
-                text  = "%,d Joules accumulated".format(joulesTotal),
+                text  = "%,d Volts accumulated".format(voltsTotal),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize  = 10.sp,
             )

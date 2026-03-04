@@ -22,7 +22,7 @@
 
 ## Milestone 2 — Trust, Quality + Energy Base
 - [x] Widget: new encounters indicator
-- [x] Energy Engine: Joules counter (100 J per unique Spark)
+- [x] Energy Engine: Volts counter (100 V per unique Spark)
 - [x] Haptic Feedback: Double-pulse vibration on GATT exchange
 - [x] Safe Zones manual toggle
 - [x] Battery modes: aggressive, balanced, off
@@ -33,7 +33,7 @@
 ## Milestone 3 — Fun Layer + Game Sync
 - [x] Ghost payload type (score/time)
 - [x] Sticker book (basic)
-- [x] Encounter stats (counts, streaks, Joules on HomeScreen)
+- [x] Encounter stats (counts, streaks, Volts on HomeScreen)
 - [x] RetroAchievements Integration (RetroProfile, GATT share, RetroAuthManager, RetroRepository)
 - [x] RetroSparkCard, Mastery Icons row, reference achievements
 - [x] Visual Shop: CRT Scanlines, Pixelated Aura, Thunder Trail
@@ -104,10 +104,10 @@
 - [x] levels works this way: if level 1 (blue common) first line under the thunder is colored, rest is not, if level 2, first and secon lines below the thunder, if level 3 and 4, two lines under the thunder, if 5 and 6 , three lines, if 7 all lines colored. thunder should be bigger and over the lines showing a large besel.
 
 ### 5.9 Shop
-- [x] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
-- [x] On boot: recalculate Joules from encounter count (100 J per unique Spark) and award any missing points.
+- [x] Portrait layout: Volts balance card on the left, earn-points explanation on the right.
+- [x] On boot: recalculate Volts from encounter count (100 V per unique Spark) and award any missing points.
 - [x] Keep existing unlockable effects (CRT Scanlines, Pixelated Aura, Thunder Trail).
-- [x] Joules explanation panel: what they are and how to earn them.
+- [x] Volts explanation panel: what they are and how to earn them.
 
 ### 5.10 Settings
 - [x] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
@@ -126,7 +126,7 @@
 - [x] Remove Sticker Book screen and all related code.
 - [x] Remove Safe Zone toggle from Home.
 - [x] Remove Battery Mode selector from Home.
-- [x] Remove duplicate Volt Badge widget from Profile Joules area.
+- [x] Remove duplicate Volt Badge widget from Profile Volts area.
 - [x] Remove badge legend row from Profile.
 
 ---
@@ -135,7 +135,8 @@
 - [ ] Versioned protocol extensions
 - [ ] Power Surge Events: Location-based 2x Energy multipliers
 - [ ] keep an unique user recognized if devices are nearby, to avoid creating volts to users that are together
-= [ ] change the name of joules to volts and replace it everywhere on the app, documentation and site
-- [ ] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
-- [ ] app should not start on profile, should go directly to the app homepage always
-- [ ] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the 
+= [x] change the name of joules to volts and replace it everywhere on the app, documentation and site
+- [x] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
+- [x] app should not start on profile, should go directly to the app homepage always
+- [ ] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the profile screen. here is an example: https://cdn.dribbble.com/userupload/26934632/file/original-5a33b421dd96feb16154939e3f9827cc.png?resize=1504x1128&vertical=center
+- [ ] fix the part where we create a unique account using the supabase authentication method with google on the profile area

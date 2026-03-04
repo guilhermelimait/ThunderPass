@@ -92,10 +92,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { list -> computeStreak(list) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    // ── Energy (Joules) ───────────────────────────────────────────────────────
-    val joulesTotal: StateFlow<Long> = profileDao.observe()
+    // ── Energy (Volts) ────────────────────────────────────────────────────────
+    val voltsTotal: StateFlow<Long> = profileDao.observe()
         .filterNotNull()
-        .map { it.joulesTotal }
+        .map { it.voltsTotal }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
     // ── Owned Stickers ────────────────────────────────────────────────────────
@@ -232,13 +232,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // ── Visual Shop ───────────────────────────────────────────────────────────
 
     /**
-     * Attempts to spend [amount] joules and unlock [effectKey].
+     * Attempts to spend [amount] volts and unlock [effectKey].
      * Returns true on success, false if the balance is insufficient.
      */
-    fun spendJoules(amount: Long, effectKey: String): Boolean {
-        if (joulesTotal.value < amount) return false
+    fun spendVolts(amount: Long, effectKey: String): Boolean {
+        if (voltsTotal.value < amount) return false
         viewModelScope.launch {
-            profileDao.spendJoules(amount)
+            profileDao.spendVolts(amount)
             val newSet = _unlockedEffects.value + effectKey
             _unlockedEffects.value = newSet
             prefs.edit().putStringSet(PREF_SHOP_UNLOCKS, newSet).apply()

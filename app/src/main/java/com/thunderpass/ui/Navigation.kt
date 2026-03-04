@@ -46,6 +46,7 @@ internal object Routes {
 @Composable
 fun ThunderPassNavGraph(
     navController: NavHostController = rememberNavController(),
+    onMusicChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val prefs   = remember { context.getSharedPreferences("tp_settings", Context.MODE_PRIVATE) }
@@ -79,11 +80,9 @@ fun ThunderPassNavGraph(
                 },
             ) {
                 composable(Routes.SPLASH) {
-                    val profileVm: ProfileViewModel = viewModel()
                     LaunchedEffect(Unit) {
-                        // Skip onboarding entirely — first-run users go straight to profile setup.
-                        val target = if (profileVm.isFirstRun()) "${Routes.PROFILE}?firstRun=true" else Routes.HOME
-                        navController.navigate(target) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                        // Always go to Home — device name is auto-seeded (5.1), no mandatory profile setup.
+                        navController.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } }
                     }
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -163,6 +162,7 @@ fun ThunderPassNavGraph(
                             darkMode = enabled
                             prefs.edit().putBoolean("dark_mode", enabled).apply()
                         },
+                        onMusicChange = onMusicChange,
                         onBack = { navController.popBackStack() },
                         vm = homeVm,
                     )

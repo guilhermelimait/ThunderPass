@@ -139,7 +139,7 @@ fun OnboardingScreen(onEnter: () -> Unit) {
             // Feature highlights
             listOf(
                 "📡" to "Auto-detect nearby players via Bluetooth",
-                "⚡" to "Earn Joules energy every time you Spark",
+                "⚡" to "Earn Volts energy every time you Spark",
                 "🎮" to "Sync your RetroAchievements Spark Card",
             ).forEach { (icon, text) ->
                 FeatureRow(

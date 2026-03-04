@@ -30,7 +30,7 @@ When two ThunderPassers cross paths:
 2. They silently swap **profile cards** — your name, avatar, and greeting.
 3. A double-pulse vibration tells you *The Spark happened*.
 4. The encounter is saved in your **Passes** list.
-5. You earn **Joules** — the energy currency of ThunderPass.
+5. You earn **Volts** — the energy currency of ThunderPass.
 
 That's it. No tapping required. Just live your life and let ThunderPass do its thing.
 
@@ -63,8 +63,8 @@ Badges are earned by living your ThunderPass life — sparking new people, playi
 
 Each badge shows a **thunder bolt** instead of a star — because of course it does.
 
-### 🔋 Joules — Energy System
-Every unique Spark earns you **100 Joules**. Your balance is recalculated automatically on app launch so it's always accurate. Spend Joules in the Shop to unlock cool profile effects:
+### 🔋 Volts — Energy System
+Every unique Spark earns you **100 Volts**. Your balance is recalculated automatically on app launch so it's always accurate. Spend Volts in the Shop to unlock cool profile effects:
 - **CRT Scanlines** — retro TV vibes on your profile card.
 - **Pixelated Aura** — 8-bit glow around your avatar.
 - **Thunder Trail** — leave a lightning trail wherever you go.
@@ -78,7 +78,7 @@ Connect your [RetroAchievements](https://retroachievements.org) account and unlo
   - **Retro Circuit** — peer mastered a game in the last 30 days.
 
 ### 🛍️ Shop
-Spend your hard-earned Joules on profile effects and cosmetics. The more you spark, the more you unlock.
+Spend your hard-earned Volts on profile effects and cosmetics. The more you spark, the more you unlock.
 
 ### ⚙️ Settings
 - **Privacy Mode** — hide your identity from BLE peers in one tap.

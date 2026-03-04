@@ -28,7 +28,7 @@ fun ShopScreen(
     onBack: () -> Unit,
     vm: HomeViewModel = viewModel(),
 ) {
-    val joulesTotal    by vm.joulesTotal.collectAsState()
+    val voltsTotal     by vm.voltsTotal.collectAsState()
     val unlockedEffects by vm.unlockedEffects.collectAsState()
     val encounters      by vm.encounters.collectAsState()
     var confirmEffect  by remember { mutableStateOf<ShopItem?>(null) }
@@ -66,11 +66,11 @@ fun ShopScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment     = Alignment.Top,
             ) {
-                JoulesBalanceCard(
-                    joulesTotal = joulesTotal,
+                VoltsBalanceCard(
+                    voltsTotal = voltsTotal,
                     modifier    = Modifier.weight(0.42f),
                 )
-                JoulesExplanationCard(
+                VoltsExplanationCard(
                     modifier = Modifier.weight(0.58f),
                 )
             }
@@ -132,7 +132,7 @@ fun ShopScreen(
                         color      = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                     Text(
-                        text       = "%,d J".format(joulesTotal),
+                        text       = "%,d V".format(voltsTotal),
                         style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color      = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -141,7 +141,7 @@ fun ShopScreen(
             }
 
             Text(
-                text  = "Unlock visual profile effects — spent Joules are permanent.",
+                text  = "Unlock visual profile effects — spent Volts are permanent.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -152,7 +152,7 @@ fun ShopScreen(
                 ShopItemCard(
                     item       = item,
                     isUnlocked = isUnlocked,
-                    canAfford  = joulesTotal >= item.price,
+                    canAfford  = voltsTotal >= item.price,
                     onBuy      = { confirmEffect = item },
                 )
             }
@@ -175,12 +175,12 @@ fun ShopScreen(
             onDismissRequest = { confirmEffect = null },
             title   = { Text("Unlock ${item.name}?") },
             text    = {
-                Text("Spend ${"%,d".format(item.price)} J to permanently unlock this effect. You currently have ${"%,d".format(joulesTotal)} J.")
+                Text("Spend ${"%,d".format(item.price)} V to permanently unlock this effect. You currently have ${"%,d".format(voltsTotal)} V.")
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val success = vm.spendJoules(item.price, item.key)
-                    toastMessage = if (success) "🎉 ${item.name} unlocked!" else "Not enough Joules!"
+                    val success = vm.spendVolts(item.price, item.key)
+                    toastMessage = if (success) "🎉 ${item.name} unlocked!" else "Not enough Volts!"
                     confirmEffect = null
                 }) { Text("Unlock") }
             },
@@ -227,7 +227,7 @@ private fun ShopItemCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text  = "%,d J".format(item.price),
+                    text  = "%,d V".format(item.price),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -253,13 +253,13 @@ private fun ShopItemCard(
     }
 }
 
-// ── Compact Joules balance card (left column in portrait header) ─────────────
+// ── Compact Volts balance card (left column in portrait header) ─────────────────
 @Composable
-private fun JoulesBalanceCard(
-    joulesTotal: Long,
+private fun VoltsBalanceCard(
+    voltsTotal: Long,
     modifier: Modifier = Modifier,
 ) {
-    val level  = voltLevelFor(joulesTotal)
+    val level  = voltLevelFor(voltsTotal)
     val accent = level.color
 
     Card(
@@ -281,7 +281,7 @@ private fun JoulesBalanceCard(
                 fontSize = 36.sp,
             )
             Text(
-                text       = "%,d J".format(joulesTotal),
+                text       = "%,d V".format(voltsTotal),
                 style      = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color      = accent,
@@ -298,9 +298,9 @@ private fun JoulesBalanceCard(
     }
 }
 
-// ── Joules explanation card (right column in portrait header) ────────────────
+// ── Volts explanation card (right column in portrait header) ─────────────────
 @Composable
-private fun JoulesExplanationCard(
+private fun VoltsExplanationCard(
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -315,13 +315,13 @@ private fun JoulesExplanationCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text       = "WHAT ARE JOULES?",
+                text       = "WHAT ARE VOLTS?",
                 style      = MaterialTheme.typography.labelSmall,
                 color      = MaterialTheme.colorScheme.primary,
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                text  = "Joules are your ThunderPass energy — earned by exploring and meeting other players. Spend them here to unlock visual effects on your Spark Card.",
+                text  = "Volts are your ThunderPass energy — earned by exploring and meeting other players. Spend them here to unlock visual effects on your Spark Card.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -332,9 +332,9 @@ private fun JoulesExplanationCard(
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                text  = "\u26A1 New Traveler met \u2014 100 J\n" +
-                        "\u26A1 Badge unlocked \u2014 50\u2013200 J\n" +
-                        "\u26A1 RetroAchievements \u2014 up to 500 J\n" +
+                text  = "\u26A1 New Traveler met \u2014 100 V\n" +
+                        "\u26A1 Badge unlocked \u2014 50\u2013200 V\n" +
+                        "\u26A1 RetroAchievements \u2014 up to 500 V\n" +
                         "\u26A1 Daily Spark streaks",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

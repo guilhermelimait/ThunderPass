@@ -340,8 +340,8 @@ class GattClient(
 
             encounterDao.linkSnapshot(encounterId, snapshotId)
 
-            // Award 100 Joules for each successful Spark
-            profileDao.addJoules(100)
+            // Award 100 Volts for each successful Spark
+            profileDao.addVolts(100)
 
             // Award stickers based on this encounter
             val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)

@@ -40,15 +40,15 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
                 )
             }
 
-            // ── Joules recalculation ──────────────────────────────────────────
-            // Each spark (completed GATT exchange) earns 100 J.  If the counter
+            // ── Volts recalculation ───────────────────────────────────────────
+            // Each spark (completed GATT exchange) earns 100 V.  If the counter
             // fell behind due to a DB wipe, reinstall, or a future data-restore,
             // top it up so it's always at least encounterCount * 100.
             val totalEncounters = encounterDao.countAll()
-            val expectedJoules  = totalEncounters.toLong() * 100L
+            val expectedVolts   = totalEncounters.toLong() * 100L
             profileDao.get()?.let { p ->
-                if (p.joulesTotal < expectedJoules) {
-                    profileDao.addJoules(expectedJoules - p.joulesTotal)
+                if (p.voltsTotal < expectedVolts) {
+                    profileDao.addVolts(expectedVolts - p.voltsTotal)
                 }
             }
         }

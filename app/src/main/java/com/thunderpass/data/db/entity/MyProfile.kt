@@ -1,5 +1,6 @@
 package com.thunderpass.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -33,10 +34,11 @@ data class MyProfile(
     val updatedAt: Long = 0L,
 
     /**
-     * Accumulated energy in Joules. Each successful Spark (GATT profile exchange)
-     * earns 100 J. Displayed on the Home screen as a game mechanic.
+     * Accumulated energy in Volts. Each successful Spark (GATT profile exchange)
+     * earns 100 V. Displayed on the Home screen as a game mechanic.
      */
-    val joulesTotal: Long = 0L,
+    @ColumnInfo(name = "joulesTotal")
+    val voltsTotal: Long = 0L,
 
     /**
      * User's RetroAchievements username (optional). When set, it is included

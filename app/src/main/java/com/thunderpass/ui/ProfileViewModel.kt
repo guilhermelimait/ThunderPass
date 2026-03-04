@@ -99,7 +99,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                         avatarKind     = p.avatarKind,
                         avatarColor    = p.avatarColor,
                         avatarSeed     = p.avatarSeed,
-                        joulesTotal    = p.joulesTotal,
+                        voltsTotal     = p.voltsTotal,
                         retroUsername  = p.retroUsername,
                         ghostGame      = p.ghostGame,
                         ghostScore     = p.ghostScore,

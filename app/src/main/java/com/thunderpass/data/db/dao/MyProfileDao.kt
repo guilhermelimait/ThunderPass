@@ -22,13 +22,13 @@ interface MyProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(profile: MyProfile)
 
-    /** Atomically add [amount] joules to the energy total. */
+    /** Atomically add [amount] volts to the energy total. */
     @Query("UPDATE my_profile SET joulesTotal = joulesTotal + :amount WHERE id = 1")
-    suspend fun addJoules(amount: Long)
+    suspend fun addVolts(amount: Long)
 
-    /** Atomically spend [amount] joules, clamping to zero (never goes negative). */
+    /** Atomically spend [amount] volts, clamping to zero (never goes negative). */
     @Query("UPDATE my_profile SET joulesTotal = MAX(0, joulesTotal - :amount) WHERE id = 1")
-    suspend fun spendJoules(amount: Long)
+    suspend fun spendVolts(amount: Long)
 
     /**
      * Persist the Supabase auth UUID locally after sign-in so the GATT server can
