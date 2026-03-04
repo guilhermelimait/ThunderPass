@@ -138,5 +138,8 @@
 = [x] change the name of joules to volts and replace it everywhere on the app, documentation and site
 - [x] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
 - [x] app should not start on profile, should go directly to the app homepage always
-- [ ] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the profile screen. here is an example: https://cdn.dribbble.com/userupload/26934632/file/original-5a33b421dd96feb16154939e3f9827cc.png?resize=1504x1128&vertical=center
+- [x] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the profile screen. here is an example: https://cdn.dribbble.com/userupload/26934632/file/original-5a33b421dd96feb16154939e3f9827cc.png?resize=1504x1128&vertical=center
 - [ ] fix the part where we create a unique account using the supabase authentication method with google on the profile area
+-[] when the app loads the users head , show the color of the arms the same as the skin of the head, doesnt matter if it was when the app open or when the profile head was changed.
+[] on the frontscren, home of the app, show the logo before the hi username, same size as the first and second line on it, remove the hadn after it
+[] if the app is on 

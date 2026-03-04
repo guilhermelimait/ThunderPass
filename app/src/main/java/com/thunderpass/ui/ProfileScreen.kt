@@ -200,6 +200,14 @@ fun ProfileScreenContent(
 
             Spacer(Modifier.height(8.dp))
 
+            GamePlayStatsCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

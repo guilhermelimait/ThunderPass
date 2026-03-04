@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- ────────────────────────────────────────────────────────────
          BLE permissions (Android 12+ / API 31+)
@@ -27,6 +28,13 @@
 
     <!-- Allows showing the battery optimisation whitelist request dialog -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- PACKAGE_USAGE_STATS: lets us read per-app foreground time for the daily play-time card.
+         This is a privileged/special permission; the user must grant it manually in
+         Settings > Apps > Special app access > Usage access. It is NOT a runtime permission. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Require BLE hardware; set required="false" if you also want to support non-BLE devices -->
     <uses-feature
