@@ -70,4 +70,11 @@ data class PeerProfileSnapshot(
 
     /** Peer's ghost score or time in ms (null if not shared). */
     val ghostScore: Long? = null,
+
+    /**
+     * The peer's Supabase auth UUID, sent voluntarily in the GATT payload.
+     * Null when the peer is in privacy mode or running an older build.
+     * Used for 24-hour identity dedup: one Spark per userId per day.
+     */
+    val peerUserId: String? = null,
 )

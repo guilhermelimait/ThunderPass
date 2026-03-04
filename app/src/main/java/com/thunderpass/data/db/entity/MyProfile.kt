@@ -58,6 +58,13 @@ data class MyProfile(
     val stickersJson: String = "",
 
     /**
+     * Supabase auth UUID — written locally after a successful sign-in so that the
+     * GATT server can include it in the profile payload for peer identity dedup.
+     * Empty string when the user is not signed in.
+     */
+    val supabaseUserId: String = "",
+
+    /**
      * When true the BLE profile exchange sends "Private User" instead of the
      * real display name, greeting, and avatar — so nearby devices see only that
      * you are present, not who you are.

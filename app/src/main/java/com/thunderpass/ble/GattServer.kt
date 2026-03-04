@@ -253,6 +253,11 @@ class GattServer(
                 put("ghostGame", profile.ghostGame)
                 if (profile.ghostScore > 0L) put("ghostScore", profile.ghostScore)
             }
+            // Include Supabase userId so the peer can perform 24-hour identity dedup.
+            // Only sent when the user is signed in; withheld in privacy mode.
+            if (profile.supabaseUserId.isNotBlank()) {
+                put("userId", profile.supabaseUserId)
+            }
         }
         return org.json.JSONObject().apply {
             put("v", BleConstants.PROTOCOL_VERSION)

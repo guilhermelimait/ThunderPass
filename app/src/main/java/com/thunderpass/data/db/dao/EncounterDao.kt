@@ -59,4 +59,12 @@ interface EncounterDao {
     /** Total friend count — used for Supabase sync. */
     @Query("SELECT COUNT(*) FROM encounter WHERE isFriend = 1")
     suspend fun countFriends(): Int
+
+    /**
+     * Delete a provisional encounter row.
+     * Called when post-GATT dedup determines this user was already encountered
+     * within the 24-hour window, or when Supabase identity verification fails.
+     */
+    @Query("DELETE FROM encounter WHERE id = :id")
+    suspend fun delete(id: Long)
 }

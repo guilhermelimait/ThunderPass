@@ -57,10 +57,17 @@ object BleConstants {
     const val ROTATING_ID_WINDOW_MS = 30L * 60 * 1000
 
     /**
-     * Encounter dedup cooldown in milliseconds.
-     * Lowered to 60 s for testing; raise back to 10L * 60 * 1000 for production.
+     * Encounter dedup cooldown in milliseconds (scan-level, per rotating-ID / device.address).
+     * Prevents redundant GATT connections within one scan session.
      */
     const val DEDUP_COOLDOWN_MS = 60_000L
+
+    /**
+     * Identity dedup window in milliseconds (post-GATT, per Supabase userId).
+     * A given user earns at most one Spark per [USER_DEDUP_WINDOW_MS].
+     * Default: 24 hours.
+     */
+    const val USER_DEDUP_WINDOW_MS = 24L * 60 * 60 * 1000
 
     /** Preferred MTU requested by the GATT client (Android max = 517 but 512 is safe). */
     const val PREFERRED_MTU = 512

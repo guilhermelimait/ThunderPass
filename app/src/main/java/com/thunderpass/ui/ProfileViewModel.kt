@@ -66,6 +66,12 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             val p      = profileDao.get() ?: return@launch
             val count  = encounterDao.countAll()
 
+            // Persist the Supabase userId locally so GattServer can broadcast it
+            // in the GATT payload for 24-hour peer identity dedup.
+            if (p.supabaseUserId != userId) {
+                profileDao.updateSupabaseUserId(userId)
+            }
+
             runCatching {
                 SupabaseManager.client.from("profiles").upsert(
                     ProfileRecord(

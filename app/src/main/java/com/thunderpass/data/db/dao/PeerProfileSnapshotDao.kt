@@ -37,4 +37,11 @@ interface PeerProfileSnapshotDao {
      */
     @Query("UPDATE peer_profile_snapshot SET retroFetchAttempted = 1 WHERE id = :id")
     suspend fun markRetroFetchAttempted(id: Long)
+
+    /**
+     * Count snapshots recorded from a specific peer Supabase userId since [sinceMs].
+     * Used for 24-hour identity dedup: if > 0, we’ve already sparked this user today.
+     */
+    @Query("SELECT COUNT(*) FROM peer_profile_snapshot WHERE peerUserId = :userId AND receivedAt >= :sinceMs")
+    suspend fun countByUserIdSince(userId: String, sinceMs: Long): Int
 }

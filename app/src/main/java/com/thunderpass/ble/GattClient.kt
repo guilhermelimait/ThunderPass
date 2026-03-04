@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import com.thunderpass.ble.BleConstants
 import com.thunderpass.ble.BleConstants.CCCD_UUID
 import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
@@ -18,6 +19,9 @@ import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.retro.RetroRepository
+import com.thunderpass.supabase.ProfileRecord
+import com.thunderpass.supabase.SupabaseManager
+import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -243,21 +247,57 @@ class GattClient(
      */
     private suspend fun parseAndPersist(raw: String, encounterId: Long) {
         try {
-            val json     = org.json.JSONObject(raw)
-            val version  = json.optInt("v", 0)
+            val json       = org.json.JSONObject(raw)
+            val version    = json.optInt("v", 0)
             val rotatingId = json.optString("rotatingId", "")
-            val ts       = json.optLong("ts", System.currentTimeMillis() / 1000)
-            val data     = json.optJSONObject("data") ?: org.json.JSONObject()
+            val peerUserId = json.optString("userId", "").takeIf { it.isNotBlank() }
+            val ts         = json.optLong("ts", System.currentTimeMillis() / 1000)
+            val data       = json.optJSONObject("data") ?: org.json.JSONObject()
 
-            val displayName = data.optString("displayName", "Unknown")
-            val greeting    = data.optString("greeting", "")
-            val avatar      = data.optJSONObject("avatar") ?: org.json.JSONObject()
-            val avatarKind  = avatar.optString("kind", "defaultBolt")
-            val avatarColor = avatar.optString("color", "#FFFFFF")
-            val avatarSeed  = avatar.optString("seed", "").takeIf { it.isNotBlank() }
+            val displayName   = data.optString("displayName", "Unknown")
+            val greeting      = data.optString("greeting", "")
+            val avatar        = data.optJSONObject("avatar") ?: org.json.JSONObject()
+            val avatarKind    = avatar.optString("kind", "defaultBolt")
+            val avatarColor   = avatar.optString("color", "#FFFFFF")
+            val avatarSeed    = avatar.optString("seed", "").takeIf { it.isNotBlank() }
             val retroUsername = data.optString("retroUsername", "").takeIf { it.isNotBlank() }
-            val ghostGame  = data.optString("ghostGame",  "").takeIf { it.isNotBlank() }
-            val ghostScore = data.optLong("ghostScore", 0L).takeIf { it > 0L }
+            val ghostGame     = data.optString("ghostGame", "").takeIf { it.isNotBlank() }
+            val ghostScore    = data.optLong("ghostScore", 0L).takeIf { it > 0L }
+
+            // ── 24-hour identity dedup (local) ─────────────────────────────────────
+            // Rotating IDs change every 30 min, so scan-level dedup alone can't
+            // prevent the same user earning multiple Sparks in a day.
+            // If the peer included their stable Supabase userId in the GATT payload,
+            // check whether we already sparked them within the past 24 hours.
+            if (peerUserId != null) {
+                val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
+                if (snapshotDao.countByUserIdSince(peerUserId, cutoffMs) > 0) {
+                    Log.i(TAG, "User $peerUserId already encountered in 24h window — dropping encounter #$encounterId")
+                    encounterDao.delete(encounterId)
+                    return
+                }
+
+                // ── Online Supabase identity verify ────────────────────────────────
+                // Confirm the claimed userId actually exists in the `profiles` table.
+                // A missing row means the UUID was forged — reject the encounter.
+                // Network failure is treated leniently: proceed without verification
+                // so offline scenarios aren't penalised.
+                val verifyResult = runCatching {
+                    SupabaseManager.client.from("profiles")
+                        .select { filter { eq("id", peerUserId) } }
+                        .decodeList<ProfileRecord>()
+                }
+                if (verifyResult.isSuccess) {
+                    if (verifyResult.getOrNull()!!.isEmpty()) {
+                        Log.w(TAG, "Peer userId=$peerUserId not in Supabase — rejecting encounter #$encounterId")
+                        encounterDao.delete(encounterId)
+                        return
+                    }
+                    Log.d(TAG, "Supabase userId verified: $peerUserId")
+                } else {
+                    Log.d(TAG, "Supabase verify skipped (offline): ${verifyResult.exceptionOrNull()?.message}")
+                }
+            }
 
             val snapshotId = snapshotDao.insert(
                 PeerProfileSnapshot(
@@ -273,6 +313,7 @@ class GattClient(
                     retroUsername   = retroUsername,
                     ghostGame       = ghostGame,
                     ghostScore      = ghostScore,
+                    peerUserId      = peerUserId,
                 )
             )
 

@@ -232,7 +232,8 @@ class BleService : Service() {
         // NOTE: Only include the service UUID — NOT service data.
         // A 128-bit UUID AD record is 18 bytes; adding 18 bytes of service data would
         // exceed the 31-byte BLE advertisement payload limit and cause
-        // ADVERTISE_FAILED_DATA_TOO_LARGE. The dedup layer falls back to device MAC.
+        // ADVERTISE_FAILED_DATA_TOO_LARGE.
+        // Identity dedup is done post-GATT via peerUserId, not via scan payload.
         val data = AdvertiseData.Builder()
             .addServiceUuid(BleConstants.THUNDERPASS_SERVICE_PARCEL)
             .setIncludeDeviceName(false)    // omit device name for privacy
@@ -294,18 +295,15 @@ class BleService : Service() {
                 val serviceData = result.scanRecord
                     ?.getServiceData(BleConstants.THUNDERPASS_SERVICE_PARCEL)
 
-                // Extract the rotating ID from the service data payload
-                val rotatingId = if (serviceData != null && serviceData.size >= 18) {
-                    // bytes 0=version, 1=flags, 2..17=rotatingId
-                    val rotBytes = serviceData.copyOfRange(2, 18)
-                    android.util.Base64.encodeToString(
-                        rotBytes,
-                        android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
-                    )
-                } else {
-                    // Fallback: use device address (less private but safe for MVP)
-                    device.address
-                }
+                // ThunderPass advertisements carry only the service UUID — adding 18 bytes
+                // of service data would exceed the 31-byte BLE payload limit and trigger
+                // ADVERTISE_FAILED_DATA_TOO_LARGE (see startAdvertising).
+                //
+                // Use device.address as a session-scoped dedup key: it's stable within
+                // an advertising session so it prevents redundant GATT connections to the
+                // same hardware in one scan pass.  True 24-hour identity dedup is handled
+                // post-GATT via the peer's Supabase userId (see GattClient).
+                val rotatingId = device.address
 
                 Log.d(TAG, "Seen: ${device.address} rotId=${rotatingId.take(8)}… RSSI=$rssi")
 
