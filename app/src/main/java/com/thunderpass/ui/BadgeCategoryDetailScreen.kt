@@ -4,7 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -102,8 +102,8 @@ fun BadgeCategoryDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier          = Modifier.fillMaxSize(),
             ) {
-                items(badges) { badge ->
-                    BadgeListCard(badge = badge, category = category)
+                itemsIndexed(badges) { index, badge ->
+                    BadgeListCard(badge = badge, index = index)
                 }
             }
         }
@@ -115,17 +115,13 @@ fun BadgeCategoryDetailScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
-    val locked  = badge.tier == 0
-    val catColor = category.accentColor
-    val darkBg  = categoryDarkBg(category, badge.tier)
+private fun BadgeListCard(badge: BadgeDef, index: Int) {
+    val locked   = badge.tier == 0
+    val rarColor = if (locked) RARITY_NOT_ACHIEVED else rarityColor(index)
+    val darkBg   = if (locked) RARITY_LOCKED_BG else rarityDarkBg(index)
 
-    // Card background: dark category-tinted, slightly lighter for earned badges
-    val cardBg = if (locked) {
-        darkBg.copy(alpha = 0.85f)
-    } else {
-        darkBg
-    }
+    // Card background: dark rarity-tinted
+    val cardBg = darkBg
 
     Surface(
         shape  = RoundedCornerShape(16.dp),
@@ -152,7 +148,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                     .width(3.dp)
                     .fillMaxHeight()
                     .background(
-                        color = if (locked) Color(0xFF5D5D5D).copy(alpha = 0.4f) else catColor.copy(alpha = 0.8f),
+                        color = rarColor.copy(alpha = if (locked) 0.35f else 0.85f),
                     )
                     .align(Alignment.CenterStart),
             )
@@ -166,7 +162,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                 // ── Shield ────────────────────────────────────────────────────
                 ThunderShield(
                     tier          = badge.tier,
-                    categoryColor = catColor,
+                    categoryColor = rarColor,
                     darkBg        = darkBg,
                     size          = 80.dp,
                 )
@@ -215,10 +211,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                                 fontFamily = FontFamily.Monospace,
                                 fontSize   = 10.sp,
                             ),
-                            color = if (locked)
-                                Color.White.copy(alpha = 0.3f)
-                            else
-                                catColor.copy(alpha = 0.9f),
+                            color = rarColor.copy(alpha = if (locked) 0.5f else 0.9f),
                         )
 
                         // Progress bar
@@ -228,14 +221,11 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                                 .weight(1f)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp)),
-                            color      = if (locked)
-                                Color(0xFF5D5D5D).copy(alpha = 0.5f)
-                            else
-                                catColor.copy(alpha = 0.9f),
+                            color      = rarColor.copy(alpha = if (locked) 0.35f else 0.9f),
                             trackColor = Color.White.copy(alpha = 0.08f),
                         )
 
-                        // Tier dots: 3 always shown — category color if achieved, gray if not
+                        // Tier dots: 3 always shown — rarity color if achieved, gray if not
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             (1..3).forEach { t ->
                                 val achieved = badge.tier >= t
@@ -245,7 +235,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                                         .clip(CircleShape)
                                         .background(
                                             color = if (achieved)
-                                                catColor.copy(alpha = 0.9f)
+                                                rarColor.copy(alpha = 0.9f)
                                             else
                                                 Color(0xFF6B6B6B).copy(alpha = 0.55f),
                                         ),
@@ -253,18 +243,16 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                             }
                         }
 
-                        // Tier label for earned badges
-                        if (!locked) {
-                            Text(
-                                text  = tierLabel(badge.tier),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize   = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                                color = catColor,
-                            )
-                        }
+                        // Rarity label — always shown
+                        Text(
+                            text  = if (locked) "NOT ACHIEVED" else rarityLabel(index),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize   = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = rarColor.copy(alpha = if (locked) 0.6f else 1f),
+                        )
                     }
                 }
             }

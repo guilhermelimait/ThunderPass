@@ -74,3 +74,11 @@ a few things to include/change :
 10- i was thinking to have the badges area something like the image 3 that could be progressing in each area, and the colors would be associated to consoles, player numbers, geolocation, games shared, integratoins (with retroarchive) and auto created by the app, not something based on the web, and instead of a star, it should have a thunder on it
 11- on display name, ra key , ra name and so on, keep only those that are needed, short and clean, once saved, it saves locally and use that as ghost informatoin between the ble updates between users (not sure if it goes online somehow)
 12- on home, explain the joules idea, how to collect points (based on badges and interactions,passes,retroarchive and so on)
+
+
+Colour	badge
+Dark grey - 0 badges achieved - name: not achieved
+Blue - first two levels achieved - name: common
+Purple - badge 3 and 4 achieved - name uncommon
+Orange - badge 5 and 6 achieved - name rare 
+gold - badge 7 - name legendary
