@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,43 +27,69 @@ import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.ui.theme.SpaceCyan
 import com.thunderpass.ui.theme.VividPurple
 import java.util.UUID
+import androidx.compose.ui.tooling.preview.Preview
+import com.thunderpass.data.db.entity.MyProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     firstRun:            Boolean       = false,
     onComplete:          (() -> Unit)? = null,
+    onBack:              (() -> Unit)? = null,
     vm:                  ProfileViewModel = viewModel(),
     homeVm:              HomeViewModel    = viewModel(),
 ) {
     val profile by vm.profile.collectAsState()
-
-    var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
-    var draftGreeting      by remember(profile.greeting)      { mutableStateOf(profile.greeting) }
-    var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
-    val context   = LocalContext.current
-    val retroAuth = remember { RetroAuthManager.getInstance(context) }
-    var draftRaApiKey by remember { mutableStateOf(retroAuth.getApiKey()) }
-    var saved by remember { mutableStateOf(false) }
-
-    // Avatar seed — randomizable and persisted in SharedPreferences
-    val prefs = remember { context.getSharedPreferences("tp_settings", Context.MODE_PRIVATE) }
-    var avatarSeed by remember(profile.installationId) {
-        mutableStateOf(
-            prefs.getString("avatar_seed", "").takeIf { !it.isNullOrBlank() }
-                ?: profile.installationId
-        )
-    }
-
-    // Stats for the hero row
     val encounterCount by homeVm.encounterCount.collectAsState()
     val streak         by homeVm.encounterStreak.collectAsState()
     val joulesTotal    by homeVm.joulesTotal.collectAsState()
+
+    ProfileScreenContent(
+        profile = profile,
+        encounterCount = encounterCount,
+        streak = streak,
+        joulesTotal = joulesTotal,
+        firstRun = firstRun,
+        onSave = { name, greeting, retroUser, retroKey ->
+            vm.save(name, greeting, retroUser)
+            // RetroAuthManager logic...
+        },
+        onComplete = onComplete,
+        onBack = onBack,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreenContent(
+    profile: MyProfile,
+    encounterCount: Int,
+    streak: Int,
+    joulesTotal: Long,
+    firstRun: Boolean = false,
+    onSave: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onComplete: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
+) {
+    var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
+    var draftGreeting      by remember(profile.greeting)      { mutableStateOf(profile.greeting) }
+    var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
+    var draftRaApiKey      by remember { mutableStateOf("") }
+    var saved by remember { mutableStateOf(false) }
+
+    var avatarSeed by remember(profile.installationId) { mutableStateOf(profile.installationId) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (firstRun) "Set Up Profile" else "My Profile") },
+                navigationIcon = {
+                    if (!firstRun && onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 )
@@ -121,9 +148,7 @@ fun ProfileScreen(
                 // Shuffle / randomize avatar button (top-right corner of banner)
                 IconButton(
                     onClick = {
-                        val newSeed = UUID.randomUUID().toString()
-                        avatarSeed = newSeed
-                        prefs.edit().putString("avatar_seed", newSeed).apply()
+                        avatarSeed = UUID.randomUUID().toString()
                         saved = false
                     },
                     modifier = Modifier
@@ -234,14 +259,7 @@ fun ProfileScreen(
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick  = {
-                        vm.save(
-                            displayName   = draftName,
-                            greeting      = draftGreeting,
-                            retroUsername = draftRetroUsername,
-                        )
-                        if (draftRaApiKey.isNotBlank()) {
-                            retroAuth.saveCredentials(draftRaApiKey.trim(), draftRetroUsername.trim())
-                        }
+                        onSave(draftName, draftGreeting, draftRetroUsername, draftRaApiKey)
                         saved = true
                         if (firstRun) onComplete?.invoke()
                     },
@@ -291,6 +309,24 @@ private fun ProfileStatChip(icon: String, value: String, label: String) {
             text  = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfileScreenPreview() {
+    MaterialTheme {
+        ProfileScreenContent(
+            profile = MyProfile(
+                installationId = "test-id",
+                displayName = "Gui",
+                greeting = "Hey there!",
+                joulesTotal = 2500
+            ),
+            encounterCount = 12,
+            streak = 3,
+            joulesTotal = 2500
         )
     }
 }

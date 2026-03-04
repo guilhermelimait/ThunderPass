@@ -28,6 +28,7 @@ import java.util.Locale
 @Composable
 fun EncounterListScreen(
     onNavigateToDetail: (Long) -> Unit = {},
+    onBack: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val encounters by vm.encounters.collectAsState()
@@ -36,6 +37,11 @@ fun EncounterListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Encounters") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 )

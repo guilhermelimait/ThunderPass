@@ -60,6 +60,7 @@ class BleService : Service() {
         const val PREFS_NAME         = "thunderpass_prefs"
         const val PREF_SAFE_ZONE     = "safe_zone_active"
         const val PREF_SCAN_MODE     = "scan_mode"
+        const val PREF_SERVICE_ACTIVE = "service_active"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -132,6 +133,8 @@ class BleService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 _isActive = true
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(PREF_SERVICE_ACTIVE, true).apply()
                 startForeground(BleConstants.NOTIF_ID, buildNotification())
                 gattServer.start {
                     // Provide the current profile synchronously (ok: DB on IO thread)
@@ -149,6 +152,8 @@ class BleService : Service() {
             }
             ACTION_STOP -> {
                 _isActive = false
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(PREF_SERVICE_ACTIVE, false).apply()
                 stopScanning()
                 stopAdvertising()
                 gattServer.stop()
