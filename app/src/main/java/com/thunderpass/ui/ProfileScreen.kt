@@ -56,8 +56,8 @@ fun ProfileScreen(
         streak = streak,
         joulesTotal = joulesTotal,
         firstRun = firstRun,
-        onSave = { name, greeting, retroUser, retroKey, seed ->
-            vm.save(name, greeting, retroUser, avatarSeed = seed)
+        onSave = { name, retroUser, retroKey, seed ->
+            vm.save(name, retroUser, avatarSeed = seed)
             // RetroAuthManager logic...
         },
         onAvatarSeedChange = { vm.saveAvatarSeed(it) },
@@ -74,13 +74,12 @@ fun ProfileScreenContent(
     streak: Int,
     joulesTotal: Long,
     firstRun: Boolean = false,
-    onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
+    onSave: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onAvatarSeedChange: ((String) -> Unit)? = null,
     onComplete: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
 ) {
     var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
-    var draftGreeting      by remember(profile.greeting)      { mutableStateOf(profile.greeting) }
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
     var draftRaApiKey      by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf(false) }
@@ -265,19 +264,6 @@ fun ProfileScreenContent(
                 )
 
                 OutlinedTextField(
-                    value          = draftGreeting,
-                    onValueChange  = { draftGreeting = it; saved = false },
-                    label          = { Text("Greeting message") },
-                    singleLine     = false,
-                    minLines       = 2,
-                    maxLines       = 4,
-                    modifier       = Modifier.fillMaxWidth(),
-                    supportingText = { Text("Exchanged when you meet someone") },
-                )
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                OutlinedTextField(
                     value          = draftRetroUsername,
                     onValueChange  = { draftRetroUsername = it; saved = false },
                     label          = { Text("\uD83C\uDFAE RetroAchievements Username") },
@@ -299,7 +285,7 @@ fun ProfileScreenContent(
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick  = {
-                        onSave(draftName, draftGreeting, draftRetroUsername, draftRaApiKey, avatarSeed)
+                        onSave(draftName, draftRetroUsername, draftRaApiKey, avatarSeed)
                         saved = true
                         if (firstRun) onComplete?.invoke()
                     },

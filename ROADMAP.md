@@ -54,9 +54,10 @@
 ## Milestone 5 — UX Overhaul & Feature Completion (Next MVP)
 
 ### 5.1 Identity & Naming
-- [ ] Read Android account display name at startup; fall back to device model name (Thor, Odin, etc.) — replace hardcoded "Traveler" if user not informed on the profile page.
-- [ ] Replace Installation ID with a human-readable name-based share ID. Show as "Private User" when privacy toggle is on.
-- [ ] Profile fields trimmed to essentials: Display Name, RA Username, RA API Key. Saved locally + synced to Supabase; included in BLE ghost payload.
+- [x] Read Android account display name at startup; fall back to device model name (Thor, Odin, etc.) — replace hardcoded "Traveler" if user not informed on the profile page.
+- [x] Replace Installation ID with a human-readable name-based share ID. Show as "Private User" when privacy toggle is on.
+- [x] Profile fields trimmed to essentials: Display Name, RA Username, RA API Key. Saved locally + synced to Supabase; included in BLE ghost payload.
+- ´[] once it the friend profile is open, we will be able to see last games played, their achievements, consoles most used, and everything that can be used to make the badges works
 
 ### 5.2 ThunderPass Toggle & Foreground Service
 - [x] Replace Scan / Idle states with a single ON / OFF toggle. Foreground service persists state when app is closed.
@@ -137,4 +138,4 @@
 = [ ] change the name of joules to volts and replace it everywhere on the app, documentation and site
 - [ ] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
 - [ ] app should not start on profile, should go directly to the app homepage always
-- [ ] 
+- [ ] monitor local games played using the android information, so we can create cards about it like last played, or played total time if things are related to the gaming area and add that to a daily play time card on the 

@@ -30,13 +30,31 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             MyProfile(installationId = RotatingIdManager(app).installationId)
         )
 
+    init {
+        // 5.1 — Auto-seed displayName from device name on first launch.
+        // If the profile still has the hardcoded "Traveler" default (i.e. user
+        // has never customised it), replace it with the device's friendly name
+        // so BLE payloads and all UI show a meaningful name immediately.
+        viewModelScope.launch {
+            val p = profileDao.get() ?: return@launch
+            val nameIsDefault = p.displayName.isBlank() || p.displayName == "Traveler"
+            if (nameIsDefault) {
+                val deviceName = android.provider.Settings.Global.getString(
+                    getApplication<Application>().contentResolver,
+                    android.provider.Settings.Global.DEVICE_NAME,
+                )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
+                profileDao.upsert(p.copy(displayName = deviceName))
+            }
+        }
+    }
+
     /**
      * Persist the user's edited profile locally, then push to Supabase in the background.
      * Preserves installationId and id from the existing row.
      */
+    // 5.1 — greeting removed from editable fields; preserved in DB unchanged.
     fun save(
         displayName:   String,
-        greeting:      String,
         retroUsername: String = "",
         avatarSeed:    String = "",
     ) {
@@ -46,7 +64,6 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             profileDao.upsert(
                 current.copy(
                     displayName   = displayName.trim().ifEmpty { android.os.Build.MODEL },
-                    greeting      = greeting.trim(),
                     retroUsername = retroUsername.trim(),
                     avatarSeed    = avatarSeed.ifEmpty { current.avatarSeed },
                     updatedAt     = System.currentTimeMillis() / 1000,
