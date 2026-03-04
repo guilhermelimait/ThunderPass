@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.animation.core.*
@@ -20,9 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -135,9 +129,7 @@ private fun EncounterCard(
 ) {
     val enc      = item.encounter
     val snapshot = item.snapshot
-    val dateStr  = remember(enc.seenAt) {
-        SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(enc.seenAt))
-    }
+    val timeStr  = remember(enc.seenAt) { relativeTimeString(enc.seenAt) }
 
     Card(
         modifier = modifier
@@ -174,7 +166,7 @@ private fun EncounterCard(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "$dateStr  \u00B7  ${enc.rssi} dBm",
+                    text = "$timeStr  \u00B7  ${enc.rssi} dBm",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                 )

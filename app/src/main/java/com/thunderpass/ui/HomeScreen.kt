@@ -418,7 +418,7 @@ internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Un
 }
 
 /** Returns a compact human-readable relative time string (e.g. "2 h ago", "Just now"). */
-private fun relativeTimeString(epochMillis: Long): String {
+internal fun relativeTimeString(epochMillis: Long): String {
     val diff = System.currentTimeMillis() - epochMillis
     return when {
         diff < 60_000L               -> "Just now"

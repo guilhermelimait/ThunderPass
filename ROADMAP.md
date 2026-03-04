@@ -59,8 +59,8 @@
 - [ ] Profile fields trimmed to essentials: Display Name, RA Username, RA API Key. Saved locally + synced to Supabase; included in BLE ghost payload.
 
 ### 5.2 ThunderPass Toggle & Foreground Service
-- [ ] Replace Scan / Idle states with a single ON / OFF toggle. Foreground service persists state when app is closed.
-- [ ] Remove Safe Zones and Battery Mode from Home — move to Settings (5.10).
+- [x] Replace Scan / Idle states with a single ON / OFF toggle. Foreground service persists state when app is closed.
+- [x] Remove Safe Zones and Battery Mode from Home — move to Settings (5.10).
 
 ### 5.3 Navigation & Bottom Bar
 - [x] Fixed bottom bar always visible across all screens (no teardown on navigate).
@@ -69,7 +69,7 @@
 - [x] Landscape: bar height ~48 dp, icons only (no labels).
 
 ### 5.4 Home Screen
-- [ ] Remove Today/Streak stat cards; move data to Profile.
+- [x] Remove Today/Streak stat cards; move data to Profile.
 - [x] "Last Passed By" strip below walking animation: peer avatar + name + relative time. Tap opens encounter detail.
 - [x] Tapping the user avatar in the walking scene navigates to Profile.
 
@@ -83,7 +83,7 @@
 ### 5.6 Passes (Encounters)
 - [x] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
 - [x] Double-pulse vibration if haptics are enabled.
-- [ ] Passes screen: live list with peer avatar, name, RSSI, relative time.
+- [x] Passes screen: live list with peer avatar, name, RSSI, relative time.
 - [ ] Friends list accessible from Passes and Profile. Tap a friend to open their badge dashboard.
 
 ### 5.7 Profile Screen
