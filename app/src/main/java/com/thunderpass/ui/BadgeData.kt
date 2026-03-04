@@ -6,16 +6,23 @@ import androidx.compose.ui.graphics.Color
 // Tier helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Tier colours — 0 = Locked, 1-2 = Common (green), 3-4 = Uncommon (blue),
-// 5 = Rare (purple), 6 = Legendary (orange), 7 = Exotic (gold)
-val TIER_LOCKED     = Color(0xFF9E9E9E)
-val TIER_COMMON_1   = Color(0xFF66BB6A)   // 1 – light green
-val TIER_COMMON_2   = Color(0xFF2E7D32)   // 2 – dark green
-val TIER_UNCOMMON_1 = Color(0xFF42A5F5)   // 3 – light blue
-val TIER_UNCOMMON_2 = Color(0xFF1565C0)   // 4 – dark blue
-val TIER_RARE       = Color(0xFFAB47BC)   // 5 – purple
-val TIER_LEGENDARY  = Color(0xFFFF6D00)   // 6 – orange
-val TIER_EXOTIC     = Color(0xFFFFD700)   // 7 – gold yellow
+// ── 7-tier rarity system ──────────────────────────────────────────────────────
+// Tier 0 → Locked (Gray)
+// Tier 1 → Common I   (Green)
+// Tier 2 → Common II  (Green, brighter)
+// Tier 3 → Uncommon I (Blue)
+// Tier 4 → Uncommon II(Blue, brighter)
+// Tier 5 → Rare       (Purple)
+// Tier 6 → Legendary  (Orange)
+// Tier 7 → Exotic     (Yellow/Gold)
+val TIER_LOCKED      = Color(0xFF616161)
+val TIER_COMMON_1    = Color(0xFF388E3C)
+val TIER_COMMON_2    = Color(0xFF66BB6A)
+val TIER_UNCOMMON_1  = Color(0xFF1565C0)
+val TIER_UNCOMMON_2  = Color(0xFF42A5F5)
+val TIER_RARE        = Color(0xFF7B1FA2)
+val TIER_LEGENDARY   = Color(0xFFE65100)
+val TIER_EXOTIC      = Color(0xFFFFD600)
 
 fun tierColor(tier: Int) = when (tier) {
     1    -> TIER_COMMON_1
@@ -29,12 +36,24 @@ fun tierColor(tier: Int) = when (tier) {
 }
 
 fun tierLabel(tier: Int) = when (tier) {
-    1, 2 -> "COMMON"
-    3, 4 -> "UNCOMMON"
+    1    -> "COMMON"
+    2    -> "COMMON II"
+    3    -> "UNCOMMON"
+    4    -> "UNCOMMON II"
     5    -> "RARE"
     6    -> "LEGENDARY"
     7    -> "EXOTIC"
     else -> "LOCKED"
+}
+
+/** Number of chevrons to draw on the shield per tier. */
+fun tierChevrons(tier: Int) = when (tier) {
+    1, 2 -> 1
+    3, 4 -> 2
+    5    -> 3
+    6    -> 4
+    7    -> 5
+    else -> 0
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

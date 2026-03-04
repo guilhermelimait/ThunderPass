@@ -75,27 +75,49 @@ fun BadgeCategoryDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // ── Tier legend ───────────────────────────────────────────────────
-            Row(
-                modifier              = Modifier
+            // ── Tier legend — two rows so all 8 entries fit neatly ───────────
+            Column(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                listOf(0 to "Locked", 1 to "Common", 3 to "Uncommon", 5 to "Rare", 6 to "Legendary", 7 to "Exotic").forEach { (t, name) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(tierColor(t)),
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text  = name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                val legendItems = listOf(
+                    0 to "Locked",
+                    1 to "Common",
+                    2 to "Common II",
+                    3 to "Uncommon",
+                    4 to "Uncommon II",
+                    5 to "Rare",
+                    6 to "Legendary",
+                    7 to "Exotic",
+                )
+                // Split into two rows of 4
+                legendItems.chunked(4).forEach { rowItems ->
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        rowItems.forEach { (t, name) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier          = Modifier.weight(1f),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(tierColor(t)),
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text     = name,
+                                    style    = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -181,15 +203,15 @@ private fun BadgeShieldCard(badge: BadgeDef, categoryColor: Color) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Military Shield drawn with Canvas — rank grows with tier (0–7)
-//   Tier 0 (Locked)     — gray outline only
-//   Tier 1 (Common)     — green fill + 1 chevron
-//   Tier 2 (Common)     — green fill + 2 chevrons
-//   Tier 3 (Uncommon)   — blue fill  + 3 chevrons
-//   Tier 4 (Uncommon)   — blue fill  + 4 chevrons
-//   Tier 5 (Rare)       — purple fill + 4 chevrons (bolder stroke)
-//   Tier 6 (Legendary)  — orange fill + 4 chevrons + double crown bar
-//   Tier 7 (Exotic)     — gold fill   + 4 chevrons + double crown + ⚡ lightning
+// Military Shield drawn with Canvas  — rank grows with tier
+//   Tier 0 (Locked)       — gray outline, no fill, no stripes
+//   Tier 1 (Common)       — green fill + 1 chevron
+//   Tier 2 (Common II)    — bright green fill + 1 chevron
+//   Tier 3 (Uncommon)     — blue fill + 2 chevrons
+//   Tier 4 (Uncommon II)  — bright blue fill + 2 chevrons
+//   Tier 5 (Rare)         — purple fill + 3 chevrons
+//   Tier 6 (Legendary)    — orange fill + 4 chevrons
+//   Tier 7 (Exotic)       — gold fill + 5 chevrons + ⚡ thunder mark at top
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -213,18 +235,11 @@ fun MilitaryShield(
 
         // ── Background fill ───────────────────────────────────────────────────
         if (tier > 0) {
-            // Fill gets richer at higher tiers
-            val topAlpha = when {
-                tier >= 6 -> 0.55f
-                tier >= 5 -> 0.45f
-                tier >= 3 -> 0.35f
-                else      -> 0.25f
-            }
-            val botAlpha = topAlpha * 0.30f
+            // Solid color fill with slight gradient effect
             drawPath(
                 path  = shieldPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(tierColor.copy(alpha = topAlpha), tierColor.copy(alpha = botAlpha)),
+                    colors = listOf(tierColor.copy(alpha = 0.35f), tierColor.copy(alpha = 0.12f)),
                     startY = 0f,
                     endY   = h,
                 ),
@@ -241,20 +256,15 @@ fun MilitaryShield(
             )
         }
 
-        // ── Chevron stripes — count scales with tier ─────────────────────────
-        // Tier 0=0, 1=1, 2=2, 3=3, 4=4, 5+=4 chevrons (colour differentiates)
-        val chevronCount = when (tier) {
-            0    -> 0
-            1    -> 1
-            2    -> 2
-            3    -> 3
-            else -> 4   // tiers 4-7 all get 4 chevrons
-        }
+        // ── Chevron stripes (count driven by tier rarity group) ──────────────
+        val chevronCount = tierChevrons(tier)
         if (chevronCount > 0) {
-            // Fixed Y slots for up to 4 chevrons, evenly spaced inside shield body
-            val slots = listOf(h * 0.42f, h * 0.54f, h * 0.66f, h * 0.78f)
-            val strokeMult = if (tier >= 5) 1.05f else 0.85f
-            slots.take(chevronCount).forEach { cy ->
+            // Raise start-Y so 5 chevrons still fit inside the shield
+            val chevronY0      = h * 0.36f
+            val chevronSpacing = h * 0.11f
+
+            repeat(chevronCount) { i ->
+                val cy = chevronY0 + i * chevronSpacing
                 val chevronPath = Path().apply {
                     moveTo(w * 0.22f, cy - h * 0.06f)
                     lineTo(w * 0.50f, cy + h * 0.06f)
@@ -264,7 +274,7 @@ fun MilitaryShield(
                     path  = chevronPath,
                     color = tierColor,
                     style = Stroke(
-                        width = stroke * strokeMult,
+                        width = stroke * 0.85f,
                         cap   = StrokeCap.Round,
                         join  = StrokeJoin.Round,
                     ),
@@ -285,30 +295,17 @@ fun MilitaryShield(
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // ── Top crown bar(s) ──────────────────────────────────────────────────
+        // ── Top crown bar (appears from Bronze+) ─────────────────────────────
         if (tier > 0) {
-            // Single bar for all achieved tiers
             val crownPath = Path().apply {
-                moveTo(w * 0.22f, h * 0.20f)
-                lineTo(w * 0.78f, h * 0.20f)
+                moveTo(w * 0.22f, h * 0.18f)
+                lineTo(w * 0.78f, h * 0.18f)
             }
             drawPath(
                 path  = crownPath,
                 color = tierColor,
-                style = Stroke(width = stroke * 0.70f, cap = StrokeCap.Round),
+                style = Stroke(width = stroke * 0.65f, cap = StrokeCap.Round),
             )
-            // Second bar for Legendary (6) and Exotic (7) — double crown
-            if (tier >= 6) {
-                val crownPath2 = Path().apply {
-                    moveTo(w * 0.28f, h * 0.27f)
-                    lineTo(w * 0.72f, h * 0.27f)
-                }
-                drawPath(
-                    path  = crownPath2,
-                    color = tierColor,
-                    style = Stroke(width = stroke * 0.55f, cap = StrokeCap.Round),
-                )
-            }
         }
     }
 }
@@ -336,7 +333,7 @@ private fun shieldPath(w: Float, h: Float): Path = Path().apply {
     close()
 }
 
-// ── Helper: lightning bolt for Exotic tier (7) ──────────────────────────────
+// ── Helper: lightning bolt for Gold tier ──────────────────────────────────────
 
 private fun DrawScope.drawLightningBolt(w: Float, h: Float, color: Color) {
     val boltPath = Path().apply {
