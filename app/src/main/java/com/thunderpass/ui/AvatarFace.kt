@@ -26,13 +26,14 @@ private const val BG_COLORS =
 /**
  * Builds the DiceBear big-smile URL for [seed].
  * radius=50  → perfectly circular avatar inside the SVG itself.
+ * transparent → omits backgroundColor so the SVG has no fill behind the face.
  */
-fun diceBearUrl(seed: String): String =
+fun diceBearUrl(seed: String, transparent: Boolean = false): String =
     "https://api.dicebear.com/9.x/big-smile/svg" +
     "?seed=${Uri.encode(seed)}" +
     "&radius=50" +
     "&size=128" +
-    "&backgroundColor=$BG_COLORS"
+    if (transparent) "" else "&backgroundColor=$BG_COLORS"
 
 /**
  * Loads a unique, deterministic DiceBear "big-smile" avatar for [seed].
@@ -40,13 +41,14 @@ fun diceBearUrl(seed: String): String =
  */
 @Composable
 fun DiceBearAvatar(
-    seed:                String,
-    size:                Dp       = 72.dp,
-    modifier:            Modifier = Modifier,
-    showLoadingBackground: Boolean = true,
+    seed:                  String,
+    size:                  Dp       = 72.dp,
+    modifier:              Modifier = Modifier,
+    showLoadingBackground: Boolean  = true,
+    transparent:           Boolean  = false,
 ) {
     SubcomposeAsyncImage(
-        model              = diceBearUrl(seed),
+        model              = diceBearUrl(seed, transparent),
         contentDescription = "Avatar",
         contentScale       = ContentScale.Fit,
         modifier           = modifier
