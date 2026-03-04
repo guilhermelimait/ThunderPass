@@ -32,6 +32,9 @@ fun SettingsScreen(
     vm: HomeViewModel = viewModel(),
 ) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE) }
+    var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_enabled", true)) }
+    var screenOnActive by remember { mutableStateOf(prefs.getBoolean("screen_on_active", true)) }
 
     // ── Permission state — re-checked on every recomposition ──────────────────
     var notifGranted by remember {
@@ -83,7 +86,32 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Spacer(Modifier.height(8.dp))
-        // ── Appearance ────────────────────────────────────────────────────────
+        // ── General ─────────────────────────────────────────────────────
+        SettingsSection("General") {
+            SettingToggleRow(
+                label           = "Background Music",
+                subtitle        = "Play thunderpass-bg.mp3 when the app opens",
+                checked         = musicEnabled,
+                onCheckedChange = { enabled ->
+                    musicEnabled = enabled
+                    prefs.edit().putBoolean("music_enabled", enabled).apply()
+                },
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            SettingToggleRow(
+                label           = "Keep Screen On",
+                subtitle        = "Prevent the screen from turning off while ThunderPass is active",
+                checked         = screenOnActive,
+                onCheckedChange = { enabled ->
+                    screenOnActive = enabled
+                    prefs.edit().putBoolean("screen_on_active", enabled).apply()
+                },
+            )
+        }
+
+        // ── Appearance ───────────────────────────────────────────────────
         SettingsSection("Appearance") {
             SettingToggleRow(
                 label           = "Dark Mode",
@@ -156,31 +184,8 @@ fun SettingsScreen(
             )
         }
 
-        // ── About ─────────────────────────────────────────────────────────────
-        SettingsSection("About") {
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    "ThunderPass",
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    "v0.7.2",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text  = "Offline-first StreetPass for Android.\nData stays on your device. BLE only.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
+        // ── Updates ───────────────────────────────────────────────────────────
+        SettingsSection("Updates") {
             SettingActionRow(
                 label       = "Check for Updates",
                 subtitle    = "View the latest releases on GitHub",
@@ -189,20 +194,6 @@ fun SettingsScreen(
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW,
                             Uri.parse("https://github.com/guilhermelimait/ThunderPass/releases"))
-                    )
-                },
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            SettingActionRow(
-                label       = "Support the Project",
-                subtitle    = "Buy me a coffee on Ko-fi ☕",
-                buttonLabel = "Ko-fi",
-                onClick     = {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW,
-                            Uri.parse("https://ko-fi.com/guilhermelimait/posts"))
                     )
                 },
             )

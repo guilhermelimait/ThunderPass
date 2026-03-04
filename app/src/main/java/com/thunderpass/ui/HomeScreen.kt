@@ -173,7 +173,9 @@ fun HomeScreenContent(
                         DiceBearAvatar(
                             seed     = installationId.ifEmpty { "default" },
                             size     = 40.dp,
-                            modifier = Modifier.clip(CircleShape),
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onNavigate("profile") },
                         )
                     }
                     // ThunderPass ON/OFF toggle
@@ -181,7 +183,6 @@ fun HomeScreenContent(
                         active   = serviceRunning,
                         onToggle = onToggleService,
                     )
-                    HomeNavGrid(onNavigate = onNavigate)
                 }
 
                 VerticalDivider(
@@ -205,44 +206,14 @@ fun HomeScreenContent(
                         avatarSeed     = installationId.ifEmpty { "default" },
                         serviceRunning = serviceRunning,
                     )
-                    if (encounters.isNotEmpty()) {
-                        Text(
-                            text  = "Recent bypassers",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    val lastEnc = encounters.firstOrNull()
+                    if (lastEnc != null) {
+                        LastPassedByCard(
+                            encounter = lastEnc,
+                            onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
                         )
-                        encounters.take(5).forEach { enc ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onNavigateToDetail(enc.encounter.id) },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                ),
-                            ) {
-                                Row(
-                                    modifier          = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    DiceBearAvatar(
-                                        seed = enc.snapshot?.rotatingId ?: enc.encounter.rotatingId,
-                                        size = 36.dp,
-                                        modifier = Modifier.clip(CircleShape),
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text       = enc.snapshot?.displayName ?: "Unknown traveler",
-                                            style      = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines   = 1,
-                                            overflow   = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
+                    JoulesInfoCard()
                 }
             }
         } else {
@@ -279,7 +250,9 @@ fun HomeScreenContent(
                     DiceBearAvatar(
                         seed     = installationId.ifEmpty { "default" },
                         size     = 52.dp,
-                        modifier = Modifier.clip(CircleShape),
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { onNavigate("profile") },
                     )
                 }
 
@@ -290,94 +263,31 @@ fun HomeScreenContent(
                     onToggle = onToggleService,
                 )
 
-                Spacer(Modifier.height(12.dp))
-                HomeNavGrid(onNavigate = onNavigate)
                 Spacer(Modifier.height(16.dp))
 
-                // ── Walking scene (replaces dormant area) ─────────────────────
+                // ── Walking scene ──────────────────────────────────────────────
                 WalkingSceneCard(
                     avatarSeed     = installationId.ifEmpty { "default" },
                     serviceRunning = serviceRunning,
                 )
 
+                Spacer(Modifier.height(12.dp))
+
+                // ── Last Passed By ─────────────────────────────────────────────
+                val lastEnc = encounters.firstOrNull()
+                if (lastEnc != null) {
+                    LastPassedByCard(
+                        encounter = lastEnc,
+                        onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // ── Joules explanation ──────────────────────────────────────────
+                JoulesInfoCard()
+
                 Spacer(Modifier.height(16.dp))
             }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Navigation grid — 5 destination tiles
-// ─────────────────────────────────────────────────────────────────────────────
-
-private data class NavTile(
-    val label: String,
-    val route: String,
-    val icon: ImageVector,
-    val gradientStart: Color,
-    val gradientEnd: Color,
-)
-
-private val NAV_TILES = listOf(
-    NavTile("Passes",   "encounters", Icons.AutoMirrored.Filled.List,  Color(0xFF1565C0), Color(0xFF0D47A1)),
-    NavTile("Profile",  "profile",    Icons.Filled.Person,             Color(0xFF6A1B9A), Color(0xFF4A148C)),
-    NavTile("Badges",   "badges",     Icons.Filled.Star,               Color(0xFFF57F17), Color(0xFFE65100)),
-    NavTile("Shop",     "shop",       Icons.Filled.ShoppingCart,       Color(0xFF00695C), Color(0xFF004D40)),
-    NavTile("Settings", "settings",   Icons.Filled.Settings,           Color(0xFF37474F), Color(0xFF263238)),
-)
-
-@Composable
-private fun HomeNavGrid(onNavigate: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // First row: 3 tiles
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            NAV_TILES.take(3).forEach { tile ->
-                NavTileCard(tile = tile, modifier = Modifier.weight(1f), onClick = { onNavigate(tile.route) })
-            }
-        }
-        // Second row: 2 tiles (centred via weight)
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Spacer(Modifier.weight(0.5f))
-            NAV_TILES.drop(3).forEach { tile ->
-                NavTileCard(tile = tile, modifier = Modifier.weight(1f), onClick = { onNavigate(tile.route) })
-            }
-            Spacer(Modifier.weight(0.5f))
-        }
-    }
-}
-
-@Composable
-private fun NavTileCard(tile: NavTile, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.horizontalGradient(listOf(tile.gradientStart, tile.gradientEnd)))
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(
-                imageVector        = tile.icon,
-                contentDescription = tile.label,
-                tint               = Color.White,
-                modifier           = Modifier.size(24.dp),
-            )
-            Text(
-                text       = tile.label,
-                style      = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color      = Color.White,
-            )
         }
     }
 }
@@ -461,6 +371,71 @@ internal fun JoulesInfoCard() {
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Last Passed By strip
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Unit) {
+    val name = encounter.snapshot?.displayName
+        ?.takeIf { it.isNotBlank() } ?: "Unknown Traveler"
+    val seed = encounter.snapshot?.rotatingId ?: encounter.encounter.rotatingId
+    val ago  = relativeTimeString(encounter.encounter.seenAt)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+    ) {
+        Row(
+            modifier          = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            DiceBearAvatar(
+                seed     = seed,
+                size     = 40.dp,
+                modifier = Modifier.clip(CircleShape),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text       = "Last Passed By",
+                    style      = MaterialTheme.typography.labelSmall,
+                    color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text       = name,
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                text  = ago,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Returns a compact human-readable relative time string (e.g. "2 h ago", "Just now"). */
+private fun relativeTimeString(epochMillis: Long): String {
+    val diff = System.currentTimeMillis() - epochMillis
+    return when {
+        diff < 60_000L               -> "Just now"
+        diff < 3_600_000L            -> "${diff / 60_000L} min ago"
+        diff < 86_400_000L           -> "${diff / 3_600_000L} h ago"
+        diff < 7 * 86_400_000L       -> "${diff / 86_400_000L} d ago"
+        else                         -> "${diff / (7 * 86_400_000L)} wk ago"
+    }
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Permission prompt

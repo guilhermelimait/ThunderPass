@@ -71,7 +71,6 @@
 ### 5.4 Home Screen
 - [ ] Remove Today/Streak stat cards; move data to Profile.
 - [ ] "Last Passed By" strip below walking animation: peer avatar + name + relative time. Tap opens encounter detail.
-- [ ] Joules explanation panel: what they are and how to earn them.
 - [ ] Tapping the user avatar in the walking scene navigates to Profile.
 
 ### 5.5 Bluetooth Reliability & Permissions
@@ -106,6 +105,7 @@
 - [ ] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
 - [ ] On load: recalculate Joules from achieved badges and award missing points.
 - [ ] Keep existing unlockable effects (CRT Scanlines, Pixelated Aura, Thunder Trail).
+- [ ] Joules explanation panel: what they are and how to earn them.
 
 ### 5.10 Settings
 - [ ] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
