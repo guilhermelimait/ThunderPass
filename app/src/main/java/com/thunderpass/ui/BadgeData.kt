@@ -6,22 +6,34 @@ import androidx.compose.ui.graphics.Color
 // Tier helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-val TIER_LOCKED = Color(0xFF9E9E9E)
-val TIER_BRONZE = Color(0xFFCD7F32)
-val TIER_SILVER = Color(0xFFC0C0C0)
-val TIER_GOLD   = Color(0xFFFFD700)
+// Tier colours — 0 = Locked, 1-2 = Common (green), 3-4 = Uncommon (blue),
+// 5 = Rare (purple), 6 = Legendary (orange), 7 = Exotic (gold)
+val TIER_LOCKED     = Color(0xFF9E9E9E)
+val TIER_COMMON_1   = Color(0xFF66BB6A)   // 1 – light green
+val TIER_COMMON_2   = Color(0xFF2E7D32)   // 2 – dark green
+val TIER_UNCOMMON_1 = Color(0xFF42A5F5)   // 3 – light blue
+val TIER_UNCOMMON_2 = Color(0xFF1565C0)   // 4 – dark blue
+val TIER_RARE       = Color(0xFFAB47BC)   // 5 – purple
+val TIER_LEGENDARY  = Color(0xFFFF6D00)   // 6 – orange
+val TIER_EXOTIC     = Color(0xFFFFD700)   // 7 – gold yellow
 
 fun tierColor(tier: Int) = when (tier) {
-    1    -> TIER_BRONZE
-    2    -> TIER_SILVER
-    3    -> TIER_GOLD
+    1    -> TIER_COMMON_1
+    2    -> TIER_COMMON_2
+    3    -> TIER_UNCOMMON_1
+    4    -> TIER_UNCOMMON_2
+    5    -> TIER_RARE
+    6    -> TIER_LEGENDARY
+    7    -> TIER_EXOTIC
     else -> TIER_LOCKED
 }
 
 fun tierLabel(tier: Int) = when (tier) {
-    1    -> "BRONZE"
-    2    -> "SILVER"
-    3    -> "GOLD"
+    1, 2 -> "COMMON"
+    3, 4 -> "UNCOMMON"
+    5    -> "RARE"
+    6    -> "LEGENDARY"
+    7    -> "EXOTIC"
     else -> "LOCKED"
 }
 
