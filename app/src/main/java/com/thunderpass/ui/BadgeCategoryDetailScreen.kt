@@ -369,7 +369,7 @@ fun ThunderShield(
         val pad     = w * 0.04f
         val shieldTop = pad
         val shieldH   = h - pad
-        val stroke    = w * 0.055f
+        val stroke    = w * 0.030f
 
         val catC = if (tier == 0) Color(0xFF5D5D5D).copy(alpha = 0.5f) else categoryColor
 

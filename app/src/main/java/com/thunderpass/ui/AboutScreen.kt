@@ -2,6 +2,7 @@ package com.thunderpass.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,10 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
 
 @Composable
 fun AboutScreen() {
@@ -33,11 +36,26 @@ fun AboutScreen() {
     ) {
         Spacer(Modifier.height(32.dp))
 
-        // Developer avatar
-        DiceBearAvatar(
-            seed     = "guilhermelimait",
-            size     = 96.dp,
-            modifier = Modifier.clip(CircleShape),
+        // Developer avatar — loaded from Ko-fi profile picture
+        SubcomposeAsyncImage(
+            model              = "https://storage.ko-fi.com/cdn/useruploads/81b005da-03c3-4771-992a-09a0f8f77595_bc4f05e0-07c0-4ed6-a9-13f16968d95b.png",
+            contentDescription = "Guilherme Lima",
+            contentScale       = ContentScale.Crop,
+            modifier           = Modifier
+                .size(96.dp)
+                .clip(CircleShape),
+            loading = {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            },
+            error = {
+                // Fallback: DiceBear avatar if Ko-fi CDN is unreachable
+                DiceBearAvatar(seed = "guilhermelimait", size = 96.dp, modifier = Modifier.clip(CircleShape))
+            },
         )
 
         // Name + tagline
@@ -145,7 +163,7 @@ fun AboutScreen() {
 
         // Version
         Text(
-            text       = "ThunderPass v0.7.2\nBluetooth LE • Zero cloud • Open source",
+            text       = "ThunderPass v0.7.7\nBluetooth LE • Zero cloud • Open source",
             style      = MaterialTheme.typography.bodySmall,
             color      = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign  = TextAlign.Center,

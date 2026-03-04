@@ -41,7 +41,9 @@ fun RetroGallerySection(modifier: Modifier = Modifier) {
     Card(
         modifier  = modifier,
         shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors    = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -72,7 +74,7 @@ fun RetroGallerySection(modifier: Modifier = Modifier) {
             Text(
                 text  = raData.username,
                 fontSize = 11.sp,
-                color = Color(0xFF777777),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontFamily = FontFamily.Monospace,
             )
 
@@ -83,7 +85,7 @@ fun RetroGallerySection(modifier: Modifier = Modifier) {
                 Text(
                     text     = "No recent games cached yet.",
                     fontSize = 12.sp,
-                    color    = Color(0xFF555555),
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Row(
@@ -107,7 +109,9 @@ fun RetroGallerySection(modifier: Modifier = Modifier) {
 private fun RecentGameChip(title: String, console: String) {
     Card(
         shape   = RoundedCornerShape(10.dp),
-        colors  = CardDefaults.cardColors(containerColor = Color(0xFF24243A)),
+        colors  = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
         elevation = CardDefaults.cardElevation(2.dp),
         modifier  = Modifier.width(118.dp),
     ) {
@@ -116,7 +120,7 @@ private fun RecentGameChip(title: String, console: String) {
                 text       = title,
                 fontSize   = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color      = Color(0xFFDDDDDD),
+                color      = MaterialTheme.colorScheme.onSurface,
                 maxLines   = 2,
                 overflow   = TextOverflow.Ellipsis,
                 lineHeight  = 14.sp,

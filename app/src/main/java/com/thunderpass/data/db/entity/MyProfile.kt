@@ -46,6 +46,14 @@ data class MyProfile(
      */
     val retroUsername: String = "",
 
+    /**
+     * RetroAchievements API key. Persisted here so it survives app updates that
+     * might wipe EncryptedSharedPreferences on some OEM implementations.
+     * Also mirrored to RetroAuthManager for runtime use.
+     */
+    @ColumnInfo(name = "ra_api_key")
+    val raApiKey: String = "",
+
     // ── Ghost Payload ────────────────────────────────────────────────────────
 
     /** Short name of the game the user is sharing a ghost for (e.g. "Super Mario World"). */

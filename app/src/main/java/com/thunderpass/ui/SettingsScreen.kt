@@ -247,6 +247,38 @@ fun SettingsScreen(
             )
         }
 
+        // ── App Management ────────────────────────────────────────────────────
+        SettingsSection("App Management") {
+            // Usage Access — required for the daily play-time tracker
+            SettingActionRow(
+                label       = "Usage Access",
+                subtitle    = "Required for the daily gaming play-time tracker (🎮 Daily Play Time)",
+                buttonLabel = "Open",
+                onClick     = {
+                    context.startActivity(
+                        Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                },
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // App Info — full system settings page for ThunderPass
+            SettingActionRow(
+                label       = "App Info",
+                subtitle    = "View storage, permissions, and other system-level app settings",
+                buttonLabel = "Open",
+                onClick     = {
+                    context.startActivity(
+                        Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                    )
+                },
+            )
+        }
+
         // ── Advanced (collapsible) ────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(

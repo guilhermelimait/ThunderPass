@@ -31,7 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -147,7 +147,9 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -157,7 +159,7 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = Color(0xFF00E5FF),
+                color = MaterialTheme.colorScheme.primary,
                 letterSpacing = 1.sp
             )
 
@@ -168,7 +170,7 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
                 Text(
                     text = "Usage access is needed to track your daily gaming sessions.",
                     fontSize = 13.sp,
-                    color = Color(0xFFAAAAAA),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
                 Spacer(Modifier.height(12.dp))
@@ -182,8 +184,8 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
                         permissionGranted = hasUsageStatsPermission(context)
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF00E5FF),
-                        contentColor = Color.Black
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor   = MaterialTheme.colorScheme.onPrimary,
                     )
                 ) {
                     Text(
@@ -199,7 +201,7 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
                 Text(
                     text = "No gaming sessions recorded yet today. Play something and check back!",
                     fontSize = 13.sp,
-                    color = Color(0xFFAAAAAA),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 18.sp
                 )
             } else {
@@ -210,7 +212,7 @@ fun GamePlayStatsCard(modifier: Modifier = Modifier) {
                 Text(
                     text = "Total today: ${formatDuration(totalMs)}",
                     fontSize = 12.sp,
-                    color = Color(0xFF888888),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace
                 )
                 Spacer(Modifier.height(12.dp))
@@ -241,14 +243,14 @@ private fun AppUsageRow(stat: AppUsageStat, maxMs: Long) {
                 text = stat.appName,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFFEEEEEE),
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = formatDuration(stat.totalTimeMs),
                 fontSize = 11.sp,
-                color = Color(0xFF00E5FF),
+                color = MaterialTheme.colorScheme.primary,
                 fontFamily = FontFamily.Monospace
             )
         }
@@ -258,13 +260,13 @@ private fun AppUsageRow(stat: AppUsageStat, maxMs: Long) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
-                .background(Color(0xFF2A2A2A), RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(2.dp))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(barFraction)
                     .height(4.dp)
-                    .background(Color(0xFF00E5FF), RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
             )
         }
     }

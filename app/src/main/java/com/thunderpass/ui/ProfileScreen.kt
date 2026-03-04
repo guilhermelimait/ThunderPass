@@ -1,6 +1,7 @@
 package com.thunderpass.ui
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,7 +59,7 @@ fun ProfileScreen(
         voltsTotal = voltsTotal,
         firstRun = firstRun,
         onSave = { name, retroUser, retroKey, seed ->
-            vm.save(name, retroUser, avatarSeed = seed)
+            vm.save(name, retroUser, avatarSeed = seed, raApiKey = retroKey)
             if (retroKey.isNotBlank()) {
                 RetroAuthManager.getInstance(context).saveCredentials(
                     apiKey  = retroKey,
@@ -89,9 +90,12 @@ fun ProfileScreenContent(
     var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
     val context            = LocalContext.current
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
-    var draftRaApiKey      by remember {
-        // Pre-populate from secure storage so users don’t need to re-enter their key
-        mutableStateOf(RetroAuthManager.getInstance(context).getApiKey())
+    var draftRaApiKey      by remember(profile.raApiKey) {
+        // Prefer the value persisted in Room DB; fall back to EncryptedSharedPreferences
+        // so existing users don't lose their key after the DB schema upgrade.
+        val fromDb  = profile.raApiKey.trim()
+        val fromEnc = RetroAuthManager.getInstance(context).getApiKey() ?: ""
+        mutableStateOf(fromDb.ifEmpty { fromEnc })
     }
     var saved by remember { mutableStateOf(false) }
 
@@ -186,16 +190,6 @@ fun ProfileScreenContent(
             }
 
             Spacer(Modifier.height(12.dp))
-
-            // ── Avatar seed picker ─────────────────────────────────────────
-            AvatarSeedPicker(
-                currentSeed = avatarSeed,
-                onSeedSelected = { seed ->
-                    avatarSeed = seed
-                    onAvatarSeedChange?.invoke(seed)
-                    saved = false
-                },
-            )
 
             Spacer(Modifier.height(4.dp))
             Row(
@@ -337,17 +331,47 @@ fun ProfileScreenContent(
                         "$nameSlug-$suffix"
                     }
                 }
-                Text(
-                    text  = "Share ID",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-                Text(
-                    text  = shareId,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    fontFamily = FontFamily.Monospace,
-                )
+                // ── Share ID card ──────────────────────────────────────────────
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ),
+                ) {
+                    Row(
+                        modifier              = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text  = "Share ID",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                            Text(
+                                text       = shareId,
+                                style      = MaterialTheme.typography.bodySmall,
+                                color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type    = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "Find me on ThunderPass: $shareId")
+                                    putExtra(Intent.EXTRA_SUBJECT, "My ThunderPass ID")
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Share via"))
+                            },
+                        ) {
+                            Text("Share")
+                        }
+                    }
+                }
                 Spacer(Modifier.height(16.dp))
             }
         }

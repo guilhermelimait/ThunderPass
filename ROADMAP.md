@@ -144,12 +144,13 @@
 - [x] on the frontscren, home of the app, show the logo before the hi username, same size as the first and second line on it, remove the hadn after it
 - [x] if the app is on landscape mode, put the last passed by under the animation area
 - [x] if the user has inputed the inofrmatoin about his retroachievements, plese save it locally as well, and if i open the app again, it will always be there, use that information to collect username, last games played, badges and so on, and create a view of that in a gallery, one per each kind used on this app below the buttons on the left area of the home screen and on profile of the user.
-[] if a user is recognized by the device and the device has leds, blink it on yellow collor three times.
-[] add the app management on the settings area as well as any other that might be missing and is used by the app.
-[] on my about area, please show my avatar from the kofi, not the one on the app
-[] remove the heads avatars area on the profile, keep the random button but on place of the one on top right of the profile, if the user changes it, always save, even if the user doesnt go to the button to save on the bottom
-[] update the badges view, use the shield that was on it, and remove the edge large as it was created on the previous change
-[] on profile, show the badges that were achieved, and respect their colors
-[] share id on profile, make it clear, respect the colors of the app if on darkmode or not, but add a button to share and user decide whatever it uses on the device to share, whatsapp, copy, email, whatever
-[] on badges, over encounters, remove the badge and the thunder and keep just the logo on it
-[] respect dark and bright mode if the user uses a profile with RA or for daily play time graph area
+-[ ] if a user is recognized by the device and the device has leds, blink it on yellow collor three times.
+-[ ] add the app management on the settings area as well as any other that might be missing and is used by the app.
+-[ ] on my about area, please show my avatar from the kofi, not the one on the app
+-[ ] remove the heads avatars area on the profile, keep the random button but on place of the one on top right of the profile, if the user changes it, always save, even if the user doesnt go to the button to save on the bottom
+-[ ] update the badges view, use the shield that was on it, and remove the edge large as it was created on the previous change
+-[ ] on profile, show the badges that were achieved, and respect their colors
+-[ ] share id on profile, make it clear, respect the colors of the app if on darkmode or not, but add a button to share and user decide whatever it uses on the device to share, whatsapp, copy, email, whatever
+-[ ] on badges, over encounters, remove the badge and the thunder and keep just the logo on it
+-[ ] respect dark and bright mode if the user uses a profile with RA or for daily play time graph area
+-[ ]ra api key is not being saved to the local profile, and if the installation is updated, it is losing the profile information

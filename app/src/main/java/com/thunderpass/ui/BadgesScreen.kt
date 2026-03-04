@@ -22,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.R
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Badges screen — category grid (tap a card to see its badges)
@@ -200,22 +202,32 @@ private fun BadgeCategoryCard(
                 )
             }
 
+            // Right side: for ENCOUNTERS show just the app logo; otherwise emoji + shield
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(
-                    text  = category.emoji,
-                    style = MaterialTheme.typography.displaySmall,
-                )
-                if (earned > 0) {
-                    Spacer(Modifier.height(2.dp))
-                    ThunderShield(
-                        tier          = topTier,
-                        categoryColor = category.accentColor,
-                        darkBg        = categoryDarkBg(category, topTier),
-                        size          = 28.dp,
+                if (category == BadgeCategory.ENCOUNTERS) {
+                    // Encounters: logo only — no emoji, no shield
+                    androidx.compose.foundation.Image(
+                        painter            = painterResource(R.drawable.logo),
+                        contentDescription = null,
+                        modifier           = Modifier.size(if (compact) 40.dp else 52.dp),
                     )
+                } else {
+                    Text(
+                        text  = category.emoji,
+                        style = MaterialTheme.typography.displaySmall,
+                    )
+                    if (earned > 0) {
+                        Spacer(Modifier.height(2.dp))
+                        ThunderShield(
+                            tier          = topTier,
+                            categoryColor = category.accentColor,
+                            darkBg        = categoryDarkBg(category, topTier),
+                            size          = 28.dp,
+                        )
+                    }
                 }
             }
         }
