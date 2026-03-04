@@ -68,27 +68,32 @@ fun BadgeCategoryDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // ── Tier legend row ───────────────────────────────────────────────
+            // ── Rarity legend row ─────────────────────────────────────────────
             Row(
                 modifier              = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
-                listOf(0 to "Locked", 1 to "Bronze", 2 to "Silver", 3 to "Gold").forEach { (t, name) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(tierColor(t)),
-                        )
-                        Spacer(Modifier.width(5.dp))
+                listOf(
+                    RARITY_NOT_ACHIEVED to "Not Achieved",
+                    RARITY_COMMON       to "Common",
+                    RARITY_UNCOMMON     to "Uncommon",
+                    RARITY_RARE         to "Rare",
+                    RARITY_LEGENDARY    to "Legendary",
+                ).forEach { (color, name) ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(color),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
-                            text  = name,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = tierColor(t).copy(alpha = if (t == 0) 0.6f else 0.9f),
+                            text     = name,
+                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp, fontWeight = FontWeight.Bold),
+                            color    = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         )
                     }
                 }
