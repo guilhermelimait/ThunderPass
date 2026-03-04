@@ -147,6 +147,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Non-null when a newer GitHub release exists. Value = the new version tag (e.g. "v0.2.0"). */
     val availableUpdate: StateFlow<String?> = _availableUpdate
 
+    // ── Friend invite (from thunderpass://add-friend/{userId} deep links) ─────
+    /** Non-null when the app was opened via a friend-invite link and is pending resolution. */
+    private val _friendInviteUserId = MutableStateFlow<String?>(null)
+    val friendInviteUserId: StateFlow<String?> = _friendInviteUserId
+
+    /** Result of the most recent friend-invite resolution. */
+    sealed class FriendInviteResult {
+        data class Added(val displayName: String) : FriendInviteResult()
+        object NotMetYet : FriendInviteResult()
+    }
+    private val _friendInviteResult = MutableStateFlow<FriendInviteResult?>(null)
+    val friendInviteResult: StateFlow<FriendInviteResult?> = _friendInviteResult
+
     // ─────────────────────────────────────────────────────────────────────────
 
     init {
@@ -159,6 +172,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         // Check for OTA updates in the background on every app launch.
         viewModelScope.launch {
             _availableUpdate.value = OtaChecker.checkForUpdate(getApplication())
+        }
+        // Check for a pending friend invite from a thunderpass://add-friend deep link
+        viewModelScope.launch {
+            val settingsPrefs = getApplication<android.app.Application>()
+                .getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
+            val pendingUserId = settingsPrefs.getString("pending_friend_invite", null)
+            if (!pendingUserId.isNullOrBlank()) {
+                _friendInviteUserId.value = pendingUserId
+            }
         }
     }
 
@@ -252,6 +274,38 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             encounterDao.setFriend(encounterId, !currentlyFriend)
         }
+    }
+
+    /**
+     * Called when the user confirms or auto-resolves a friend invite deep link.
+     * Looks up the encounter for [peerUserId] and marks it as friend if found.
+     * Posts the result to [friendInviteResult] for the UI to act on.
+     * Clears the stored invite from SharedPrefs regardless of outcome.
+     */
+    fun resolveFriendInvite(peerUserId: String) {
+        viewModelScope.launch {
+            // Clear from prefs immediately (don't re-show on next launch)
+            getApplication<android.app.Application>()
+                .getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
+                .edit().remove("pending_friend_invite").apply()
+            _friendInviteUserId.value = null
+
+            // Look up the encounter
+            val snapshotId  = snapshotDao.getSnapshotIdByUserId(peerUserId)
+            val encounterId = snapshotId?.let { encounterDao.getIdBySnapshotId(it) }
+            if (encounterId != null) {
+                encounterDao.setFriend(encounterId, true)
+                val displayName = snapshotId.let { snapshotDao.getById(it) }?.displayName ?: "them"
+                _friendInviteResult.value = FriendInviteResult.Added(displayName)
+            } else {
+                _friendInviteResult.value = FriendInviteResult.NotMetYet
+            }
+        }
+    }
+
+    /** Dismiss the friend invite result dialog. */
+    fun dismissFriendInviteResult() {
+        _friendInviteResult.value = null
     }
 
     // ── Privacy mode ────────────────────────────────────────────────────────

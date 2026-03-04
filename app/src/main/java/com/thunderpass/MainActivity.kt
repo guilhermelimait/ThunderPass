@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleSupabaseDeepLink(intent)
+        handleFriendInviteDeepLink(intent)
         requestIgnoreBatteryOptimizationsIfNeeded()
         setContent {
             ThunderPassNavGraph(onMusicChange = { enabled ->
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleSupabaseDeepLink(intent)
+        handleFriendInviteDeepLink(intent)
     }
 
     // ── Background music ──────────────────────────────────────────────────────
@@ -137,13 +139,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ── Supabase deep-link ────────────────────────────────────────────────────
+    // ── Supabase deep-link ─────────────────────────────────────────────
 
     private fun handleSupabaseDeepLink(intent: Intent?) {
         val uri: Uri = intent?.data ?: return
         if (uri.scheme == "thunderpass" && uri.host == "callback") {
             SupabaseManager.client.handleDeeplinks(intent)
         }
+    }
+
+    // ── Friend-invite deep-link ───────────────────────────────────────
+
+    /**
+     * Handles [thunderpass://add-friend/{userId}] URIs.
+     * Saves the pending userId to SharedPrefs so HomeViewModel can resolve it
+     * (look up the existing encounter and mark as friend, or prompt the user to
+     * walk near the sender if no encounter exists yet).
+     */
+    private fun handleFriendInviteDeepLink(intent: Intent?) {
+        val uri: Uri = intent?.data ?: return
+        if (uri.scheme != "thunderpass" || uri.host != "add-friend") return
+        val peerUserId = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return
+        getSharedPreferences("tp_settings", MODE_PRIVATE)
+            .edit()
+            .putString("pending_friend_invite", peerUserId)
+            .apply()
     }
 }
 

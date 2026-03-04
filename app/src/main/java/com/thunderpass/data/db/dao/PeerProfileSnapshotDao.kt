@@ -61,4 +61,9 @@ interface PeerProfileSnapshotDao {
      */
     @Query("SELECT COUNT(*) FROM peer_profile_snapshot WHERE peerUserId = :userId AND receivedAt >= :sinceMs")
     suspend fun countByUserIdSince(userId: String, sinceMs: Long): Int
-}
+    /**
+     * Find the most recent snapshot from a specific peer Supabase userId.
+     * Used to resolve friend-invite deep links to an existing encounter.
+     */
+    @Query("SELECT id FROM peer_profile_snapshot WHERE peerUserId = :userId ORDER BY receivedAt DESC LIMIT 1")
+    suspend fun getSnapshotIdByUserId(userId: String): Long?}

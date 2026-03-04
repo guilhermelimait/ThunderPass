@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,6 +39,8 @@ import com.thunderpass.ui.theme.VividPurple
 import java.util.UUID
 import androidx.compose.ui.tooling.preview.Preview
 import com.thunderpass.data.db.entity.MyProfile
+import com.thunderpass.supabase.SupabaseManager
+import io.github.jan.supabase.auth.auth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -374,6 +379,18 @@ fun ProfileScreenContent(
                         "$nameSlug-$suffix"
                     }
                 }
+                // Friend invite deep link using Supabase user ID (falls back to installationId)
+                val supabaseUserId = remember {
+                    SupabaseManager.client.auth.currentSessionOrNull()?.user?.id ?: ""
+                }
+                val friendInviteLink = remember(supabaseUserId, profile.installationId, profile.privacyMode) {
+                    if (profile.privacyMode) null
+                    else {
+                        val code = supabaseUserId.ifBlank { profile.installationId }
+                        "thunderpass://add-friend/$code"
+                    }
+                }
+                val clipboardManager = LocalClipboardManager.current
                 // ── Share ID card ──────────────────────────────────────────────
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -400,18 +417,52 @@ fun ProfileScreenContent(
                                 color      = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
                             )
+                            if (friendInviteLink != null) {
+                                Text(
+                                    text       = friendInviteLink,
+                                    style      = MaterialTheme.typography.labelSmall,
+                                    color      = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    fontFamily = FontFamily.Monospace,
+                                    maxLines   = 1,
+                                    overflow   = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
-                        OutlinedButton(
-                            onClick = {
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type    = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "Find me on ThunderPass: $shareId")
-                                    putExtra(Intent.EXTRA_SUBJECT, "My ThunderPass ID")
-                                }
-                                context.startActivity(Intent.createChooser(sendIntent, "Share via"))
-                            },
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
                         ) {
-                            Text("Share")
+                            if (friendInviteLink != null) {
+                                IconButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(friendInviteLink))
+                                    },
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.ContentCopy,
+                                        contentDescription = "Copy invite link",
+                                        tint               = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val shareText = buildString {
+                                        append("Find me on ThunderPass! My ID: $shareId")
+                                        if (friendInviteLink != null) {
+                                            append("\nAdd me as a friend: $friendInviteLink")
+                                        }
+                                    }
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type    = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                        putExtra(Intent.EXTRA_SUBJECT, "My ThunderPass ID")
+                                    }
+                                    context.startActivity(Intent.createChooser(sendIntent, "Share via"))
+                                },
+                            ) {
+                                Text("Share")
+                            }
                         }
                     }
                 }

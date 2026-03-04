@@ -67,4 +67,11 @@ interface EncounterDao {
      */
     @Query("DELETE FROM encounter WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /**
+     * Find the encounter that is linked to a specific peer snapshot.
+     * Used to resolve friend-invite deep links.
+     */
+    @Query("SELECT id FROM encounter WHERE peerSnapshotId = :snapshotId LIMIT 1")
+    suspend fun getIdBySnapshotId(snapshotId: Long): Long?
 }

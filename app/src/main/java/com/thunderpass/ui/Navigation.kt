@@ -53,8 +53,52 @@ fun ThunderPassNavGraph(
     var darkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
 
     val homeVm: HomeViewModel = viewModel()
+    val pendingFriendUserId by homeVm.friendInviteUserId.collectAsState()
+    val friendInviteResult  by homeVm.friendInviteResult.collectAsState()
 
     ThunderPassTheme(darkTheme = darkMode) {
+
+        // ── Friend-invite dialogs (shown over any screen) ─────────────────────
+        pendingFriendUserId?.let { userId ->
+            AlertDialog(
+                onDismissRequest = { homeVm.resolveFriendInvite(userId) },
+                title   = { Text("Friend Invite 🤝") },
+                text    = {
+                    Text(
+                        "Someone sent you a friend invite. Should ThunderPass mark them as a friend?\n\n" +
+                        "If you haven't encountered this person via BLE yet, walk near each other with ThunderPass active first."
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = { homeVm.resolveFriendInvite(userId) }) { Text("Connect") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        // Dismiss without resolving — clear the pref so it doesn't show again
+                        homeVm.resolveFriendInvite("")
+                    }) { Text("Dismiss") }
+                },
+            )
+        }
+
+        friendInviteResult?.let { result ->
+            AlertDialog(
+                onDismissRequest = { homeVm.dismissFriendInviteResult() },
+                title   = { Text(if (result is HomeViewModel.FriendInviteResult.Added) "Friend Added! ⚡" else "Not yet connected") },
+                text    = {
+                    when (result) {
+                        is HomeViewModel.FriendInviteResult.Added ->
+                            Text("${result.displayName} is now in your friends list.")
+                        is HomeViewModel.FriendInviteResult.NotMetYet ->
+                            Text("No encounter found with this person yet. Walk near each other with ThunderPass active — once you Spark, they'll appear in your Passes and can be marked as a friend.")
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { homeVm.dismissFriendInviteResult() }) { Text("OK") }
+                },
+            )
+        }
+
         Scaffold(
             contentWindowInsets = WindowInsets(0),
         ) { innerPadding ->
