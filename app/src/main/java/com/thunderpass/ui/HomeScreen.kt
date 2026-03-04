@@ -12,7 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +28,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -146,7 +148,12 @@ fun HomeScreenContent(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                val animLandscapeH = maxHeight / 3
+                // Match portrait card aspect ratio: portrait_card = full_portrait_w × (full_portrait_h / 3)
+                // In landscape: maxHeight = portrait_w, maxWidth = portrait_h
+                // portrait aspect (w:h) = maxHeight / (maxWidth / 3) = 3*maxHeight/maxWidth
+                // landscape card_width = maxWidth/2 (right panel via weight)
+                // card_height = card_width / aspect = (maxWidth/2) / (3*maxHeight/maxWidth) = maxWidth²/(6·maxHeight)
+                val animLandscapeH = maxWidth * (maxWidth / maxHeight) / 6f
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Left panel
                     Column(
@@ -502,45 +509,99 @@ private fun PermissionPrompt(onGrant: () -> Unit) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Navigation shortcut buttons (replaces the bottom bar)
+// Navigation shortcut buttons — always-visible 2×3 grid, badge-style square tiles
 // ─────────────────────────────────────────────────────────────────────────────
 
-private data class NavEntry(val label: String, val icon: ImageVector, val route: String)
+private data class NavEntry(
+    val label:       String,
+    val icon:        ImageVector,
+    val route:       String,
+    val accentColor: Color,
+    val gradientEnd: Color,
+)
 
 private val NAV_ENTRIES = listOf(
-    NavEntry("Passes",   Icons.Filled.ElectricBolt,    "encounters"),
-    NavEntry("Profile",  Icons.Filled.Person,          "profile"),
-    NavEntry("Badges",   Icons.Filled.WorkspacePremium,"badges"),
-    NavEntry("Shop",     Icons.Filled.ShoppingCart,    "shop"),
-    NavEntry("Settings", Icons.Filled.Settings,        "settings"),
-    NavEntry("About",    Icons.Filled.LocalCafe,       "about"),
+    NavEntry("Passes",   Icons.Filled.ElectricBolt,     "encounters", Color(0xFFFFB300), Color(0xFFFF6F00)),
+    NavEntry("Profile",  Icons.Filled.Person,           "profile",    Color(0xFF2196F3), Color(0xFF0D47A1)),
+    NavEntry("Badges",   Icons.Filled.WorkspacePremium, "badges",     Color(0xFF7B1FA2), Color(0xFFAD1457)),
+    NavEntry("Shop",     Icons.Filled.ShoppingCart,     "shop",       Color(0xFFE64A19), Color(0xFFF57F17)),
+    NavEntry("Settings", Icons.Filled.Settings,         "settings",   Color(0xFF37474F), Color(0xFF546E7A)),
+    NavEntry("About",    Icons.Filled.LocalCafe,        "about",      Color(0xFF00796B), Color(0xFF00ACC1)),
 )
 
 @Composable
 internal fun NavShortcuts(onNavigate: (String) -> Unit) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding        = PaddingValues(horizontal = 0.dp),
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier            = Modifier.fillMaxWidth(),
     ) {
-        NAV_ENTRIES.forEach { entry ->
-            item(key = entry.route) {
-                OutlinedButton(
-                    onClick         = { onNavigate(entry.route) },
-                    contentPadding  = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    shape           = RoundedCornerShape(50),
-                ) {
-                    Icon(
-                        imageVector        = entry.icon,
-                        contentDescription = entry.label,
-                        modifier           = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text  = entry.label,
-                        style = MaterialTheme.typography.labelMedium,
+        NAV_ENTRIES.chunked(3).forEach { rowEntries ->
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                rowEntries.forEach { entry ->
+                    NavSquareButton(
+                        entry    = entry,
+                        onClick  = { onNavigate(entry.route) },
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NavSquareButton(
+    entry:    NavEntry,
+    onClick:  () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .drawBehind {
+                // Badge-style gradient background
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(entry.accentColor, entry.gradientEnd),
+                        start  = Offset(0f, 0f),
+                        end    = Offset(size.width, size.height),
+                    ),
+                )
+                // Decorative radial glow circles (badge card style)
+                val cx = size.width * 0.88f
+                val cy = size.height * 0.12f
+                for (r in listOf(28f, 50f, 72f)) {
+                    drawCircle(
+                        color  = Color.White.copy(alpha = 0.09f),
+                        radius = r,
+                        center = Offset(cx, cy),
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector        = entry.icon,
+                contentDescription = entry.label,
+                tint               = Color.White,
+                modifier           = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text       = entry.label,
+                style      = MaterialTheme.typography.labelSmall,
+                color      = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
