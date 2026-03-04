@@ -18,7 +18,7 @@
     /* ── NAV ── */
     nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#fff;border-bottom:3px solid var(--yellow);position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.08)}
     .nav-brand{display:flex;align-items:center;gap:10px;font-size:1.3rem;font-weight:900;color:var(--purple);text-decoration:none}
-    .nav-brand span{font-size:1.6rem}
+    .nav-brand img{width:36px;height:36px;object-fit:contain}
     .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
     .nav-links a{color:var(--text);text-decoration:none;font-weight:600;font-size:.9rem;transition:color .2s}
     .nav-links a:hover{color:var(--purple)}
@@ -28,7 +28,7 @@
     /* ── HERO ── */
     .hero{background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 40%,#2563eb 80%,#0ea5e9 100%);color:#fff;text-align:center;padding:80px 20px 100px;position:relative;overflow:hidden}
     .hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
-    .hero-bolt{font-size:5rem;display:block;filter:drop-shadow(0 0 24px #FFD400cc);animation:pulse 2s ease-in-out infinite}
+    .hero-bolt{width:120px;height:120px;display:block;margin:0 auto;filter:drop-shadow(0 0 32px rgba(255,180,50,.7));animation:pulse 2s ease-in-out infinite}
     @keyframes pulse{0%,100%{filter:drop-shadow(0 0 24px #FFD400cc)}50%{filter:drop-shadow(0 0 48px #FFD400ff)}}
     .hero h1{font-size:clamp(2.4rem,6vw,4rem);font-weight:900;margin:16px 0 8px;letter-spacing:-1px}
     .hero h1 em{font-style:normal;color:var(--yellow)}
@@ -168,7 +168,7 @@
 
 <!-- ── NAV ── -->
 <nav>
-  <a class="nav-brand" href="#"><span>⚡</span>ThunderPass</a>
+  <a class="nav-brand" href="#"><img src="logo.png" alt="ThunderPass logo" />ThunderPass</a>
   <div class="nav-links">
     <a href="#features">Features</a>
     <a href="#roadmap">Roadmap</a>
@@ -179,7 +179,7 @@
 
 <!-- ── HERO ── -->
 <div class="hero">
-  <span class="hero-bolt">⚡</span>
+  <img class="hero-bolt" src="logo.png" alt="ThunderPass logo" />
   <h1>Meet your next <em>ThunderPass</em></h1>
   <p class="tagline">The Android BLE StreetPass — discover players around you, collect Joules, sync your RetroAchievements and build your Thunder profile.</p>
   <div class="hero-badges">
