@@ -403,6 +403,8 @@ class BleService : Service() {
             ).apply {
                 description = "Alerts when a new traveler is discovered nearby"
                 setShowBadge(true)
+                enableLights(true)
+                lightColor = android.graphics.Color.argb(255, 80, 200, 255) // electric blue
             }
         )
     }
