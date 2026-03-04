@@ -147,6 +147,10 @@ fun WalkingSceneCard(
             val personXDp  = cardW * PERSON_X_FRAC
             val armColor   = remember(avatarSeed) { skinToneForSeed(avatarSeed) }
 
+            // Bob offset — mirrors drawWalker so the head stays glued to the body top
+            val bobFraction = if (serviceRunning) abs(sin(walkPhase * 2f)).toFloat() * 0.010f else 0f
+            val byOffDp     = cardHeight * bobFraction   // body bobs upward, so head follows
+
             // 1 ── Parallax background
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawScene(scrollFrac)
@@ -157,7 +161,7 @@ fun WalkingSceneCard(
                 drawWalker(walkPhase, serviceRunning, armColor)
             }
 
-            // 3 ── DiceBear head — transparent background from the start
+            // 3 ── DiceBear head — bobs with body, transparent background
             DiceBearAvatar(
                 seed                  = avatarSeed,
                 size                  = headDiamDp,
@@ -167,7 +171,7 @@ fun WalkingSceneCard(
                     .align(Alignment.TopStart)
                     .offset(
                         x = personXDp - headHalfDp,
-                        y = cardHeight * HEAD_TOP_FRAC,
+                        y = cardHeight * HEAD_TOP_FRAC - byOffDp,
                     ),
             )
         }
@@ -369,6 +373,15 @@ private fun DrawScope.drawSpaceNear(l: Float, w: Float, h: Float, gY: Float, pal
 }
 
 // ── Walking figure ────────────────────────────────────────────────────────────
+//
+// FIXED Z-ORDER (never swaps with walk phase):
+//   1. Both legs        — always behind body (swinging-back leg drawn first)
+//   2. Back arm (lShX)  — screen-left, always behind body
+//   3. Bag              — left of body, on top of back arm, behind body
+//   4. Body (pill)
+//   5. Neck connector
+//   6. Front arm (rShX) — screen-right, always on top of everything
+// Head is a Compose layer above (controlled by composable, bobs with body).
 
 private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: Color) {
     val w = size.width
@@ -376,88 +389,99 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
 
     val pX        = w * PERSON_X_FRAC
     val groundY   = h * GROUND_FRAC
-    val hipY      = h * (GROUND_FRAC - LEG_FRAC)               // = 0.58h
-    val shoulderY = h * (GROUND_FRAC - LEG_FRAC - TORSO_FRAC)  // = 0.36h
+    val hipY      = h * (GROUND_FRAC - LEG_FRAC)
+    val shoulderY = h * (GROUND_FRAC - LEG_FRAC - TORSO_FRAC)
 
-    val torsoW    = w * 0.058f
+    val torsoW    = w * 0.062f         // slightly wider for pill proportion
     val segStroke = w * 0.042f
-    val thighLen  = h * 0.11f   // half of LEG_FRAC
-    val uArmLen   = h * 0.08f
-    val fArmLen   = h * 0.075f
+    val thighLen  = h * 0.085f         // shorter legs
+    val uArmLen   = h * 0.075f
+    val fArmLen   = h * 0.068f
 
-    val swingA  = if (running) sin(walkPhase).toFloat() else 0f
-    val swingB  = -swingA
-    val bob     = if (running) abs(sin(walkPhase * 2f)).toFloat() * h * 0.010f else 0f
-    val byOff   = -bob
+    val swingA = if (running) sin(walkPhase).toFloat() else 0f
+    val swingB = -swingA
+    val bob    = if (running) abs(sin(walkPhase * 2f)).toFloat() * h * 0.010f else 0f
+    val byOff  = -bob
 
-    val leftFront = swingA >= 0f   // left foot is forward when swingA positive
+    // ── Limb attachment points ────────────────────────────────────────────────
+    val lHipX = pX - torsoW * 0.32f; val rHipX = pX + torsoW * 0.32f
+    // screen-left shoulder = back arm; screen-right shoulder = front arm
+    val lShX  = pX - torsoW * 0.78f; val rShX  = pX + torsoW * 0.78f
 
-    // ── Precompute limb endpoints ─────────────────────────────────────────────
-    val lHipX = pX - torsoW * 0.35f; val rHipX = pX + torsoW * 0.35f
-    val lShX  = pX - torsoW * 0.90f; val rShX  = pX + torsoW * 0.90f
+    // Leg endpoints (both legs always swing)
+    val lKneeX = lHipX + swingA * h * 0.038f; val lKneeY = hipY + byOff + thighLen
+    val lFootX = lHipX + swingA * h * 0.075f; val lFootY = groundY
+    val rKneeX = rHipX + swingB * h * 0.038f; val rKneeY = hipY + byOff + thighLen
+    val rFootX = rHipX + swingB * h * 0.075f; val rFootY = groundY
 
-    val lKneeX = lHipX + swingA * h * 0.040f; val lKneeY = hipY + byOff + thighLen
-    val lFootX = lHipX + swingA * h * 0.080f; val lFootY = groundY
-    val rKneeX = rHipX + swingB * h * 0.040f; val rKneeY = hipY + byOff + thighLen
-    val rFootX = rHipX + swingB * h * 0.080f; val rFootY = groundY
+    // Arm endpoints (arms swing opposite to legs)
+    val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = shoulderY + byOff + uArmLen
+    val lHandX  = lShX + swingB * h * 0.055f; val lHandY  = lElbowY + fArmLen
+    val rElbowX = rShX + swingA * h * 0.028f; val rElbowY = shoulderY + byOff + uArmLen
+    val rHandX  = rShX + swingA * h * 0.055f; val rHandY  = rElbowY + fArmLen
 
-    val lElbowX = lShX + swingB * h * 0.035f; val lElbowY = shoulderY + byOff + uArmLen
-    val lHandX  = lShX + swingB * h * 0.068f; val lHandY  = lElbowY + fArmLen
-    val rElbowX = rShX + swingA * h * 0.035f; val rElbowY = shoulderY + byOff + uArmLen
-    val rHandX  = rShX + swingA * h * 0.068f; val rHandY  = rElbowY + fArmLen
-
-    val legFront = Color(0xFF6870A0)
-    val legBack  = Color(0xFF9098C0)
-    val armBack  = armColor.copy(alpha = 0.55f)
-
-    // 2-segment limb helper with joint dot
-    fun DrawScope.seg(
-        x0: Float, y0: Float, x1: Float, y1: Float,
-        x2: Float, y2: Float, color: Color, sw: Float,
-    ) {
-        val p = Path().apply { moveTo(x0, y0); lineTo(x1, y1); lineTo(x2, y2) }
-        drawPath(p, color, style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawCircle(color, radius = sw * 0.52f, center = Offset(x1, y1))
-    }
-
-    // ── Draw order: back leg → back arm → backpack → torso → badge → front arm → front leg
-    //   Torso covers back leg + back arm; front arm + front leg are always on top.
-
-    if (leftFront) {
-        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legBack, segStroke)
-        seg(lShX,  shoulderY + byOff, lElbowX, lElbowY, lHandX, lHandY, armBack, segStroke * 0.82f)
-    } else {
-        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legBack, segStroke)
-        seg(rShX,  shoulderY + byOff, rElbowX, rElbowY, rHandX, rHandY, armBack, segStroke * 0.82f)
-    }
-
-    // Backpack — on the LEFT (person's back when moving right), partially behind torso
-    drawRoundRect(
-        color        = Color(0xFF7888A0),
-        topLeft      = Offset(pX - torsoW * 1.65f, shoulderY + byOff + h * TORSO_FRAC * 0.08f),
-        size         = Size(torsoW * 0.90f, h * TORSO_FRAC * 0.75f),
-        cornerRadius = CornerRadius(w * 0.013f),
+    // ── Colors ────────────────────────────────────────────────────────────────
+    val legFwd   = Color(0xFF6870A0)   // swinging-forward leg (brighter)
+    val legBk    = Color(0xFF9098C0)   // swinging-back leg (darker)
+    // Back arm: genuinely darkened skin tone (not just alpha)
+    val armBackC = Color(
+        red   = armColor.red   * 0.55f,
+        green = armColor.green * 0.55f,
+        blue  = armColor.blue  * 0.55f,
     )
 
-    // Torso
+    // 2-segment limb helper
+    fun DrawScope.seg(x0: Float, y0: Float, x1: Float, y1: Float,
+                      x2: Float, y2: Float, color: Color, sw: Float) {
+        val p = Path().apply { moveTo(x0, y0); lineTo(x1, y1); lineTo(x2, y2) }
+        drawPath(p, color, style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(color, radius = sw * 0.50f, center = Offset(x1, y1))
+    }
+
+    // ── 1. Legs — BOTH always behind body ────────────────────────────────────
+    // Draw the swinging-back leg first so the forward leg is visually on top of it
+    val leftLegForward = swingA >= 0f
+    if (leftLegForward) {
+        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legBk,  segStroke)
+        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legFwd, segStroke)
+    } else {
+        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legBk,  segStroke)
+        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legFwd, segStroke)
+    }
+
+    // ── 2. Back arm — screen-left (lShX), ALWAYS behind body ─────────────────
+    seg(lShX, shoulderY + byOff, lElbowX, lElbowY, lHandX, lHandY, armBackC, segStroke * 0.80f)
+
+    // ── 3. Bag — left side, on top of back arm, behind body ───────────────────
+    drawRoundRect(
+        color        = Color(0xFF7888A0),
+        topLeft      = Offset(pX - torsoW * 1.72f, shoulderY + byOff + h * TORSO_FRAC * 0.06f),
+        size         = Size(torsoW * 0.75f, h * TORSO_FRAC * 0.60f),
+        cornerRadius = CornerRadius(w * 0.012f),
+    )
+
+    // ── 4. Body — pill shape (cornerRadius = half torso width = full rounding) ─
     drawRoundRect(
         color        = Color(0xFFB0C8E8),
         topLeft      = Offset(pX - torsoW, shoulderY + byOff),
         size         = Size(torsoW * 2f, h * TORSO_FRAC),
-        cornerRadius = CornerRadius(w * 0.020f),
+        cornerRadius = CornerRadius(torsoW),   // full pill
     )
-    // Shirt badge dot
+    // Badge dot (right-of-center so front arm doesn't hide it)
     drawCircle(
-        Color(0xFFFFD060).copy(alpha = 0.85f), radius = w * 0.018f,
-        center = Offset(pX - torsoW * 0.10f, shoulderY + byOff + h * TORSO_FRAC * 0.42f),
+        Color(0xFFFFD060).copy(alpha = 0.85f), radius = w * 0.015f,
+        center = Offset(pX + torsoW * 0.18f, shoulderY + byOff + h * TORSO_FRAC * 0.40f),
     )
 
-    // Front arm then front leg — both in front of torso
-    if (leftFront) {
-        seg(rShX,  shoulderY + byOff, rElbowX, rElbowY, rHandX, rHandY, armColor, segStroke * 0.82f)
-        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legFront, segStroke)
-    } else {
-        seg(lShX,  shoulderY + byOff, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
-        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legFront, segStroke)
-    }
+    // ── 5. Neck — connects pill body top to head bottom ───────────────────────
+    val neckW = torsoW * 0.50f
+    drawRoundRect(
+        color        = armColor,   // skin tone, same as head
+        topLeft      = Offset(pX - neckW / 2f, shoulderY + byOff - h * 0.022f),
+        size         = Size(neckW, h * 0.028f),
+        cornerRadius = CornerRadius(neckW / 2f),
+    )
+
+    // ── 6. Front arm — screen-right (rShX), ALWAYS on top of everything ───────
+    seg(rShX, shoulderY + byOff, rElbowX, rElbowY, rHandX, rHandY, armColor, segStroke * 0.82f)
 }
