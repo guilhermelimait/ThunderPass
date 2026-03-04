@@ -3,7 +3,7 @@ package com.thunderpass.ui.theme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 
-/** ThunderPass is dark-only — matches the space / night-mode design language. */
+/** ThunderPass dark colour scheme. */
 private val ThunderDarkColorScheme = darkColorScheme(
     primary            = VividPurple,
     onPrimary          = SpaceWhite,
@@ -29,12 +29,40 @@ private val ThunderDarkColorScheme = darkColorScheme(
     outlineVariant     = DeepSpaceRaised,
 )
 
+/** ThunderPass light colour scheme — clean, modern, bright. */
+private val ThunderLightColorScheme = lightColorScheme(
+    primary            = VividPurple,
+    onPrimary          = SpaceWhite,
+    primaryContainer   = VividPurpleLight,
+    onPrimaryContainer = VividPurpleDark,
+
+    secondary          = SpaceCyan,
+    onSecondary        = LightOnSurface,
+
+    background         = LightBackground,
+    onBackground       = LightOnSurface,
+
+    surface            = LightSurface,
+    onSurface          = LightOnSurface,
+
+    surfaceVariant     = LightSurfaceVar,
+    onSurfaceVariant   = LightOnSurfaceV,
+
+    error              = LightError,
+    onError            = SpaceWhite,
+
+    outline            = LightOutline,
+    outlineVariant     = LightSurfaceVar,
+)
+
 @Composable
 fun ThunderPassTheme(
+    darkTheme: Boolean = false,   // light by default per design direction
     content: @Composable () -> Unit,
 ) {
+    val colorScheme = if (darkTheme) ThunderDarkColorScheme else ThunderLightColorScheme
     MaterialTheme(
-        colorScheme = ThunderDarkColorScheme,
+        colorScheme = colorScheme,
         content     = content,
     )
 }

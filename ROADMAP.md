@@ -62,4 +62,15 @@ Milestone 5 — Platform (future)
 
 a few things to include/change :
 1- use the usersname on the android to name the user on the app instead of traveler, if no name is found, call him by the android device name, Thor, ODin and so on
-2- instead of scanning and idle , make it 
+2- instead of scanning and idle , make it on/off ThunderPass as a toggle, and make it as a service, so if the app is closed, the service keeps the value of the app
+3- remove the safezone, no need for that, same for battery mode, move that part to the settings of the app under the user profile on a cog on the bottom bar
+4- on the bottom app bar, when on landscape, make it smaller, it is too tall at the moment and the app is not beautiful, modern clean as asked, make the following buttons on it, home, passes, profile, badges, shop and settings
+5- when on landscape mode, the app is cutting thte cards where total today and shreak is in, but i dont get why we have those cards, better to remove them and keep that kind of information on the profile area
+5- if a new user is recognized around, create a notification that a thunder passer was identified
+6- remove the sticker book, it doesnt make any connectoin to the app since we have the badge area,
+7- make the bottom bar fixed, so wehn i move between areas of the app, it is always the same and visible
+8- profile, make a profile maker, or random button so the user can select the profile avatar 
+9- lets make this area of the profile much more interesting, check image paste 1 and 2 and lets mix the ideas with a clean layout
+10- i was thinking to have the badges area something like the image 3 that could be progressing in each area, and the colors would be associated to consoles, player numbers, geolocation, games shared, integratoins (with retroarchive) and auto created by the app, not something based on the web, and instead of a star, it should have a thunder on it
+11- on display name, ra key , ra name and so on, keep only those that are needed, short and clean, once saved, it saves locally and use that as ghost informatoin between the ble updates between users (not sure if it goes online somehow)
+12- on home, explain the joules idea, how to collect points (based on badges and interactions,passes,retroarchive and so on)

@@ -20,3 +20,12 @@ val SpaceError = Color(0xFFEF4444)
 val SpaceWhite  = Color(0xFFF0F6FF)
 val SpaceMuted  = Color(0xFF8B949E)
 val SpaceSubtle = Color(0xFF484F58)
+
+// ── Light palette ──────────────────────────────────────────────────────────
+val LightBackground  = Color(0xFFF8F9FC)
+val LightSurface     = Color(0xFFFFFFFF)
+val LightSurfaceVar  = Color(0xFFF1F3F8)
+val LightOnSurface   = Color(0xFF1A1C22)
+val LightOnSurfaceV  = Color(0xFF5A5E6B)
+val LightOutline     = Color(0xFFCBCDD8)
+val LightError       = Color(0xFFCC2222)
