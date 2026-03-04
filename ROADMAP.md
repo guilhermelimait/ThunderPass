@@ -101,6 +101,15 @@ profile: should be the head of the user that was generated
 badges: should be a badge like the ones we created
 shop: a market cart is fine
 settings: fine as well
-about: 
+about: a coffee mug
 
-3- badges, should be the
+3- under the walking animation, should be the information of who I have passed by last time, when and with a head of the user and the name of it, so i can keep a record of who i have seem, as well as if i click on it, i will see the users profile on the dashboard of badges and so on, create that area so i can see my friends. It will also be able to see my friends from my profile area.
+
+4- i have two devices connected to the pc and both with bluetooth enabled but they did not encounter each other, please make sure that bluetooth is enabled at beggining and that we can manage it from the app, permissions requested if needed. Make also a Hardware Capability Check: - [ ] Add packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE) check. Add BluetoothAdapter.isMultipleAdvertisementSupported() check (Critical for AYN/Retroid background syncing). Battery Optimization Bypass: Add a UI prompt to whitelist ThunderPass from Android's "Doze" mode. if the thunderpass is working, please make me see the information of the user on the passes area and on the start screen
+
+
+5- make the categories area smaller, square shapes to see all of them if on landscape mode, and large if on portrait mode, same for the badges if im on each category seeing my badges. From categories view, remove the best idea, i didnt like it at all
+
+6- shop, make the dormant card on the left if on portrait mode with the explanation of how to collect points on the right. Please check if i have badges and add the points to it
+
+7- settings, keep the app always open if the thunderpass is active, if there is a new version on the app, show it on the updates area, so teh app can download and apply it OTA, add an option to disable the background music of the app. the song is on the root folder of the app and it is called thunderpass-bg.mp3, play it by default when the app opens, except if the user disabled it, then dont play during the app opening.
