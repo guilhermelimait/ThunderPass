@@ -169,18 +169,29 @@ fun HomeScreenContent(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier              = Modifier.fillMaxWidth(),
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text       = "Hi, $displayName \uD83D\uDC4B",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onBackground,
+                            Row(
+                                modifier              = Modifier.weight(1f),
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                androidx.compose.foundation.Image(
+                                    painter            = painterResource(R.drawable.logo),
+                                    contentDescription = "ThunderPass",
+                                    modifier           = Modifier.height(32.dp),
                                 )
-                                Text(
-                                    text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Column {
+                                    Text(
+                                        text       = "Hi, $displayName",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                    Text(
+                                        text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                             DiceBearAvatar(
                                 seed     = avatarSeed.ifEmpty { "default" },
@@ -192,21 +203,15 @@ fun HomeScreenContent(
                         }
                         NavShortcuts(onNavigate = onNavigate)
 
-                        val lastEnc = encounters.firstOrNull()
-                        if (lastEnc != null) {
-                            LastPassedByCard(
-                                encounter = lastEnc,
-                                onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                            )
-                        }
+                        RetroGallerySection(modifier = Modifier.fillMaxWidth())
                     }
 
-                    // Right panel: 50% screen width x 50% screen HEIGHT, 12dp gap on all edges
-                    Box(
-                        modifier         = Modifier
+                    // Right panel: animation top, LastPassedBy below, 12dp padding
+                    Column(
+                        modifier = Modifier
                             .weight(1f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.TopCenter,
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
                     ) {
                         Box(
                             modifier = Modifier
@@ -228,6 +233,15 @@ fun HomeScreenContent(
                                     .fillMaxWidth()
                                     .padding(top = 8.dp),
                             )
+                        }
+                        val lastEnc = encounters.firstOrNull()
+                        if (lastEnc != null) {
+                            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                                LastPassedByCard(
+                                    encounter = lastEnc,
+                                    onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                                )
+                            }
                         }
                     }
                 }
@@ -257,9 +271,18 @@ fun HomeScreenContent(
                         verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier              = Modifier.weight(1f),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            androidx.compose.foundation.Image(
+                                painter            = painterResource(R.drawable.logo),
+                                contentDescription = "ThunderPass",
+                                modifier           = Modifier.height(40.dp),
+                            )
                             Text(
-                                text       = "Hi, $displayName 👋",
+                                text       = "Hi, $displayName",
                                 style      = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color      = MaterialTheme.colorScheme.onBackground,
@@ -313,7 +336,8 @@ fun HomeScreenContent(
 
                     // ── 5. Navigation buttons grid ─────────────────────────────
                     NavShortcuts(onNavigate = onNavigate)
-
+                    Spacer(Modifier.height(12.dp))
+                    RetroGallerySection(modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(16.dp))
                 }
             }

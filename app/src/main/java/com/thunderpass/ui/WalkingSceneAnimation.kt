@@ -90,20 +90,8 @@ private const val PERSON_X_FRAC = 0.25f
 // headTopY      = 0.26 - 0.10 = 0.16
 private const val HEAD_TOP_FRAC = 0.16f
 
-// ── Skin-tone palette (matched to DiceBear big-smile colours) ─────────────────
-
-private val SKIN_TONES = listOf(
-    Color(0xFFFDDEB5), // light peach
-    Color(0xFFECB882), // warm tan
-    Color(0xFFD48B5A), // medium
-    Color(0xFFA0684A), // brown
-    Color(0xFFFFC8A0), // peachy
-)
-
-private fun skinToneForSeed(seed: String): Color {
-    val h = seed.fold(0) { acc, c -> acc * 31 + c.code }
-    return SKIN_TONES[((h % SKIN_TONES.size) + SKIN_TONES.size) % SKIN_TONES.size]
-}
+// Skin tone is determined by skinToneForSeed() in AvatarFace.kt so the walking
+// figure's body colour always matches the DiceBear head loaded with the same seed.
 
 // ── Main composable ───────────────────────────────────────────────────────────
 
@@ -136,7 +124,7 @@ fun WalkingSceneCard(
     var walkPhase    by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         snapshotFlow { Triple(serviceRunningState.value, scrollFracLive, walkPhaseLive) }
-            .collect { (running, s, p) ->
+            .collect { (running: Boolean, s: Float, p: Float) ->
                 if (running) {
                     scrollFrac = ((s + scrollOffset) % 1f + 1f) % 1f
                     walkPhase  = p

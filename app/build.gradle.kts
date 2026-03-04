@@ -23,8 +23,8 @@ android {
         applicationId = "com.thunderpass"
         minSdk = 33
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.7.5"
+        versionCode = 11
+        versionName = "0.7.6"
 
         // RetroAchievements API credentials — set in local.properties or CI secrets
         buildConfigField("String", "RA_API_KEY",  "\"${localProp("ra.apiKey")}\"")
@@ -66,6 +66,15 @@ android {
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
         arg("room.incremental", "true")
+    }
+
+    // Rename APK output to ThunderPass.apk for all variants
+    applicationVariants.all {
+        outputs.all {
+            if (this is com.android.build.gradle.internal.api.BaseVariantOutputImpl) {
+                outputFileName = "ThunderPass.apk"
+            }
+        }
     }
 }
 

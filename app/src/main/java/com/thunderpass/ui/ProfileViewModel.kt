@@ -113,6 +113,32 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Fetches the local user's own RetroAchievements profile and caches it in
+     * SharedPreferences via [RetroProfileCache] so the RA gallery shows fresh data.
+     * Credentials must already be saved in [RetroAuthManager] before calling this.
+     * Safe to call after every profile save — silently skips if creds are missing.
+     */
+    fun fetchAndCacheOwnRetroProfile() {
+        viewModelScope.launch {
+            val app          = getApplication<android.app.Application>()
+            val auth         = com.thunderpass.retro.RetroAuthManager.getInstance(app)
+            if (!auth.hasCredentials()) return@launch
+            val p            = profileDao.get() ?: return@launch
+            val raUsername   = p.retroUsername.trim()
+            if (raUsername.isBlank()) return@launch
+            val result = com.thunderpass.retro.RetroRetrofitClient.fetchRetroMetadata(raUsername, auth)
+            result.getOrNull()?.let { raProfile ->
+                com.thunderpass.retro.RetroProfileCache.save(
+                    context  = app,
+                    username = raUsername,
+                    points   = raProfile.totalPoints,
+                    games    = raProfile.recentlyPlayed ?: emptyList(),
+                )
+            }
+        }
+    }
+
+    /**
      * Immediately persists a new avatar seed to the local DB without requiring
      * the user to press "Save Profile".  The change propagates to the Home screen's
      * walking animation and the nav-bar avatar icon through [HomeViewModel.avatarSeed],

@@ -49,6 +49,7 @@ fun ProfileScreen(
     val encounterCount by homeVm.encounterCount.collectAsState()
     val streak         by homeVm.encounterStreak.collectAsState()
     val voltsTotal     by homeVm.voltsTotal.collectAsState()
+    val context        = LocalContext.current
 
     ProfileScreenContent(
         profile = profile,
@@ -58,7 +59,13 @@ fun ProfileScreen(
         firstRun = firstRun,
         onSave = { name, retroUser, retroKey, seed ->
             vm.save(name, retroUser, avatarSeed = seed)
-            // RetroAuthManager logic...
+            if (retroKey.isNotBlank()) {
+                RetroAuthManager.getInstance(context).saveCredentials(
+                    apiKey  = retroKey,
+                    apiUser = retroUser,
+                )
+            }
+            vm.fetchAndCacheOwnRetroProfile()
         },
         onAvatarSeedChange = { vm.saveAvatarSeed(it) },
         onComplete = onComplete,
@@ -80,8 +87,12 @@ fun ProfileScreenContent(
     onBack: (() -> Unit)? = null,
 ) {
     var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
+    val context            = LocalContext.current
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
-    var draftRaApiKey      by remember { mutableStateOf("") }
+    var draftRaApiKey      by remember {
+        // Pre-populate from secure storage so users don’t need to re-enter their key
+        mutableStateOf(RetroAuthManager.getInstance(context).getApiKey())
+    }
     var saved by remember { mutableStateOf(false) }
 
     var avatarSeed by remember(profile.avatarSeed.ifEmpty { profile.installationId }) {
@@ -259,6 +270,8 @@ fun ProfileScreenContent(
                         }
                     }
                 }
+
+                RetroGallerySection(modifier = Modifier.fillMaxWidth())
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
