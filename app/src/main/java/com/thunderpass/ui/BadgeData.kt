@@ -54,7 +54,16 @@ fun rarityLabel(index: Int): String = when {
     else       -> "LEGENDARY"
 }
 
-// Dark bg tinted to each rarity
+// Card background colors — medium-light, vibrant (like reference image)
+fun rarityCardColor(index: Int): Color = when {
+    index <= 1 -> Color(0xFF42A5F5)  // light blue
+    index <= 3 -> Color(0xFFAB47BC)  // medium purple
+    index <= 5 -> Color(0xFFFF9800)  // orange
+    else       -> Color(0xFFFFCA28)  // golden
+}
+val RARITY_LOCKED_CARD = Color(0xFF757575)  // medium grey
+
+// Dark bg tinted to each rarity (kept for shield interior)
 fun rarityDarkBg(index: Int): Color = when {
     index <= 1 -> Color(0xFF001428)  // dark blue
     index <= 3 -> Color(0xFF16001E)  // dark purple
