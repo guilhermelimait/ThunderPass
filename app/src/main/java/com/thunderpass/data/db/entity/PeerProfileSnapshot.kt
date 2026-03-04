@@ -77,4 +77,12 @@ data class PeerProfileSnapshot(
      * Used for 24-hour identity dedup: one Spark per userId per day.
      */
     val peerUserId: String? = null,
+
+    // ── RetroAchievements — recent game titles (SEP-joined strings) ──────────
+
+    /** SEP-joined list of title strings from the peer's recently-played games. */
+    val retroGameTitles: String? = null,
+
+    /** SEP-joined list of console name strings matching [retroGameTitles]. */
+    val retroGameConsoles: String? = null,
 )

@@ -30,6 +30,23 @@ interface PeerProfileSnapshotDao {
     """)
     suspend fun updateRetroStats(id: Long, points: Long, recentCount: Int)
 
+    /** Update RetroAchievements stats + game lists after a background fetch. */
+    @Query("""
+        UPDATE peer_profile_snapshot
+        SET retroTotalPoints          = :points,
+            retroRecentlyPlayedCount  = :recentCount,
+            retroGameTitles           = :gameTitles,
+            retroGameConsoles         = :gameConsoles
+        WHERE id = :id
+    """)
+    suspend fun updateRetroStatsWithGames(
+        id:           Long,
+        points:       Long,
+        recentCount:  Int,
+        gameTitles:   String,
+        gameConsoles: String,
+    )
+
     /**
      * Mark that a RA fetch has been attempted for this snapshot.
      * Called after every fetch attempt — success or failure — so the UI can

@@ -8,8 +8,9 @@ import androidx.core.app.NotificationCompat
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import java.text.NumberFormat
 
-private const val TAG     = "ThunderPass/RetroRepo"
-private const val CHANNEL = "retro_achievements"
+private const val TAG       = "ThunderPass/RetroRepo"
+private const val CHANNEL   = "retro_achievements"
+private const val RETRO_SEP = "|||"  // matches RetroProfileCache separator
 
 /**
  * Achievement trigger variants detected after a peer RA profile fetch.
@@ -60,11 +61,16 @@ object RetroRepository {
             return emptyList()
         }
 
-        // Persist in Room
-        snapshotDao.updateRetroStats(
-            id          = snapshotId,
-            points      = profile.totalPoints,
-            recentCount = profile.recentlyPlayedCount,
+        // Persist in Room — store title + console lists so EncounterDetailScreen can show them
+        val recentGames  = profile.recentlyPlayed ?: emptyList()
+        val gameTitles   = recentGames.joinToString(RETRO_SEP) { it.title }
+        val gameConsoles = recentGames.joinToString(RETRO_SEP) { it.consoleName }
+        snapshotDao.updateRetroStatsWithGames(
+            id           = snapshotId,
+            points       = profile.totalPoints,
+            recentCount  = profile.recentlyPlayedCount,
+            gameTitles   = gameTitles,
+            gameConsoles = gameConsoles,
         )
 
         Log.i(TAG, "Cached RA stats for $peerUsername: ${profile.totalPoints} pts, ${profile.recentlyPlayedCount} recent games")

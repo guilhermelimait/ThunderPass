@@ -3,13 +3,20 @@ package com.thunderpass.ui
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
+
+private const val SEP = "|||"
 
 @Composable
 fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
@@ -27,14 +34,14 @@ fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
         ) {
             // ── Header row ──────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🎮", style = MaterialTheme.typography.titleLarge)
+                Text("🏆", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text(
                         text       = "RetroAchievements",
                         style      = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.primary,
+                        color      = Color(0xFFFFB300),
                     )
                     Text(
                         text       = snapshot.retroUsername,
@@ -56,45 +63,57 @@ fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
                         value = "%,d".format(snapshot.retroTotalPoints),
                     )
                     RetroStat(
-                        label = "Recent Games",
+                        label = "Games",
                         value = snapshot.retroRecentlyPlayedCount?.toString() ?: "—",
                     )
                     when {
                         snapshot.retroTotalPoints > 20_000L ->
-                            RetroStat(label = "Rank", value = "\uD83C\uDFC6 Elite")
+                            RetroStat(label = "Rank", value = "🏆 Elite")
                         snapshot.retroTotalPoints > 5_000L  ->
-                            RetroStat(label = "Rank", value = "\u2B50 Veteran")
+                            RetroStat(label = "Rank", value = "⭐ Veteran")
                         else ->
-                            RetroStat(label = "Rank", value = "\uD83C\uDFAE Player")
+                            RetroStat(label = "Rank", value = "🎮 Player")
                     }
                 }
 
-                // ── Mastery icons — one chip per recently played game ────────
-                val gameCount = snapshot.retroRecentlyPlayedCount ?: 0
-                if (gameCount > 0) {
+                // ── Actual recent games (if available) ───────────────────────
+                val titles   = snapshot.retroGameTitles
+                    ?.split(SEP)?.filter { it.isNotBlank() } ?: emptyList()
+                val consoles = snapshot.retroGameConsoles
+                    ?.split(SEP)?.filter { it.isNotBlank() } ?: emptyList()
+                val games = titles.zip(consoles)
+
+                if (games.isNotEmpty()) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Text(
-                        text  = "Recently Played",
+                        text  = "Recent Games",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    val icons = listOf("\uD83C\uDFAE", "\uD83D\uDD79\uFE0F", "\uD83D\uDC7E", "\uD83C\uDFC6", "\u2694\uFE0F", "\uD83C\uDF1F", "\uD83D\uDD25", "\uD83D\uDC8E")
                     Row(
                         modifier              = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        repeat(gameCount.coerceAtMost(8)) { i ->
-                            SuggestionChip(
-                                onClick = {},
-                                label   = { Text(icons[i % icons.size]) },
-                            )
+                        games.forEach { (title, console) ->
+                            PeerGameChip(title = title, console = console)
                         }
+                    }
+                } else {
+                    // Fallback: show count with emoji placeholders (pre-fetch data)
+                    val gameCount = snapshot.retroRecentlyPlayedCount ?: 0
+                    if (gameCount > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Text(
+                            text  = "Recently Played — $gameCount game${if (gameCount != 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             } else if (!snapshot.retroFetchAttempted) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
-                    text  = "Fetching RA stats\u2026",
+                    text  = "Fetching RA stats…",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -105,6 +124,39 @@ fun RetroSparkCard(snapshot: PeerProfileSnapshot) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PeerGameChip(title: String, console: String) {
+    Card(
+        shape     = RoundedCornerShape(10.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier  = Modifier.width(120.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Text(
+                text       = title,
+                fontSize   = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color      = MaterialTheme.colorScheme.onSurface,
+                maxLines   = 2,
+                overflow   = TextOverflow.Ellipsis,
+                lineHeight = 14.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text      = console,
+                fontSize  = 10.sp,
+                color     = Color(0xFFFFB300),
+                fontFamily = FontFamily.Monospace,
+                maxLines  = 1,
+                overflow  = TextOverflow.Ellipsis,
+            )
         }
     }
 }

@@ -202,7 +202,7 @@ private fun BadgeCategoryCard(
                 )
             }
 
-            // Right side: for ENCOUNTERS show just the app logo; otherwise emoji + shield
+            // Right side: for ENCOUNTERS show just the app logo; otherwise always show shield
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -219,15 +219,14 @@ private fun BadgeCategoryCard(
                         text  = category.emoji,
                         style = MaterialTheme.typography.displaySmall,
                     )
-                    if (earned > 0) {
-                        Spacer(Modifier.height(2.dp))
-                        ThunderShield(
-                            tier          = topTier,
-                            categoryColor = category.accentColor,
-                            darkBg        = categoryDarkBg(category, topTier),
-                            size          = 28.dp,
-                        )
-                    }
+                    Spacer(Modifier.height(2.dp))
+                    // Always show shield — grey when locked, colored when earned
+                    ThunderShield(
+                        tier          = topTier,
+                        categoryColor = category.accentColor,
+                        darkBg        = categoryDarkBg(category, topTier),
+                        size          = 28.dp,
+                    )
                 }
             }
         }

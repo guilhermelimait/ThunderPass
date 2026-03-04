@@ -171,7 +171,7 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
             )
         }
 
-        // ── Thunder badge icon in right circle ────────────────────────────────
+        // ── Shield badge in right circle (matches profile format) ────────────
         Box(
             modifier = Modifier
                 .size(115.dp)
@@ -179,12 +179,11 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                 .offset(x = (-12).dp),
             contentAlignment = Alignment.Center,
         ) {
-            ThunderBadgeIcon(
-                tier        = badge.tier,
-                accentColor = rarColor,
-                cardColor   = cardColor,
-                locked      = locked,
-                size        = 100.dp,
+            ThunderShield(
+                tier          = badge.tier,
+                categoryColor = rarColor,
+                darkBg        = categoryDarkBg(badge.category, badge.tier),
+                size          = 88.dp,
             )
         }
 
@@ -489,10 +488,6 @@ private fun DrawScope.drawBoltInShield(
         close()
     }
 
+    // Clean filled bolt — no thick outline/bezel
     drawPath(boltPath, color = color)
-    drawPath(
-        path  = boltPath,
-        color = Color.Black.copy(alpha = 0.25f),
-        style = Stroke(width = w * 0.022f, cap = StrokeCap.Round, join = StrokeJoin.Round),
-    )
 }
