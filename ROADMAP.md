@@ -54,7 +54,7 @@
 ## Milestone 5 — UX Overhaul & Feature Completion (Next MVP)
 
 ### 5.1 Identity & Naming
-- [ ] Read Android account display name at startup; fall back to device model name (Thor, Odin, etc.) — replace hardcoded "Traveler".
+- [ ] Read Android account display name at startup; fall back to device model name (Thor, Odin, etc.) — replace hardcoded "Traveler" if user not informed on the profile page.
 - [ ] Replace Installation ID with a human-readable name-based share ID. Show as "Private User" when privacy toggle is on.
 - [ ] Profile fields trimmed to essentials: Display Name, RA Username, RA API Key. Saved locally + synced to Supabase; included in BLE ghost payload.
 
@@ -91,7 +91,7 @@
 - [x] Avatar maker: DiceBear seed selector + Randomise button. Syncs to walking animation and bottom-bar icon immediately; saved to Supabase.
 - [x] Privacy toggle: when on, BLE exchange shows "Private User" to peers. Toggle in Settings > General.
 - [x] Badge gallery: horizontal scrollable row, exotic/legendary first, achieved only. Remove legend row and duplicate Volt Badge.
-- [ ] Share ID uses display name, not installation ID.
+- [x] Share ID uses display name, not installation ID.
 - [x] All edits saved to Supabase; Room is source-of-truth offline. (`avatarSeed` now synced.)
 
 ### 5.8 Badges

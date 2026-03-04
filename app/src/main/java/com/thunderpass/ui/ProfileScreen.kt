@@ -314,15 +314,32 @@ fun ProfileScreenContent(
                 }
 
                 Spacer(Modifier.height(4.dp))
+
+                // Share ID: displayname-slug + 4-char suffix from installationId for uniqueness.
+                // Shows "private-user" when privacy mode is active.
+                val shareId = remember(profile.displayName, profile.installationId, profile.privacyMode) {
+                    if (profile.privacyMode) {
+                        "private-user"
+                    } else {
+                        val suffix = profile.installationId.takeLast(4).lowercase()
+                        val nameSlug = profile.displayName
+                            .lowercase()
+                            .replace(Regex("[^a-z0-9]+"), "-")
+                            .trim('-')
+                            .ifEmpty { "traveler" }
+                        "$nameSlug-$suffix"
+                    }
+                }
                 Text(
-                    text  = "Installation ID (never shared directly)",
+                    text  = "Share ID",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
                 Text(
-                    text  = profile.installationId.ifEmpty { "\u2014" },
+                    text  = shareId,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outlineVariant,
+                    fontFamily = FontFamily.Monospace,
                 )
                 Spacer(Modifier.height(16.dp))
             }
