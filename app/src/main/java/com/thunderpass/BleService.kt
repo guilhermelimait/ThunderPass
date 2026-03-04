@@ -15,6 +15,8 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Intent
 import android.os.IBinder
 import android.os.VibrationEffect
@@ -80,6 +82,28 @@ class BleService : Service() {
     private lateinit var gattClient: GattClient
     private lateinit var encounterDedup: EncounterDedup
 
+    // ── Bluetooth state receiver ──────────────────────────────────────────────
+    // Restarts advertising + scanning automatically when the user turns BT back on.
+    private val btStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: Intent) {
+            if (intent.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
+            when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
+                BluetoothAdapter.STATE_OFF -> {
+                    Log.i(TAG, "Bluetooth turned off \u2014 pausing BLE operations.")
+                    stopScanning()
+                    stopAdvertising()
+                }
+                BluetoothAdapter.STATE_ON -> {
+                    if (_isActive && !_safeZoneActive) {
+                        Log.i(TAG, "Bluetooth turned on \u2014 restarting BLE operations.")
+                        startAdvertising()
+                        startScanning()
+                    }
+                }
+            }
+        }
+    }
+
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     override fun onCreate() {
@@ -127,6 +151,10 @@ class BleService : Service() {
         }
 
         createNotificationChannel()
+        registerReceiver(
+            btStateReceiver,
+            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -207,6 +235,7 @@ class BleService : Service() {
         stopScanning()
         stopAdvertising()
         gattServer.stop()
+        runCatching { unregisterReceiver(btStateReceiver) }
         serviceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
@@ -321,6 +350,20 @@ class BleService : Service() {
 
             override fun onScanFailed(errorCode: Int) {
                 Log.e(TAG, "Scan failed: errorCode=$errorCode")
+                // Codes 1 (ALREADY_STARTED) and 4 (FEATURE_UNSUPPORTED) are not recoverable.
+                // Codes 2 (APPLICATION_REGISTRATION_FAILED) and 3 (INTERNAL_ERROR) usually are.
+                val recoverable = errorCode == android.bluetooth.le.ScanCallback.SCAN_FAILED_APPLICATION_REGISTRATION_FAILED ||
+                                  errorCode == android.bluetooth.le.ScanCallback.SCAN_FAILED_INTERNAL_ERROR
+                if (recoverable && _isActive && !_safeZoneActive) {
+                    serviceScope.launch {
+                        kotlinx.coroutines.delay(5_000L)
+                        if (_isActive && !_safeZoneActive) {
+                            Log.i(TAG, "Restarting scanner after failure (code=$errorCode)\u2026")
+                            stopScanning()
+                            startScanning()
+                        }
+                    }
+                }
             }
         }
         scanCallback = cb

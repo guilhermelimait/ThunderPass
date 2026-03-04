@@ -78,7 +78,7 @@
 - [x] Check BluetoothAdapter.isMultipleAdvertisementSupported(); warn if background sync is limited.
 - [x] If BT is off when toggling ON, request enable via BluetoothAdapter.ACTION_REQUEST_ENABLE.
 - [x] First-launch prompt: disable battery optimisation (Doze-mode whitelist).
-- [ ] Audit BLE concurrency; verify both test devices (RP4 Pro + AYN Thor) discover each other reliably.
+- [x] Audit BLE concurrency; verify both test devices (RP4 Pro + AYN Thor) discover each other reliably.
 
 ### 5.6 Passes (Encounters)
 - [x] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
@@ -95,12 +95,12 @@
 - [x] All edits saved to Supabase; Room is source-of-truth offline. (`avatarSeed` now synced.)
 
 ### 5.8 Badges
-- [ ] Replace star icon with a thunder bolt on every badge.
-- [ ] Six categories: Consoles · Player Numbers · Geolocation · Shared Games · RetroAchievements · Auto.
+- [ ] Replace star icon with a thunder bolt on every badge, make the thunder with a large edge on the same color as the background
 - [x] Tier colours: Dark grey=Not achieved, Blue=Common (1-2), Purple=Uncommon (3-4), Orange=Rare (5-6), Gold=Legendary (7).
 - [ ] Category grid: small squares in landscape, large cards in portrait.
 - [x] Remove "Best" highlight from categories overview.
 - [x] Create badges/badges.csv — columns: id, category, name, description, how_to_achieve, tier, colour.
+- [ ] levels works this way: if level 1 (blue common) first line under the thunder is colored, rest is not, if level 2, first and secon lines below the thunder, if level 3 and 4, two lines under the thunder, if 5 and 6 , three lines, if 7 all lines colored. thunder should be bigger and over the lines showing a large besel.
 
 ### 5.9 Shop
 - [x] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
@@ -135,4 +135,6 @@
 - [ ] Power Surge Events: Location-based 2x Energy multipliers
 - [ ] keep an unique user recognized if devices are nearby, to avoid creating volts to users that are together
 = [ ] change the name of joules to volts and replace it everywhere on the app, documentation and site
+- [ ] fix the issue to disable the music if the radio button is unmarked, and save it to the app loading phase.
+- [ ] app should not start on profile, should go directly to the app homepage always
 - [ ] 

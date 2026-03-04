@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import java.util.concurrent.ConcurrentHashMap
 import com.thunderpass.ble.BleConstants.CCCD_UUID
 import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
@@ -35,8 +36,11 @@ class GattServer(
 
     private var gattServer: BluetoothGattServer? = null
 
-    /** Negotiated MTU per remote device address (set in [onMtuChanged]). */
-    private val deviceMtu = mutableMapOf<String, Int>()
+    /** Negotiated MTU per remote device address (set in [onMtuChanged]).
+     *  ConcurrentHashMap because [onMtuChanged] and [onConnectionStateChange] can
+     *  be invoked simultaneously for different devices on different Binder threads.
+     */
+    private val deviceMtu = ConcurrentHashMap<String, Int>()
 
     /** Call once from [BleService.onCreate] or before advertising starts. */
     fun start(profileProvider: () -> MyProfile?) {

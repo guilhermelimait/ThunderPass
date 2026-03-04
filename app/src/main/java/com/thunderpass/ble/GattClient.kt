@@ -24,7 +24,10 @@ import com.thunderpass.supabase.SupabaseManager
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 private const val TAG = "ThunderPass/GattClient"
 
@@ -62,9 +65,14 @@ class GattClient(
     // Tracks addresses that have an active GATT connection attempt in flight.
     private val activeConnections = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
+    // Per-address timeout jobs — cancelled when connection resolves cleanly.
+    // Guards against stuck addresses in activeConnections when a device disappears.
+    private val connectionTimeouts = ConcurrentHashMap<String, Job>()
+
     // Chunk reassembly buffers keyed by "$deviceAddress:$encounterId".
-    // Value: array of nullable ByteArray — null means chunk not yet received.
-    private val chunkBuffers = mutableMapOf<String, Array<ByteArray?>>()
+    // ConcurrentHashMap so concurrent callbacks from multiple simultaneous
+    // GATT connections do not race on the same backing map.
+    private val chunkBuffers = ConcurrentHashMap<String, Array<ByteArray?>>()
 
     private fun bufferKey(address: String, encounterId: Long) = "$address:$encounterId"
 
@@ -89,6 +97,18 @@ class GattClient(
             buildCallback(encounterId),
             BluetoothDevice.TRANSPORT_LE,
         )
+
+        // Safety net: if onConnectionStateChange never fires (device disappeared
+        // between scan and connect), release the slot after 60 s so the next
+        // scan cycle can attempt again.
+        connectionTimeouts[address] = scope.launch {
+            delay(60_000L)
+            if (activeConnections.remove(address)) {
+                connectionTimeouts.remove(address)
+                chunkBuffers.remove(bufferKey(address, encounterId))
+                Log.w(TAG, "GATT connection to $address timed out \u2014 slot released.")
+            }
+        }
     }
 
     // ── GATT Callback ─────────────────────────────────────────────────────────
@@ -101,6 +121,7 @@ class GattClient(
         private fun cleanup(gatt: BluetoothGatt?) {
             val address = gatt?.device?.address.orEmpty()
             activeConnections -= address
+            connectionTimeouts.remove(address)?.cancel()  // timeout no longer needed
             chunkBuffers.remove(bufferKey(address, encounterId))
             gatt?.close()
         }
