@@ -456,9 +456,15 @@ class BleService : Service() {
                     Settings.System.putString(cr, "joystick_light_enabled", "0,0")
                     delay(200)
                 }
+            } catch (_: Exception) {
+                // OdinOS firmware can enforce these vendor keys as secure settings, which
+                // requires WRITE_SECURE_SETTINGS (signature-level). Our WRITE_SETTINGS
+                // permission only covers the system namespace — writes throw
+                // IllegalArgumentException. Fail silently; LED flash is best-effort.
             } finally {
-                Settings.System.putString(cr, "joystick_led_light_picker_color", prevColor)
-                Settings.System.putString(cr, "joystick_light_enabled", prevEnabled)
+                // Use runCatching so a restore failure never bubbles up either.
+                runCatching { Settings.System.putString(cr, "joystick_led_light_picker_color", prevColor) }
+                runCatching { Settings.System.putString(cr, "joystick_light_enabled", prevEnabled) }
             }
         }
     }
@@ -466,9 +472,10 @@ class BleService : Service() {
     /** Update the encounter notification once we know the peer's display name. */
     private fun updateEncounterNotification(encounterId: Long, displayName: String) {
         // ⚡ "The Spark" — double-pulse haptic feedback on successful profile exchange
-        val vibrator = getSystemService(VibratorManager::class.java).defaultVibrator
+        // Null-guard: VibratorManager can be null on custom ROMs (OdinOS)
+        val vibrator = getSystemService(VibratorManager::class.java)?.defaultVibrator
         // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
-        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
+        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
         flashThorLeds()
 
         val tapIntent = PendingIntent.getActivity(
