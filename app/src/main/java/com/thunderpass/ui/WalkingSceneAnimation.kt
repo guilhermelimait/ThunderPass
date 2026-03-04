@@ -433,10 +433,10 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
     val rKneeX = rHipX + swingB * h * 0.038f; val rKneeY = hipY + thighLen
     val rFootX = rHipX + swingB * h * 0.075f; val rFootY = groundY
 
-    // Arm endpoints — origin at body top (shoulderY)
-    val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = shoulderY + uArmLen
+    // Arm endpoints — origin at body top
+    val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = bodyTopY + uArmLen
     val lHandX  = lShX + swingB * h * 0.055f; val lHandY  = lElbowY + fArmLen
-    val rElbowX = rShX + swingA * h * 0.028f; val rElbowY = shoulderY + uArmLen
+    val rElbowX = rShX + swingA * h * 0.028f; val rElbowY = bodyTopY + uArmLen
     val rHandX  = rShX + swingA * h * 0.055f; val rHandY  = rElbowY + fArmLen
 
     // 2-segment limb helper
@@ -450,8 +450,8 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
     // 1. Right leg — always behind (same side as back arm)
     seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColor, segStroke)
 
-    // 2. Back arm — screen-right, always behind body
-    seg(rShX, shoulderY, rElbowX, rElbowY, rHandX, rHandY, armBackC, segStroke * 0.82f)
+    // 2. Back arm — anchored at body top, screen-right, always behind body
+    seg(rShX, bodyTopY, rElbowX, rElbowY, rHandX, rHandY, armBackC, segStroke * 0.82f)
 
     // 3. Bag — flush against left side of body, near the top
     val bagW = torsoW * 1.20f
@@ -462,11 +462,11 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         cornerRadius = CornerRadius(w * 0.010f),
     )
 
-    // 4. Body — horizontal gradient: shirt edges → pants center (3D pill look)
-    val bodyBrush = Brush.horizontalGradient(
-        colors = listOf(shirtColor, legColor, shirtColor),
-        startX = pX - torsoW,
-        endX   = pX + torsoW,
+    // 4. Body — vertical gradient: shirt (top) → pants/legs (bottom)
+    val bodyBrush = Brush.verticalGradient(
+        colors = listOf(shirtColor, legColor),
+        startY = bodyTopY,
+        endY   = bodyTopY + bodyHeight,
     )
     drawRoundRect(
         brush        = bodyBrush,
@@ -487,6 +487,6 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         cornerRadius = CornerRadius(neckW / 2f),
     )
 
-    // 7. Front arm — always topmost
-    seg(lShX, shoulderY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
+    // 7. Front arm — anchored at body top, always topmost
+    seg(lShX, bodyTopY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
 }
