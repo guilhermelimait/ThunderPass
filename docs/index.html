@@ -3,116 +3,996 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ThunderPass - Profile Lookup</title>
+  <title>ThunderPass — StreetPass for Android</title>
   <style>
-    :root { --bg:#0d0d0d;--surface:#1a1a1a;--card:#222;--yellow:#FFD400;--text:#f0f0f0;--muted:#888;--radius:14px; }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px 80px}
-    header{text-align:center;margin-bottom:36px}
-    header .bolt{font-size:3rem}
-    header h1{font-size:2rem;font-weight:800;color:var(--yellow)}
-    header p{color:var(--muted);margin-top:4px;font-size:.9rem}
-    .search-row{display:flex;gap:8px;width:100%;max-width:480px;margin-bottom:32px}
-    .search-row input{flex:1;padding:12px 16px;border-radius:var(--radius);border:1px solid #333;background:var(--surface);color:var(--text);font-size:1rem;outline:none}
-    .search-row input:focus{border-color:var(--yellow)}
-    .search-row button{padding:12px 20px;border-radius:var(--radius);border:none;background:var(--yellow);color:#000;font-weight:700;cursor:pointer;font-size:1rem}
-    #status{color:var(--muted);font-size:.9rem;margin-bottom:12px}
-    #card{display:none;background:var(--card);border-radius:var(--radius);width:100%;max-width:480px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
-    .card-header{background:linear-gradient(135deg,#1a1a1a 0%,#111 100%);border-bottom:2px solid var(--yellow);padding:24px 20px 16px;display:flex;align-items:center;gap:16px}
-    .avatar{width:64px;height:64px;border-radius:50%;border:2px solid var(--yellow);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;flex-shrink:0}
-    .avatar img{width:100%;height:100%;object-fit:cover}
-    .card-header h2{font-size:1.25rem;font-weight:800}
-    .card-header p{color:var(--muted);font-size:.85rem;margin-top:2px}
-    .stats-row{display:flex;border-bottom:1px solid #2a2a2a}
-    .stat{flex:1;text-align:center;padding:14px 8px;border-right:1px solid #2a2a2a}
-    .stat:last-child{border-right:none}
-    .stat .val{font-size:1.4rem;font-weight:800;color:var(--yellow)}
-    .stat .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-    .section{padding:16px 20px;border-bottom:1px solid #2a2a2a}
-    .section:last-child{border-bottom:none}
-    .section h3{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
-    .stickers{display:flex;flex-wrap:wrap;gap:8px}
-    .sticker{background:var(--surface);border:1px solid #333;border-radius:20px;padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:5px}
-    .ghost-card{background:var(--surface);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px}
-    .ghost-card .ghost-icon{font-size:1.8rem}
-    .ghost-card .game{font-weight:600}
-    .ghost-card .score{color:var(--yellow);font-size:.9rem}
-    .share-link{word-break:break-all;color:var(--yellow);font-size:.8rem}
-    .sync-time{color:var(--muted);font-size:.75rem;margin-top:6px}
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700;800;900&display=swap');
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --card: #1a1a28;
+      --border: #2a2a40;
+      --yellow: #FFD400;
+      --yellow-dim: #c9a800;
+      --cyan: #00f0ff;
+      --purple: #a855f7;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #f0f0f0;
+      --muted: #6b7280;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ─── Pixel-art scanline overlay ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      background: rgba(10,10,15,.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo .bolt { font-size: 1.5rem; }
+    .nav-logo span { font-family: 'Press Start 2P', monospace; font-size: .7rem; color: var(--yellow); letter-spacing: 1px; }
+    .nav-links { display: flex; gap: 24px; list-style: none; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .9rem; font-weight: 600; transition: color .2s; }
+    .nav-links a:hover { color: var(--yellow); }
+    .nav-cta { padding: 9px 20px; border-radius: var(--radius-sm); background: var(--yellow); color: #000; font-weight: 800; font-size: .85rem; text-decoration: none; transition: opacity .2s; }
+    .nav-cta:hover { opacity: .85; }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,212,0,.12) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(168,85,247,.1) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 10% 70%, rgba(0,240,255,.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* pixel-art sprites floating */
+    .pixel-sprite {
+      position: absolute;
+      font-size: 2.5rem;
+      opacity: .18;
+      animation: float 8s ease-in-out infinite;
+      pointer-events: none;
+      user-select: none;
+    }
+    .pixel-sprite:nth-child(1)  { top:10%; left:5%;  animation-delay:0s;   font-size:2rem; }
+    .pixel-sprite:nth-child(2)  { top:20%; right:8%; animation-delay:1.2s; font-size:3rem; }
+    .pixel-sprite:nth-child(3)  { top:60%; left:3%;  animation-delay:2.5s; font-size:2.2rem; }
+    .pixel-sprite:nth-child(4)  { top:75%; right:5%; animation-delay:0.8s; font-size:2.8rem; }
+    .pixel-sprite:nth-child(5)  { top:40%; left:10%; animation-delay:3s;   font-size:1.8rem; }
+    .pixel-sprite:nth-child(6)  { top:50%; right:12%;animation-delay:4s;   font-size:2.4rem; }
+    .pixel-sprite:nth-child(7)  { top:85%; left:20%; animation-delay:1.8s; font-size:2rem; }
+    .pixel-sprite:nth-child(8)  { top:15%; left:45%; animation-delay:5s;   font-size:1.5rem; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33%       { transform: translateY(-18px) rotate(5deg); }
+      66%       { transform: translateY(-8px) rotate(-3deg); }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      border: 1px solid rgba(255,212,0,.3);
+      background: rgba(255,212,0,.08);
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: .5px;
+      margin-bottom: 28px;
+      text-transform: uppercase;
+    }
+    .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+    .hero h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      line-height: 1.4;
+      color: var(--yellow);
+      text-shadow: 0 0 40px rgba(255,212,0,.35);
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero h1 span { color: var(--cyan); }
+
+    .hero-subtitle {
+      max-width: 680px;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      line-height: 1.7;
+      color: #c0c0d0;
+      margin-bottom: 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+    .btn-primary {
+      padding: 16px 36px;
+      border-radius: var(--radius);
+      background: var(--yellow);
+      color: #000;
+      font-weight: 800;
+      font-size: 1rem;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 0 24px rgba(255,212,0,.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 32px rgba(255,212,0,.45); }
+    .btn-secondary {
+      padding: 16px 36px;
+      border-radius: var(--radius);
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-secondary:hover { border-color: var(--yellow); color: var(--yellow); }
+    .btn-kofi {
+      padding: 16px 32px;
+      border-radius: var(--radius);
+      background: #ff5e5b;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1rem;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn-kofi:hover { transform: translateY(-2px); box-shadow: 0 4px 24px rgba(255,94,91,.4); }
+
+    /* ─── SECTION WRAPPER ─── */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 80px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .section-tag {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+      font-weight: 900;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    .section-desc {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 620px;
+    }
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0;
+    }
+
+    /* ─── WHAT IS THUNDERPASS ─── */
+    .what-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+      margin-top: 48px;
+    }
+    @media (max-width: 768px) { .what-grid { grid-template-columns: 1fr; } }
+    .device-mockup {
+      background: linear-gradient(135deg, #1a1a28 0%, #0f0f1a 100%);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .device-mockup::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(255,212,0,.06) 0%, transparent 70%);
+    }
+    .device-screen {
+      background: #0d0d18;
+      border-radius: 12px;
+      border: 1px solid #2a2a40;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+    }
+    .device-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .55rem;
+      color: var(--yellow);
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .encounter-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e1e30;
+      border: 1px solid rgba(255,212,0,.2);
+      border-radius: 50px;
+      padding: 10px 18px;
+      width: 100%;
+      animation: slideIn .6s ease forwards;
+      opacity: 0;
+    }
+    .encounter-pill:nth-child(2) { animation-delay: .3s; }
+    .encounter-pill:nth-child(3) { animation-delay: .6s; }
+    .encounter-pill:nth-child(4) { animation-delay: .9s; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .enc-avatar { font-size: 1.4rem; }
+    .enc-info { flex: 1; text-align: left; }
+    .enc-name { font-weight: 700; font-size: .85rem; }
+    .enc-sub  { font-size: .72rem; color: var(--muted); }
+    .enc-joules { font-size: .8rem; font-weight: 700; color: var(--yellow); }
+    .landscape-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 100px;
+      background: rgba(0,240,255,.1);
+      border: 1px solid rgba(0,240,255,.25);
+      font-size: .72rem;
+      color: var(--cyan);
+      font-weight: 700;
+      margin-top: 14px;
+    }
+    .what-points { list-style: none; display: flex; flex-direction: column; gap: 20px; }
+    .what-point {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .point-icon {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      background: rgba(255,212,0,.08);
+      border: 1px solid rgba(255,212,0,.15);
+    }
+    .point-text h4 { font-weight: 700; margin-bottom: 4px; }
+    .point-text p  { font-size: .9rem; color: var(--muted); line-height: 1.6; }
+
+    /* ─── FEATURES ─── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 48px;
+    }
+    .feat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      transition: border-color .2s, transform .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feat-card:hover { border-color: rgba(255,212,0,.4); transform: translateY(-3px); }
+    .feat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent, var(--yellow));
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon { font-size: 2.2rem; margin-bottom: 16px; }
+    .feat-card h3 { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; }
+    .feat-card p  { font-size: .9rem; color: var(--muted); line-height: 1.65; }
+    .feat-badge {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+    .badge-live   { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+    .badge-soon   { background: rgba(255,212,0,.1);  color: var(--yellow); border: 1px solid rgba(255,212,0,.25); }
+    .badge-future { background: rgba(168,85,247,.1); color: var(--purple); border: 1px solid rgba(168,85,247,.25); }
+
+    /* ─── ROADMAP ─── */
+    .roadmap-list { display: flex; flex-direction: column; gap: 0; margin-top: 48px; }
+    .roadmap-item {
+      display: flex;
+      gap: 24px;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .roadmap-item:last-child { border-bottom: none; }
+    .rm-number {
+      font-family: 'Press Start 2P', monospace;
+      font-size: .6rem;
+      color: var(--muted);
+      flex-shrink: 0;
+      width: 36px;
+      padding-top: 4px;
+    }
+    .rm-body { flex: 1; }
+    .rm-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+    .rm-desc  { font-size: .9rem; color: var(--muted); line-height: 1.65; }
+    .rm-tag {
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: .65rem;
+      font-weight: 700;
+    }
+
+    /* ─── WAITLIST ─── */
+    .waitlist-wrap {
+      background: linear-gradient(135deg, #12121e 0%, #0f0f1a 100%);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 60px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .waitlist-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(255,212,0,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .waitlist-wrap h2 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    .waitlist-wrap p { color: var(--muted); margin-bottom: 36px; font-size: 1rem; line-height: 1.6; }
+    .waitlist-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto; }
+    @media (max-width: 520px) { .waitlist-form { flex-direction: column; } }
+    .waitlist-form input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .waitlist-form input:focus { border-color: var(--yellow); }
+    .waitlist-form input::placeholder { color: var(--muted); }
+    .waitlist-form button {
+      padding: 14px 28px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--yellow);
+      color: #000;
+      font-weight: 800;
+      font-size: .95rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity .2s;
+    }
+    .waitlist-form button:hover { opacity: .85; }
+    #waitlist-msg {
+      margin-top: 18px;
+      font-size: .9rem;
+      font-weight: 600;
+      min-height: 1.4em;
+    }
+    .waitlist-perks {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .perk { font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+    /* ─── KOFI SECTION ─── */
+    .support-wrap {
+      text-align: center;
+      padding: 40px 24px 80px;
+    }
+    .support-wrap h2 { font-size: 1.8rem; font-weight: 900; margin-bottom: 10px; }
+    .support-wrap p  { color: var(--muted); margin-bottom: 28px; font-size: 1rem; }
+
+    /* ─── PROFILE LOOKUP ─── */
+    .lookup-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 80px 24px;
+    }
+    .lookup-inner { max-width: 580px; margin: 0 auto; }
+    .lookup-inner h2 { font-size: 1.6rem; font-weight: 900; margin-bottom: 8px; }
+    .lookup-inner .lookup-sub { color: var(--muted); margin-bottom: 28px; font-size: .95rem; }
+    .search-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-row input {
+      flex: 1; padding: 13px 18px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: rgba(255,255,255,.04);
+      color: var(--text); font-size: .95rem; outline: none; transition: border-color .2s;
+    }
+    .search-row input:focus { border-color: var(--yellow); }
+    .search-row button {
+      padding: 13px 22px; border-radius: var(--radius-sm); border: none;
+      background: var(--yellow); color: #000; font-weight: 800; cursor: pointer;
+    }
+    #status { color: var(--muted); font-size: .9rem; margin-bottom: 14px; }
+    #card { display: none; background: var(--card); border-radius: var(--radius); overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.5); border: 1px solid var(--border); }
+    .card-header { background: linear-gradient(135deg,#1a1a28 0%,#0f0f1a 100%); border-bottom: 2px solid var(--yellow); padding: 24px 20px 16px; display: flex; align-items: center; gap: 16px; }
+    .avatar { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--yellow); background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 2rem; overflow: hidden; flex-shrink: 0; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .card-header h2 { font-size: 1.15rem; font-weight: 800; }
+    .card-header p  { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+    .stats-row { display: flex; border-bottom: 1px solid var(--border); }
+    .stat { flex: 1; text-align: center; padding: 14px 8px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat .val { font-size: 1.3rem; font-weight: 800; color: var(--yellow); }
+    .stat .lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .card-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .card-section:last-child { border-bottom: none; }
+    .card-section h3 { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+    .ghost-card { background: var(--surface); border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 12px; }
+    .ghost-card .ghost-icon { font-size: 1.8rem; }
+    .ghost-card .game { font-weight: 600; }
+    .ghost-card .score { color: var(--yellow); font-size: .88rem; }
+    .share-link { word-break: break-all; color: var(--yellow); font-size: .8rem; }
+    .sync-time { color: var(--muted); font-size: .73rem; margin-top: 6px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    footer a { color: var(--yellow); text-decoration: none; }
+    footer .foot-inner { max-width: 800px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 640px) {
+      nav { padding: 12px 16px; }
+      .nav-links { display: none; }
+      section { padding: 60px 16px; }
+      .waitlist-wrap { padding: 40px 20px; }
+    }
   </style>
 </head>
 <body>
-<header><div class="bolt">&#9889;</div><h1>ThunderPass</h1><p>Look up a player profile by their Installation ID</p></header>
-<div class="search-row">
-  <input id="idInput" type="text" placeholder="Paste installation ID..." />
-  <button onclick="lookup()">Look up</button>
+
+<!-- ░░ NAV ░░ -->
+<nav>
+  <a class="nav-logo" href="#">
+    <span class="bolt">⚡</span>
+    <span>ThunderPass</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#waitlist">Waitlist</a></li>
+    <li><a href="#lookup">Player Lookup</a></li>
+  </ul>
+  <a class="nav-cta" href="#waitlist">Join the Grid ⚡</a>
+</nav>
+
+<!-- ░░ HERO ░░ -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <!-- floating pixel sprites -->
+  <span class="pixel-sprite">🎮</span>
+  <span class="pixel-sprite">🕹️</span>
+  <span class="pixel-sprite">⚡</span>
+  <span class="pixel-sprite">🏆</span>
+  <span class="pixel-sprite">👾</span>
+  <span class="pixel-sprite">🎲</span>
+  <span class="pixel-sprite">🔋</span>
+  <span class="pixel-sprite">🌐</span>
+
+  <div class="hero-badge">
+    <span class="dot"></span>
+    Now in development — Join the waitlist
+  </div>
+
+  <h1><span style="display:block">StreetPass.</span><span>Evolved.</span></h1>
+
+  <p class="hero-subtitle">
+    ThunderPass brings back the magic of Nintendo's StreetPass — but for <strong>AYN Thor, AYN Odin</strong>, and any Android device.
+    Run it in the background, carry your handheld, and automatically connect with other players nearby over Bluetooth.
+    Built for <strong>landscape mode</strong> from the ground up. No account needed. No fuss. Just sparks. ⚡
+  </p>
+
+  <div class="hero-buttons">
+    <a class="btn-primary" href="#waitlist">Join the Waitlist</a>
+    <a class="btn-secondary" href="#features">See Features</a>
+    <a class="btn-kofi" href="https://ko-fi.com/guilhermelimait/posts" target="_blank" rel="noopener noreferrer">
+      ☕ Support on Ko-fi
+    </a>
+  </div>
 </div>
-<div id="status"></div>
-<div id="card">
-  <div class="card-header">
-    <div class="avatar" id="avatarWrap">&#9889;</div>
-    <div><h2 id="cardName"></h2><p id="cardGreeting"></p></div>
+
+<div class="divider"></div>
+
+<!-- ░░ WHAT IS THUNDERPASS ░░ -->
+<section id="about">
+  <div class="section-tag">What is it?</div>
+  <h2 class="section-title">Your handheld, always connected.</h2>
+  <p class="section-desc">
+    Remember walking around with your Nintendo 3DS and suddenly getting that green light? ThunderPass does exactly that — for Android.
+    Designed as a background service, it silently exchanges profiles with nearby players using Bluetooth Low Energy, no Wi-Fi or internet required.
+  </p>
+
+  <div class="what-grid">
+    <!-- Device mockup -->
+    <div class="device-mockup">
+      <div class="device-label">⚡ ThunderPass — Live</div>
+      <div class="device-screen">
+        <div class="encounter-pill">
+          <span class="enc-avatar">🎮</span>
+          <div class="enc-info">
+            <div class="enc-name">Thor_Player01</div>
+            <div class="enc-sub">AYN Thor · RetroAchievements</div>
+          </div>
+          <span class="enc-joules">+100J</span>
+        </div>
+        <div class="encounter-pill">
+          <span class="enc-avatar">🕹️</span>
+          <div class="enc-info">
+            <div class="enc-name">Odin_Wanderer</div>
+            <div class="enc-sub">AYN Odin · Ghost: Hollow Knight</div>
+          </div>
+          <span class="enc-joules">+100J</span>
+        </div>
+        <div class="encounter-pill">
+          <span class="enc-avatar">👾</span>
+          <div class="enc-info">
+            <div class="enc-name">RetroGamer99</div>
+            <div class="enc-sub">Galaxy S24 · 22,400 RA Points</div>
+          </div>
+          <span class="enc-joules">+100J</span>
+        </div>
+      </div>
+      <div class="landscape-tag">📱 Landscape · Always-on service</div>
+    </div>
+
+    <!-- Key points -->
+    <ul class="what-points">
+      <li class="what-point">
+        <div class="point-icon">⚡</div>
+        <div class="point-text">
+          <h4>Sparks, not friends</h4>
+          <p>Passive encounters happen automatically when another ThunderPass user is nearby. No pairing, no tapping, no app swap.</p>
+        </div>
+      </li>
+      <li class="what-point">
+        <div class="point-icon">📱</div>
+        <div class="point-text">
+          <h4>Built for Android handhelds</h4>
+          <p>First-class support for AYN Thor and AYN Odin. Landscape-first UI, compact bottom bar, designed to feel native on handheld gaming devices.</p>
+        </div>
+      </li>
+      <li class="what-point">
+        <div class="point-icon">🔋</div>
+        <div class="point-text">
+          <h4>Runs in the background</h4>
+          <p>A persistent foreground service keeps ThunderPass alive even when your screen is off. Close the app, keep collecting Sparks.</p>
+        </div>
+      </li>
+      <li class="what-point">
+        <div class="point-icon">🕹️</div>
+        <div class="point-text">
+          <h4>Retro gaming at its core</h4>
+          <p>Sync your RetroAchievements account, share your Ghost data, and discover which games you have in common with strangers.</p>
+        </div>
+      </li>
+    </ul>
   </div>
-  <div class="stats-row">
-    <div class="stat"><div class="val" id="statSparks">0</div><div class="lbl">Sparks</div></div>
-    <div class="stat"><div class="val" id="statJoules">0</div><div class="lbl">Joules</div></div>
-    <div class="stat"><div class="val" id="statStickers">0</div><div class="lbl">Stickers</div></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ░░ FEATURES ░░ -->
+<section id="features">
+  <div class="section-tag">Features</div>
+  <h2 class="section-title">Everything you'd want from a modern StreetPass.</h2>
+  <p class="section-desc">A growing feature set built around privacy, retro gaming, and pure fun — offline-first, always.</p>
+
+  <div class="features-grid">
+
+    <div class="feat-card" style="--accent:var(--yellow)">
+      <div class="feat-icon">⚡</div>
+      <h3>BLE Sparks</h3>
+      <p>Automatic Bluetooth Low Energy discovery. When two ThunderPass users are near each other, they exchange profile cards silently — no action required.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--cyan)">
+      <div class="feat-icon">🔒</div>
+      <h3>Privacy by Design</h3>
+      <p>Your real device ID is never broadcast. ThunderPass uses rotating IDs (HMAC-SHA256, 30-min windows) so you can't be passively tracked.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--yellow)">
+      <div class="feat-icon">🔋</div>
+      <h3>Joules Energy System</h3>
+      <p>Every unique Spark earns you 100 Joules. Spend them in the Visual Shop to unlock profile effects, CRT Scanlines, Pixelated Auras, and more.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--purple)">
+      <div class="feat-icon">🏆</div>
+      <h3>Badges &amp; Achievements</h3>
+      <p>Earn Thunder Badges for milestones across passes, retro gaming, geolocation, and integrations. Each badge tracks your progress with a glowing thunder bolt.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--cyan)">
+      <div class="feat-icon">🕹️</div>
+      <h3>RetroAchievements Sync</h3>
+      <p>Link your RA account and automatically share your rank, points, and recently mastered games whenever you Spark with another player.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--yellow)">
+      <div class="feat-icon">👻</div>
+      <h3>Ghost Data</h3>
+      <p>Share your current game and high score as a "Ghost". When two players have the same game in common, a Legendary Encounter is triggered.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--green)">
+      <div class="feat-icon">🎨</div>
+      <h3>Profile Maker</h3>
+      <p>Craft your traveler identity — custom display name, avatar style, greeting message, and a randomly generated pixel art avatar if you want to keep it a surprise.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--yellow)">
+      <div class="feat-icon">🔔</div>
+      <h3>Encounter Notifications</h3>
+      <p>Get an instant notification the moment a new ThunderPasser is identified nearby, even while the app is in the background.</p>
+      <span class="feat-badge badge-soon">Coming Soon</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--purple)">
+      <div class="feat-icon">☁️</div>
+      <h3>Cloud Sync &amp; Web Profile</h3>
+      <p>Optionally sign in to back up your profile and encounter history to the cloud. Share a link so anyone can look up your ThunderPass card online.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--cyan)">
+      <div class="feat-icon">🗺️</div>
+      <h3>Power Surge Events</h3>
+      <p>Location-based 2× Joule multiplier events where the Grid goes electric. Show up, rack up energy, and unlock exclusive profile effects.</p>
+      <span class="feat-badge badge-future">Planned</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--yellow)">
+      <div class="feat-icon">📡</div>
+      <h3>Open Payload API</h3>
+      <p>A future public SDK will let other apps piggyback on ThunderPass exchanges — imagine sharing your Pokémon team, board game stats, or high scores.</p>
+      <span class="feat-badge badge-future">Planned</span>
+    </div>
+
+    <div class="feat-card" style="--accent:var(--purple)">
+      <div class="feat-icon">📱</div>
+      <h3>Landscape-First UI</h3>
+      <p>Every screen, every button, every card is designed for widescreen handheld play. The compact bottom bar stays fixed so you always know where you are.</p>
+      <span class="feat-badge badge-live">✓ Live</span>
+    </div>
+
   </div>
-  <div class="section" id="ghostSection" style="display:none">
-    <h3>Ghost</h3>
-    <div class="ghost-card"><div class="ghost-icon">&#128123;</div><div><div class="game" id="ghostGame"></div><div class="score" id="ghostScore"></div></div></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ░░ ROADMAP ░░ -->
+<section id="roadmap">
+  <div class="section-tag">Roadmap</div>
+  <h2 class="section-title">Where we're headed.</h2>
+  <p class="section-desc">A transparent look at what's shipped and what's next on the Grid.</p>
+
+  <div class="roadmap-list">
+    <div class="roadmap-item">
+      <div class="rm-number">M0–M1</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          Foundation &amp; StreetPass MVP
+          <span class="rm-tag badge-live">✓ Shipped</span>
+        </div>
+        <div class="rm-desc">Android project scaffold, BLE advertise + scan, rotating privacy IDs, GATT profile card exchange, Room database, brand theme, CI/CD pipeline, and unit tests.</div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="rm-number">M2</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          Energy, Trust &amp; Quality
+          <span class="rm-tag badge-live">✓ Shipped</span>
+        </div>
+        <div class="rm-desc">Joules energy engine, haptic "double-pulse Spark" feedback, home widget showing encounter counts, better onboarding copy, and improved battery handling.</div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="rm-number">M3</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          Fun Layer &amp; Retro Gaming
+          <span class="rm-tag badge-live">✓ Shipped</span>
+        </div>
+        <div class="rm-desc">Ghost payloads, RetroAchievements integration, dynamic profile cards with RA rank/points, special achievement triggers (Platinum Pulse, Legendary Encounter, Retro Circuit), and the Visual Shop.</div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="rm-number">M4</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          Accounts &amp; Cloud Sync
+          <span class="rm-tag badge-live">✓ Shipped</span>
+        </div>
+        <div class="rm-desc">Supabase email OTP sign-in, auto-sync profile after every Spark, web dashboard (this page!) for public profile lookup, post-encounter sync.</div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="rm-number">M5</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          UX Polish &amp; Notifications
+          <span class="rm-tag badge-soon">In Progress</span>
+        </div>
+        <div class="rm-desc">Landscape-first UI refinements, new ThunderPasser notification, profile avatar randomiser, encounter data cards moved to profile area, fixed landscape bottom bar, encounter backup/restore, remote privacy controls.</div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="rm-number">M6</div>
+      <div class="rm-body">
+        <div class="rm-title">
+          Power Surge Events &amp; Platform
+          <span class="rm-tag badge-future">Planned</span>
+        </div>
+        <div class="rm-desc">Location-based 2× energy multiplier events, public payload provider SDK so other apps can participate in ThunderPass exchanges, versioned protocol extensions.</div>
+      </div>
+    </div>
   </div>
-  <div class="section" id="stickersSection" style="display:none"><h3>Sticker Book</h3><div class="stickers" id="stickerList"></div></div>
-  <div class="section" id="retroSection" style="display:none"><h3>RetroAchievements</h3><a id="retroLink" href="#" target="_blank" rel="noopener" style="color:var(--yellow)"></a></div>
-  <div class="section">
-    <h3>Share this profile</h3>
-    <div class="share-link" id="shareUrl"></div>
-    <div class="sync-time" id="syncTime"></div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ░░ WAITLIST ░░ -->
+<section id="waitlist" style="padding-top:80px;padding-bottom:80px">
+  <div class="waitlist-wrap">
+    <div class="section-tag" style="justify-content:center;display:flex;margin-bottom:12px">Early Access</div>
+    <h2>Be first on the Grid. ⚡</h2>
+    <p>ThunderPass is in active development. Drop your email and we'll notify you the moment early access opens — plus you'll lock in the <strong style="color:var(--yellow)">Early Adopter</strong> badge forever.</p>
+    <div class="waitlist-form">
+      <input id="wlEmail" type="email" placeholder="your@email.com" />
+      <button onclick="joinWaitlist()">Join Now</button>
+    </div>
+    <div id="waitlist-msg"></div>
+    <div class="waitlist-perks">
+      <span class="perk">🚀 Early Adopter badge</span>
+      <span class="perk">⚡ Bonus Joules on launch</span>
+      <span class="perk">🔒 No spam, ever</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ░░ SUPPORT ░░ -->
+<div class="support-wrap">
+  <h2>Love what we're building?</h2>
+  <p>ThunderPass is an indie passion project. Your support keeps the Grid running and the Sparks flying.</p>
+  <a class="btn-kofi" href="https://ko-fi.com/guilhermelimait/posts" target="_blank" rel="noopener noreferrer">
+    ☕ Support on Ko-fi
+  </a>
+</div>
+
+<div class="divider"></div>
+
+<!-- ░░ PLAYER LOOKUP ░░ -->
+<div class="lookup-section" id="lookup">
+  <div class="lookup-inner">
+    <h2>⚡ Player Lookup</h2>
+    <p class="lookup-sub">Find any ThunderPass profile by Installation ID.</p>
+    <div class="search-row">
+      <input id="idInput" type="text" placeholder="Paste installation ID..." />
+      <button onclick="lookup()">Search</button>
+    </div>
+    <div id="status"></div>
+    <div id="card">
+      <div class="card-header">
+        <div class="avatar" id="avatarWrap">⚡</div>
+        <div><h2 id="cardName"></h2><p id="cardGreeting"></p></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="val" id="statSparks">0</div><div class="lbl">Sparks</div></div>
+        <div class="stat"><div class="val" id="statJoules">0</div><div class="lbl">Joules</div></div>
+        <div class="stat"><div class="val" id="statBadges">0</div><div class="lbl">Badges</div></div>
+      </div>
+      <div class="card-section" id="ghostSection" style="display:none">
+        <h3>Ghost</h3>
+        <div class="ghost-card"><div class="ghost-icon">👻</div><div><div class="game" id="ghostGame"></div><div class="score" id="ghostScore"></div></div></div>
+      </div>
+      <div class="card-section" id="retroSection" style="display:none">
+        <h3>RetroAchievements</h3>
+        <a id="retroLink" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--yellow)"></a>
+      </div>
+      <div class="card-section">
+        <h3>Share this profile</h3>
+        <div class="share-link" id="shareUrl"></div>
+        <div class="sync-time" id="syncTime"></div>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- ░░ FOOTER ░░ -->
+<footer>
+  <div class="foot-inner">
+    <span>⚡ ThunderPass — StreetPass for Android &nbsp;·&nbsp; <a href="https://github.com/guilhermelimait/ThunderPass" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    <span>Made with ☕ · <a href="https://ko-fi.com/guilhermelimait/posts" target="_blank" rel="noopener noreferrer">Support on Ko-fi</a></span>
+  </div>
+</footer>
+
 <script>
-const SUPABASE_URL='https://wrunnzrxuapqpxoxvzpa.supabase.co';
-const ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndydW5uenJ4dWFwcXB4b3h2enBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NTgyMjcsImV4cCI6MjA4ODEzNDIyN30.IwgF-1KZg1wzaFvny0RidcU_Yw0qronKt_HSEW7-3K0';
-const STICKER_MAP={first_spark:{icon:'⚡',name:'First Spark'},player_2:{icon:'🎮',name:'Player 2'},night_owl:{icon:'🦉',name:'Night Owl'},world_traveler:{icon:'🌍',name:'World Traveler'},glitch_hunter:{icon:'🐛',name:'Glitch Hunter'},power_surge:{icon:'🔋',name:'Power Surge'},ghost_buster:{icon:'👻',name:'Ghost Buster'},retro_fan:{icon:'🕹️',name:'Retro Fan'},social_spark:{icon:'🤝',name:'Social Spark'},early_adopter:{icon:'🚀',name:'Early Adopter'},marathon:{icon:'🏃',name:'Marathon'},collector:{icon:'🏆',name:'Collector'}};
-window.addEventListener('DOMContentLoaded',()=>{
-  const id=new URLSearchParams(window.location.search).get('id');
-  if(id){document.getElementById('idInput').value=id;lookup();}
-  document.getElementById('idInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookup();});
-});
-async function lookup(){
-  const id=document.getElementById('idInput').value.trim();
-  if(!id)return;
-  setStatus('Searching...');hideCard();
-  try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/profiles?installation_id=eq.${encodeURIComponent(id)}&select=*&limit=1`,{headers:{'apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY}});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const rows=await res.json();
-    if(!rows||rows.length===0){setStatus('No profile found for that Installation ID.');return;}
-    renderCard(rows[0]);
-    history.replaceState(null,'','?id='+encodeURIComponent(id));
-    document.getElementById('shareUrl').textContent=window.location.href;
-  }catch(e){setStatus('Error: '+e.message);}
+/* ── Supabase config ── */
+const SUPABASE_URL = 'https://wrunnzrxuapqpxoxvzpa.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndydW5uenJ4dWFwcXB4b3h2enBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NTgyMjcsImV4cCI6MjA4ODEzNDIyN30.IwgF-1KZg1wzaFvny0RidcU_Yw0qronKt_HSEW7-3K0';
+
+/* ── Waitlist ── */
+async function joinWaitlist() {
+  const email = document.getElementById('wlEmail').value.trim();
+  const msg   = document.getElementById('waitlist-msg');
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) { msg.style.color = '#ef4444'; msg.textContent = 'Please enter a valid email address.'; return; }
+  msg.style.color = '#6b7280'; msg.textContent = 'Joining the Grid…';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/waitlist`, {
+      method: 'POST',
+      headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ email })
+    });
+    if (res.status === 200 || res.status === 201) {
+      msg.style.color = '#22c55e'; msg.textContent = '⚡ You\'re on the Grid! We\'ll notify you when early access opens.';
+      document.getElementById('wlEmail').value = '';
+    } else if (res.status === 409) {
+      msg.style.color = '#22c55e'; msg.textContent = '⚡ You\'re already on the Grid! We\'ll be in touch.';
+    } else { throw new Error('HTTP ' + res.status); }
+  } catch (e) { msg.style.color = '#ef4444'; msg.textContent = 'Something went wrong. Try again later.'; }
 }
-function renderCard(p){
+document.getElementById('wlEmail').addEventListener('keydown', e => { if (e.key === 'Enter') joinWaitlist(); });
+
+/* ── Profile Lookup ── */
+window.addEventListener('DOMContentLoaded', () => {
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (id) { document.getElementById('idInput').value = id; lookup(); }
+  document.getElementById('idInput').addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
+});
+
+async function lookup() {
+  const id = document.getElementById('idInput').value.trim();
+  if (!id) return;
+  setStatus('Searching…'); hideCard();
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?installation_id=eq.${encodeURIComponent(id)}&select=*&limit=1`, { headers: { 'apikey': ANON_KEY, 'Authorization': 'Bearer ' + ANON_KEY } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!rows || rows.length === 0) { setStatus('No profile found for that Installation ID.'); return; }
+    renderCard(rows[0]);
+    history.replaceState(null, '', '?id=' + encodeURIComponent(id));
+    document.getElementById('shareUrl').textContent = window.location.href;
+  } catch (e) { setStatus('Error: ' + e.message); }
+}
+
+function renderCard(p) {
   setStatus('');
-  document.getElementById('cardName').textContent=p.display_name||'Traveler';
-  document.getElementById('cardGreeting').textContent=p.greeting||'';
-  const kind=(p.avatar_kind||'defaultBolt');
-  const color=(p.avatar_color||'#FFD400').replace('#','');
-  document.getElementById('avatarWrap').innerHTML='<img src="https://api.dicebear.com/9.x/identicon/svg?seed='+encodeURIComponent(kind)+'&backgroundColor='+color+'" alt="avatar"/>';
-  document.getElementById('statSparks').textContent=(p.encounter_count||0).toLocaleString();
-  document.getElementById('statJoules').textContent=(p.joules_total||0).toLocaleString();
-  const stickers=(p.stickers_json||'').split(',').filter(s=>s.trim());
-  document.getElementById('statStickers').textContent=stickers.length;
-  if(p.ghost_game){document.getElementById('ghostGame').textContent=p.ghost_game;document.getElementById('ghostScore').textContent=p.ghost_score?'Score: '+p.ghost_score.toLocaleString():'';document.getElementById('ghostSection').style.display='';}else document.getElementById('ghostSection').style.display='none';
-  if(stickers.length>0){const list=document.getElementById('stickerList');list.innerHTML='';stickers.forEach(k=>{const s=STICKER_MAP[k.trim()]||{icon:'🏷',name:k};const el=document.createElement('div');el.className='sticker';el.textContent=s.icon+' '+s.name;list.appendChild(el);});document.getElementById('stickersSection').style.display='';}else document.getElementById('stickersSection').style.display='none';
-  if(p.retro_username){const a=document.getElementById('retroLink');a.href='https://retroachievements.org/user/'+encodeURIComponent(p.retro_username);a.textContent='retroachievements.org/user/'+p.retro_username;document.getElementById('retroSection').style.display='';}else document.getElementById('retroSection').style.display='none';
-  if(p.updated_at)document.getElementById('syncTime').textContent='Last synced: '+new Date(p.updated_at*1000).toLocaleString();
+  document.getElementById('cardName').textContent    = p.display_name || 'Traveler';
+  document.getElementById('cardGreeting').textContent = p.greeting || '';
+  const kind  = p.avatar_kind  || 'defaultBolt';
+  const color = (p.avatar_color || '#FFD400').replace('#', '');
+  document.getElementById('avatarWrap').innerHTML = '<img src="https://api.dicebear.com/9.x/identicon/svg?seed=' + encodeURIComponent(kind) + '&backgroundColor=' + color + '" alt="avatar"/>';
+  document.getElementById('statSparks').textContent = (p.encounter_count || 0).toLocaleString();
+  document.getElementById('statJoules').textContent = (p.joules_total    || 0).toLocaleString();
+  const stickers = (p.stickers_json || '').split(',').filter(s => s.trim());
+  document.getElementById('statBadges').textContent = stickers.length;
+  if (p.ghost_game) { document.getElementById('ghostGame').textContent = p.ghost_game; document.getElementById('ghostScore').textContent = p.ghost_score ? 'Score: ' + p.ghost_score.toLocaleString() : ''; document.getElementById('ghostSection').style.display = ''; } else document.getElementById('ghostSection').style.display = 'none';
+  if (p.retro_username) { const a = document.getElementById('retroLink'); a.href = 'https://retroachievements.org/user/' + encodeURIComponent(p.retro_username); a.textContent = 'retroachievements.org/user/' + p.retro_username; document.getElementById('retroSection').style.display = ''; } else document.getElementById('retroSection').style.display = 'none';
+  if (p.updated_at) document.getElementById('syncTime').textContent = 'Last synced: ' + new Date(p.updated_at * 1000).toLocaleString();
   showCard();
 }
-function setStatus(m){document.getElementById('status').textContent=m;}
-function showCard(){document.getElementById('card').style.display='';}
-function hideCard(){document.getElementById('card').style.display='none';}
+
+function setStatus(m)  { document.getElementById('status').textContent = m; }
+function showCard()    { document.getElementById('card').style.display = ''; }
+function hideCard()    { document.getElementById('card').style.display = 'none'; }
 </script>
 </body>
 </html>
