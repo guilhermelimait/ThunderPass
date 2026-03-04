@@ -40,6 +40,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.installationId }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
+    /** The seed used to generate the user's DiceBear avatar. Falls back to installationId. */
+    val avatarSeed: StateFlow<String> = profileDao.observe()
+        .filterNotNull()
+        .map { p -> p.avatarSeed.ifEmpty { p.installationId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
     val displayName: StateFlow<String> = profileDao.observe()
         .filterNotNull()
         .map { p ->

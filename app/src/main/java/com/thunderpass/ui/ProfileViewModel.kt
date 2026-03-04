@@ -38,6 +38,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
         displayName:   String,
         greeting:      String,
         retroUsername: String = "",
+        avatarSeed:    String = "",
     ) {
         viewModelScope.launch {
             val current = profileDao.get()
@@ -47,6 +48,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                     displayName   = displayName.trim().ifEmpty { android.os.Build.MODEL },
                     greeting      = greeting.trim(),
                     retroUsername = retroUsername.trim(),
+                    avatarSeed    = avatarSeed.ifEmpty { current.avatarSeed },
                     updatedAt     = System.currentTimeMillis() / 1000,
                 )
             )

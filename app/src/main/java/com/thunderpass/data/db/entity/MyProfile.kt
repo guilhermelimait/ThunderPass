@@ -26,6 +26,9 @@ data class MyProfile(
     /** Stable installation ID (UUID). Never broadcast directly. */
     val installationId: String = "",
 
+    /** Avatar seed — the random string used to generate the DiceBear avatar. Defaults to installationId. */
+    val avatarSeed: String = "",
+
     /** Unix epoch seconds when the profile was last edited. */
     val updatedAt: Long = 0L,
 

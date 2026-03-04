@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import android.content.res.Configuration
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.tooling.preview.Preview
+import com.thunderpass.R
 
 private val BLE_PERMISSIONS = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
@@ -50,6 +52,7 @@ fun HomeScreen(
     val serviceRunning by vm.serviceRunning.collectAsState()
     val joulesTotal     by vm.joulesTotal.collectAsState()
     val installationId by vm.installationId.collectAsState()
+    val avatarSeed     by vm.avatarSeed.collectAsState()
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
 
@@ -75,7 +78,7 @@ fun HomeScreen(
         allGranted = allGranted,
         displayName = displayName,
         serviceRunning = serviceRunning,
-        installationId = installationId,
+        avatarSeed = avatarSeed.ifEmpty { installationId },
         encounters = encounters,
         joulesTotal = joulesTotal,
         onToggleService = {
@@ -103,7 +106,7 @@ fun HomeScreenContent(
     allGranted: Boolean,
     displayName: String,
     serviceRunning: Boolean,
-    installationId: String,
+    avatarSeed: String,
     encounters: List<EncounterWithProfile>,
     joulesTotal: Long,
     onToggleService: () -> Unit,
@@ -164,7 +167,7 @@ fun HomeScreenContent(
                             )
                         }
                         DiceBearAvatar(
-                            seed     = installationId.ifEmpty { "default" },
+                            seed     = avatarSeed.ifEmpty { "default" },
                             size     = 40.dp,
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -186,25 +189,45 @@ fun HomeScreenContent(
                     color     = MaterialTheme.colorScheme.outlineVariant,
                 )
 
-                // Right panel — walking animation + recent bypassers
-                Column(
+                // Right panel — walking animation fills height, toggle overlaid at bottom
+                Box(
                     modifier = Modifier
                         .weight(0.58f)
                         .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
                         .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    WalkingSceneCard(
-                        avatarSeed     = installationId.ifEmpty { "default" },
-                        serviceRunning = serviceRunning,
-                    )
-                    val lastEnc = encounters.firstOrNull()
-                    if (lastEnc != null) {
-                        LastPassedByCard(
-                            encounter = lastEnc,
-                            onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                        )
+                    Column(
+                        modifier            = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Animation fills remaining space above last-passed-by
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            WalkingSceneCard(
+                                avatarSeed     = avatarSeed.ifEmpty { "default" },
+                                serviceRunning = serviceRunning,
+                                fillHeight     = true,
+                            )
+                            ThunderPassToggleCard(
+                                active      = serviceRunning,
+                                onToggle    = onToggleService,
+                                transparent = true,
+                                modifier    = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                            )
+                        }
+                        val lastEnc = encounters.firstOrNull()
+                        if (lastEnc != null) {
+                            LastPassedByCard(
+                                encounter = lastEnc,
+                                onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                            )
+                        }
                     }
                 }
             }
@@ -235,7 +258,7 @@ fun HomeScreenContent(
                         )
                     }
                     DiceBearAvatar(
-                        seed     = installationId.ifEmpty { "default" },
+                        seed     = avatarSeed.ifEmpty { "default" },
                         size     = 52.dp,
                         modifier = Modifier
                             .clip(CircleShape)
@@ -253,7 +276,7 @@ fun HomeScreenContent(
                 ) {
                     // Animated scene fills the box
                     WalkingSceneCard(
-                        avatarSeed     = installationId.ifEmpty { "default" },
+                        avatarSeed     = avatarSeed.ifEmpty { "default" },
                         serviceRunning = serviceRunning,
                         fillHeight     = true,
                     )
@@ -314,27 +337,27 @@ private fun ThunderPassToggleCard(
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                androidx.compose.foundation.Image(
+                    painter            = painterResource(R.drawable.logo),
+                    contentDescription = "ThunderPass logo",
+                    modifier           = Modifier.size(28.dp),
+                )
                 Text(
-                    text       = "⚡ ThunderPass",
+                    text       = "ThunderPass",
                     style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color      = if (active)
                         MaterialTheme.colorScheme.onPrimaryContainer
                     else
                         MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text  = if (active) "Active — watching for Travelers" else "Tap to activate",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (active)
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                 )
             }
             Switch(checked = active, onCheckedChange = { onToggle() })
@@ -476,7 +499,7 @@ fun HomeScreenPreview() {
             allGranted = true,
             displayName = "Gui",
             serviceRunning = true,
-            installationId = "test-id",
+            avatarSeed = "test-id",
             encounters = emptyList(),
             joulesTotal = 2500,
             onToggleService = {},

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -91,7 +90,11 @@ fun ThunderPassNavGraph(
 
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val showBottomBar = currentRoute in BOTTOM_NAV_ROUTES
+    val showBottomBar = BOTTOM_NAV_ROUTES.any { route ->
+        currentRoute == route ||
+        currentRoute?.startsWith("$route?") == true ||
+        currentRoute?.startsWith("$route/") == true
+    }
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 

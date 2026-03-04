@@ -54,8 +54,8 @@ fun ProfileScreen(
         streak = streak,
         joulesTotal = joulesTotal,
         firstRun = firstRun,
-        onSave = { name, greeting, retroUser, retroKey ->
-            vm.save(name, greeting, retroUser)
+        onSave = { name, greeting, retroUser, retroKey, seed ->
+            vm.save(name, greeting, retroUser, avatarSeed = seed)
             // RetroAuthManager logic...
         },
         onComplete = onComplete,
@@ -71,7 +71,7 @@ fun ProfileScreenContent(
     streak: Int,
     joulesTotal: Long,
     firstRun: Boolean = false,
-    onSave: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
     onComplete: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
 ) {
@@ -81,7 +81,9 @@ fun ProfileScreenContent(
     var draftRaApiKey      by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf(false) }
 
-    var avatarSeed by remember(profile.installationId) { mutableStateOf(profile.installationId) }
+    var avatarSeed by remember(profile.avatarSeed.ifEmpty { profile.installationId }) {
+        mutableStateOf(profile.avatarSeed.ifEmpty { profile.installationId })
+    }
 
     Scaffold(
         topBar = {
@@ -281,7 +283,7 @@ fun ProfileScreenContent(
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick  = {
-                        onSave(draftName, draftGreeting, draftRetroUsername, draftRaApiKey)
+                        onSave(draftName, draftGreeting, draftRetroUsername, draftRaApiKey, avatarSeed)
                         saved = true
                         if (firstRun) onComplete?.invoke()
                     },
