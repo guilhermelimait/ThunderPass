@@ -3,93 +3,481 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ThunderPass - Profile Lookup</title>
+  <title>ThunderPass — BLE StreetPass for Android</title>
   <style>
-    :root { --bg:#0d0d0d;--surface:#1a1a1a;--card:#222;--yellow:#FFD400;--text:#f0f0f0;--muted:#888;--radius:14px; }
+    :root{
+      --yellow:#FFD400;--purple:#7c3aed;--blue:#2563eb;--cyan:#0ea5e9;
+      --green:#16a34a;--orange:#ea580c;--pink:#db2777;--red:#dc2626;
+      --bg:#f5f3ff;--card:#fff;--text:#1e1b4b;--muted:#6b7280;
+      --radius:16px;--shadow:0 4px 24px rgba(124,58,237,.12);
+    }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px 80px}
-    header{text-align:center;margin-bottom:36px}
-    header .bolt{font-size:3rem}
-    header h1{font-size:2rem;font-weight:800;color:var(--yellow)}
-    header p{color:var(--muted);margin-top:4px;font-size:.9rem}
-    .search-row{display:flex;gap:8px;width:100%;max-width:480px;margin-bottom:32px}
-    .search-row input{flex:1;padding:12px 16px;border-radius:var(--radius);border:1px solid #333;background:var(--surface);color:var(--text);font-size:1rem;outline:none}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+    /* ── NAV ── */
+    nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:#fff;border-bottom:3px solid var(--yellow);position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    .nav-brand{display:flex;align-items:center;gap:10px;font-size:1.3rem;font-weight:900;color:var(--purple);text-decoration:none}
+    .nav-brand span{font-size:1.6rem}
+    .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+    .nav-links a{color:var(--text);text-decoration:none;font-weight:600;font-size:.9rem;transition:color .2s}
+    .nav-links a:hover{color:var(--purple)}
+    .nav-btn{background:var(--yellow);color:#000;padding:8px 18px;border-radius:50px;font-weight:800;font-size:.9rem;text-decoration:none;transition:transform .15s}
+    .nav-btn:hover{transform:scale(1.05)}
+
+    /* ── HERO ── */
+    .hero{background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 40%,#2563eb 80%,#0ea5e9 100%);color:#fff;text-align:center;padding:80px 20px 100px;position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+    .hero-bolt{font-size:5rem;display:block;filter:drop-shadow(0 0 24px #FFD400cc);animation:pulse 2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{filter:drop-shadow(0 0 24px #FFD400cc)}50%{filter:drop-shadow(0 0 48px #FFD400ff)}}
+    .hero h1{font-size:clamp(2.4rem,6vw,4rem);font-weight:900;margin:16px 0 8px;letter-spacing:-1px}
+    .hero h1 em{font-style:normal;color:var(--yellow)}
+    .hero .tagline{font-size:1.1rem;opacity:.88;max-width:540px;margin:0 auto 32px;line-height:1.6}
+    .hero-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:32px}
+    .badge-pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:50px;padding:6px 16px;font-size:.82rem;font-weight:600}
+    .hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn-primary{background:var(--yellow);color:#000;padding:14px 32px;border-radius:50px;font-weight:800;font-size:1rem;text-decoration:none;border:none;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 20px rgba(255,212,0,.4)}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(255,212,0,.5)}
+    .btn-outline{background:transparent;color:#fff;padding:14px 32px;border-radius:50px;font-weight:700;font-size:1rem;text-decoration:none;border:2px solid rgba(255,255,255,.5);transition:border-color .15s,background .15s}
+    .btn-outline:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+
+    /* ── STATS STRIP ── */
+    .stats-strip{background:var(--yellow);padding:20px;display:flex;gap:0;justify-content:center;flex-wrap:wrap}
+    .strip-stat{flex:1;min-width:140px;text-align:center;padding:8px 20px;border-right:2px solid rgba(0,0,0,.12)}
+    .strip-stat:last-child{border-right:none}
+    .strip-stat .n{font-size:2rem;font-weight:900;color:#000}
+    .strip-stat .l{font-size:.75rem;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+    /* ── SECTION WRAPPER ── */
+    section{padding:72px 20px;max-width:1100px;margin:0 auto}
+    .section-label{font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--purple);margin-bottom:10px}
+    .section-title{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:900;line-height:1.2;margin-bottom:12px}
+    .section-sub{color:var(--muted);font-size:1rem;line-height:1.6;max-width:600px;margin-bottom:48px}
+
+    /* ── FEATURE GRID ── */
+    .feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+    .feature-card{background:var(--card);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);border-top:4px solid var(--purple);transition:transform .2s,box-shadow .2s}
+    .feature-card:hover{transform:translateY(-4px);box-shadow:0 8px 40px rgba(124,58,237,.18)}
+    .feature-card:nth-child(2){border-top-color:var(--blue)}
+    .feature-card:nth-child(3){border-top-color:var(--cyan)}
+    .feature-card:nth-child(4){border-top-color:var(--green)}
+    .feature-card:nth-child(5){border-top-color:var(--orange)}
+    .feature-card:nth-child(6){border-top-color:var(--pink)}
+    .feature-icon{font-size:2.4rem;margin-bottom:14px;display:block}
+    .feature-card h3{font-size:1.1rem;font-weight:800;margin-bottom:8px;color:var(--text)}
+    .feature-card p{color:var(--muted);font-size:.9rem;line-height:1.6}
+
+    /* ── MILESTONES ── */
+    .milestones-wrap{position:relative}
+    .milestone{display:flex;gap:24px;margin-bottom:36px;position:relative}
+    .m-left{display:flex;flex-direction:column;align-items:center;min-width:48px}
+    .m-dot{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;flex-shrink:0;border:3px solid transparent}
+    .m-dot.done{background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border-color:#7c3aed}
+    .m-dot.partial{background:linear-gradient(135deg,#FFD400,#ea580c);color:#000;border-color:#FFD400}
+    .m-dot.future{background:#e5e7eb;color:#9ca3af;border-color:#d1d5db}
+    .m-line{width:3px;flex:1;background:linear-gradient(to bottom,#7c3aed44,#2563eb22);margin:4px 0;min-height:20px}
+    .m-content{flex:1;background:var(--card);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow);margin-bottom:4px}
+    .m-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+    .m-title{font-size:1.05rem;font-weight:800;flex:1}
+    .m-badge{padding:4px 12px;border-radius:50px;font-size:.75rem;font-weight:700}
+    .m-badge.done{background:#dcfce7;color:#166534}
+    .m-badge.partial{background:#fef3c7;color:#92400e}
+    .m-badge.future{background:#e5e7eb;color:#374151}
+    .m-items{display:flex;flex-direction:column;gap:6px}
+    .m-item{display:flex;align-items:flex-start;gap:8px;font-size:.88rem;color:var(--muted);line-height:1.5}
+    .m-item .chk{font-size:1rem;flex-shrink:0;margin-top:1px}
+    .m-item.done-item .chk{color:var(--green)}
+    .m-item.todo-item .chk{color:#d1d5db}
+    .m-item.todo-item{opacity:.7}
+
+    /* ── COMING SOON ── */
+    .coming-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+    .coming-card{background:linear-gradient(135deg,#4c1d95,#7c3aed);border-radius:var(--radius);padding:22px;color:#fff;position:relative;overflow:hidden}
+    .coming-card::after{content:'SOON';position:absolute;top:14px;right:14px;font-size:.65rem;font-weight:900;letter-spacing:2px;background:rgba(255,255,255,.2);border-radius:50px;padding:3px 8px}
+    .coming-card .c-icon{font-size:2rem;margin-bottom:10px;display:block}
+    .coming-card h3{font-size:1rem;font-weight:800;margin-bottom:6px}
+    .coming-card p{font-size:.85rem;opacity:.82;line-height:1.5}
+
+    /* ── PROFILE LOOKUP ── */
+    .lookup-wrap{background:linear-gradient(135deg,#1e1b4b,#4c1d95);border-radius:24px;padding:48px 36px;color:#fff;text-align:center;max-width:600px;margin:0 auto}
+    .lookup-wrap h2{font-size:1.8rem;font-weight:900;margin-bottom:8px}
+    .lookup-wrap p{opacity:.8;margin-bottom:28px;font-size:.95rem}
+    .search-row{display:flex;gap:10px;margin-bottom:16px}
+    .search-row input{flex:1;padding:14px 18px;border-radius:50px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;font-size:.95rem;outline:none}
+    .search-row input::placeholder{color:rgba(255,255,255,.5)}
     .search-row input:focus{border-color:var(--yellow)}
-    .search-row button{padding:12px 20px;border-radius:var(--radius);border:none;background:var(--yellow);color:#000;font-weight:700;cursor:pointer;font-size:1rem}
-    #status{color:var(--muted);font-size:.9rem;margin-bottom:12px}
-    #card{display:none;background:var(--card);border-radius:var(--radius);width:100%;max-width:480px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
-    .card-header{background:linear-gradient(135deg,#1a1a1a 0%,#111 100%);border-bottom:2px solid var(--yellow);padding:24px 20px 16px;display:flex;align-items:center;gap:16px}
-    .avatar{width:64px;height:64px;border-radius:50%;border:2px solid var(--yellow);background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;flex-shrink:0}
+    .search-row button{padding:14px 24px;border-radius:50px;border:none;background:var(--yellow);color:#000;font-weight:800;cursor:pointer;font-size:.95rem;white-space:nowrap;transition:transform .15s}
+    .search-row button:hover{transform:scale(1.04)}
+    #status{font-size:.9rem;opacity:.8;margin-bottom:16px;min-height:1.2em}
+    #card{display:none;background:rgba(255,255,255,.1);border-radius:var(--radius);overflow:hidden;margin-top:24px;text-align:left;border:1px solid rgba(255,255,255,.2)}
+    .card-header{padding:20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid rgba(255,255,255,.15)}
+    .avatar{width:56px;height:56px;border-radius:50%;border:2px solid var(--yellow);background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:1.6rem;overflow:hidden;flex-shrink:0}
     .avatar img{width:100%;height:100%;object-fit:cover}
-    .card-header h2{font-size:1.25rem;font-weight:800}
-    .card-header p{color:var(--muted);font-size:.85rem;margin-top:2px}
-    .stats-row{display:flex;border-bottom:1px solid #2a2a2a}
-    .stat{flex:1;text-align:center;padding:14px 8px;border-right:1px solid #2a2a2a}
+    .card-header h2{font-size:1.1rem;font-weight:800}
+    .card-header p{font-size:.82rem;opacity:.7;margin-top:2px}
+    .stats-row{display:flex;border-bottom:1px solid rgba(255,255,255,.1)}
+    .stat{flex:1;text-align:center;padding:14px 8px;border-right:1px solid rgba(255,255,255,.1)}
     .stat:last-child{border-right:none}
-    .stat .val{font-size:1.4rem;font-weight:800;color:var(--yellow)}
-    .stat .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-    .section{padding:16px 20px;border-bottom:1px solid #2a2a2a}
+    .stat .val{font-size:1.3rem;font-weight:800;color:var(--yellow)}
+    .stat .lbl{font-size:.68rem;opacity:.7;text-transform:uppercase;letter-spacing:.5px}
+    .section{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
     .section:last-child{border-bottom:none}
-    .section h3{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+    .section h3{font-size:.72rem;opacity:.6;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
     .stickers{display:flex;flex-wrap:wrap;gap:8px}
-    .sticker{background:var(--surface);border:1px solid #333;border-radius:20px;padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:5px}
-    .ghost-card{background:var(--surface);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px}
-    .ghost-card .ghost-icon{font-size:1.8rem}
-    .ghost-card .game{font-weight:600}
-    .ghost-card .score{color:var(--yellow);font-size:.9rem}
+    .sticker{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:.78rem;display:flex;align-items:center;gap:5px}
+    .ghost-card{background:rgba(255,255,255,.08);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px}
+    .ghost-card .ghost-icon{font-size:1.6rem}
+    .ghost-card .game{font-weight:600;font-size:.9rem}
+    .ghost-card .score{color:var(--yellow);font-size:.82rem}
     .share-link{word-break:break-all;color:var(--yellow);font-size:.8rem}
-    .sync-time{color:var(--muted);font-size:.75rem;margin-top:6px}
-    .email-section{width:100%;max-width:480px;margin-bottom:36px;background:var(--surface);border-radius:var(--radius);padding:24px;border:1px solid #2a2a2a}
-    .email-section h2{font-size:1.1rem;font-weight:700;color:var(--yellow);margin-bottom:6px}
-    .email-section p{color:var(--muted);font-size:.85rem;margin-bottom:16px}
-    .email-row{display:flex;gap:8px}
-    .email-row input{flex:1;padding:12px 16px;border-radius:var(--radius);border:1px solid #333;background:var(--bg);color:var(--text);font-size:.95rem;outline:none}
-    .email-row input:focus{border-color:var(--yellow)}
-    .email-row button{padding:12px 20px;border-radius:var(--radius);border:none;background:var(--yellow);color:#000;font-weight:700;cursor:pointer;font-size:.95rem;white-space:nowrap}
-    .email-row button:disabled{opacity:.5;cursor:not-allowed}
-    #emailStatus{font-size:.85rem;margin-top:10px;min-height:1.2em}
-    #emailStatus.ok{color:#4caf50}
-    #emailStatus.err{color:#f44336}
+    .sync-time{opacity:.55;font-size:.72rem;margin-top:4px}
+
+    /* ── EMAIL SECTION ── */
+    .email-wrap{background:var(--yellow);border-radius:24px;padding:48px 36px;text-align:center;max-width:600px;margin:0 auto}
+    .email-wrap h2{font-size:1.8rem;font-weight:900;color:#000;margin-bottom:8px}
+    .email-wrap p{color:#333;margin-bottom:28px;font-size:.95rem}
+    .email-row{display:flex;gap:10px;margin-bottom:14px}
+    .email-row input{flex:1;padding:14px 18px;border-radius:50px;border:2px solid rgba(0,0,0,.15);background:#fff;color:#000;font-size:.95rem;outline:none}
+    .email-row input:focus{border-color:#000}
+    .email-row button{padding:14px 24px;border-radius:50px;border:none;background:#000;color:#fff;font-weight:800;cursor:pointer;font-size:.95rem;white-space:nowrap;transition:transform .15s}
+    .email-row button:hover{transform:scale(1.04)}
+    .email-row button:disabled{opacity:.4;cursor:not-allowed}
+    #emailStatus{font-size:.88rem;min-height:1.2em;color:#333}
+    #emailStatus.ok{color:#166534;font-weight:700}
+    #emailStatus.err{color:#991b1b;font-weight:700}
+
+    /* ── FOOTER ── */
+    footer{background:#1e1b4b;color:rgba(255,255,255,.6);text-align:center;padding:32px 20px;font-size:.85rem;line-height:1.8}
+    footer a{color:var(--yellow);text-decoration:none}
+    footer strong{color:#fff}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:600px){
+      .hero{padding:60px 16px 80px}
+      .nav-links{gap:10px}
+      .search-row,.email-row{flex-direction:column}
+      .search-row button,.email-row button{border-radius:50px}
+      .milestone{flex-direction:column;gap:12px}
+      .m-left{flex-direction:row;min-width:auto}
+      .m-line{width:auto;height:3px;min-height:0;flex:none;display:none}
+      .strip-stat{min-width:120px}
+    }
   </style>
 </head>
 <body>
-<header><div class="bolt">&#9889;</div><h1>ThunderPass</h1><p>Look up a player profile by their Installation ID</p></header>
-<div class="email-section">
-  <h2>&#128274; Stay in the Loop</h2>
-  <p>Get notified about ThunderPass updates, new features, and early access.</p>
-  <div class="email-row">
-    <input id="emailInput" type="email" placeholder="your@email.com" />
-    <button id="emailBtn" onclick="subscribeEmail()">Notify me</button>
+
+<!-- ── NAV ── -->
+<nav>
+  <a class="nav-brand" href="#"><span>⚡</span>ThunderPass</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#lookup">Profiles</a>
+    <a class="nav-btn" href="https://github.com/guilhermelimait/ThunderPass" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
-  <div id="emailStatus"></div>
-</div>
-<div class="search-row">
-  <input id="idInput" type="text" placeholder="Paste installation ID..." />
-  <button onclick="lookup()">Look up</button>
-</div>
-<div id="status"></div>
-<div id="card">
-  <div class="card-header">
-    <div class="avatar" id="avatarWrap">&#9889;</div>
-    <div><h2 id="cardName"></h2><p id="cardGreeting"></p></div>
+</nav>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <span class="hero-bolt">⚡</span>
+  <h1>Meet your next <em>ThunderPass</em></h1>
+  <p class="tagline">The Android BLE StreetPass — discover players around you, collect Joules, sync your RetroAchievements and build your Thunder profile.</p>
+  <div class="hero-badges">
+    <span class="badge-pill">📡 BLE StreetPass</span>
+    <span class="badge-pill">🎮 RetroAchievements</span>
+    <span class="badge-pill">⚡ Joules Energy</span>
+    <span class="badge-pill">🏆 Badges</span>
+    <span class="badge-pill">☁️ Cloud Sync</span>
   </div>
-  <div class="stats-row">
-    <div class="stat"><div class="val" id="statSparks">0</div><div class="lbl">Sparks</div></div>
-    <div class="stat"><div class="val" id="statJoules">0</div><div class="lbl">Joules</div></div>
-    <div class="stat"><div class="val" id="statStickers">0</div><div class="lbl">Stickers</div></div>
-  </div>
-  <div class="section" id="ghostSection" style="display:none">
-    <h3>Ghost</h3>
-    <div class="ghost-card"><div class="ghost-icon">&#128123;</div><div><div class="game" id="ghostGame"></div><div class="score" id="ghostScore"></div></div></div>
-  </div>
-  <div class="section" id="stickersSection" style="display:none"><h3>Sticker Book</h3><div class="stickers" id="stickerList"></div></div>
-  <div class="section" id="retroSection" style="display:none"><h3>RetroAchievements</h3><a id="retroLink" href="#" target="_blank" rel="noopener" style="color:var(--yellow)"></a></div>
-  <div class="section">
-    <h3>Share this profile</h3>
-    <div class="share-link" id="shareUrl"></div>
-    <div class="sync-time" id="syncTime"></div>
+  <div class="hero-cta">
+    <a class="btn-primary" href="https://github.com/guilhermelimait/ThunderPass/actions" target="_blank" rel="noopener">⬇ Download APK</a>
+    <a class="btn-outline" href="#roadmap">See the Roadmap</a>
   </div>
 </div>
+
+<!-- ── STATS STRIP ── -->
+<div class="stats-strip">
+  <div class="strip-stat"><div class="n">5</div><div class="l">Milestones Built</div></div>
+  <div class="strip-stat"><div class="n">30+</div><div class="l">Features Shipped</div></div>
+  <div class="strip-stat"><div class="n">12</div><div class="l">Badge Types</div></div>
+  <div class="strip-stat"><div class="n">100J</div><div class="l">Per Spark</div></div>
+</div>
+
+<!-- ── FEATURES SECTION ── -->
+<section id="features">
+  <div class="section-label">What's inside</div>
+  <h2 class="section-title">Everything a Thunder Traveler needs</h2>
+  <p class="section-sub">ThunderPass packs a full feature set — from low-power BLE discovery to retro game sync, all running silently in the background.</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="feature-icon">📡</span>
+      <h3>BLE StreetPass Encounters</h3>
+      <p>Scan and advertise simultaneously using Bluetooth Low Energy. When two ThunderPass users are nearby, a "Spark" happens automatically — no tapping required.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">⚡</span>
+      <h3>Joules Energy System</h3>
+      <p>Earn 100 Joules for every unique Spark. Spend Joules in the Visual Shop to unlock "CRT Scanlines", "Pixelated Aura" and "Thunder Trail" profile effects.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🎮</span>
+      <h3>RetroAchievements Sync</h3>
+      <p>Link your RetroAchievements account. After every BLE exchange, see your peer's rank, points and recent game masteries right on their Spark Card.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🏆</span>
+      <h3>Badges &amp; Achievements</h3>
+      <p>Unlock 12 unique badge types — from <em>First Spark</em> to <em>Legendary Encounter</em>. Badges glow grey → blue → purple → orange → gold as you level up.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">👻</span>
+      <h3>Ghost Challenges</h3>
+      <p>Share your best score or time from any game as a "Ghost". When you meet another player, compare scores and settle who reigns supreme.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">☁️</span>
+      <h3>Cloud Profile &amp; Web Dashboard</h3>
+      <p>Sign in with Email OTP — no password needed. Your profile syncs to Supabase after every Spark. Look up any player by Installation ID on this very page.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── ROADMAP ── -->
+<section id="roadmap" style="background:#fff;max-width:100%;padding:72px 0">
+<div style="max-width:820px;margin:0 auto;padding:0 20px">
+  <div class="section-label">Roadmap</div>
+  <h2 class="section-title">What's done &amp; what's next</h2>
+  <p class="section-sub">Five milestones from zero to cloud. Milestones 0–4 are fully shipped. Milestone 5 is the platform frontier.</p>
+
+  <div class="milestones-wrap">
+
+    <!-- M0 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot done">M0</div>
+        <div class="m-line"></div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">Repository + Android App Scaffold</span>
+          <span class="m-badge done">✅ Complete</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item done-item"><span class="chk">✓</span>Android project scaffold (Kotlin + Jetpack Compose)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Foreground service (BleService) + persistent notification</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Runtime permission flow for Android 13 BLE + notifications</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Local storage with Room (MyProfile, Encounter, PeerProfileSnapshot)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>CI workflow — debug APK built on every push/PR</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M1 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot done">M1</div>
+        <div class="m-line"></div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">StreetPass MVP</span>
+          <span class="m-badge done">✅ Complete</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item done-item"><span class="chk">✓</span>BLE advertise + scan (concurrent, low-power)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Rotating ID via HMAC-SHA256 — never broadcasts raw install ID</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Encounter dedup (10-min cooldown per rotating ID)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>GATT server + client — profile card exchange over BLE</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Brand theme (ThunderYellow + ThunderGray, dark/light, adaptive icon)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Unit tests: RotatingIdUtils, EncounterDedup</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M2 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot done">M2</div>
+        <div class="m-line"></div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">Trust, Quality + Energy Base</span>
+          <span class="m-badge done">✅ Complete</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item done-item"><span class="chk">✓</span>Home screen widget — new encounters indicator</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Joules energy engine — 100 J per unique Spark</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Haptic feedback — double-pulse vibration on successful exchange</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Battery modes: aggressive, balanced, off</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Better UX copy + onboarding (The "Grid" introduction)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M3 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot done">M3</div>
+        <div class="m-line"></div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">Fun Layer + Game Sync</span>
+          <span class="m-badge done">✅ Complete</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item done-item"><span class="chk">✓</span>Ghost payload type (share your best score/time via BLE)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>RetroAchievements integration — fetch peer rank, points, masteries</div>
+          <div class="m-item done-item"><span class="chk">✓</span>RetroSparkCard — show RA rank + points on encounter cards</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Mastery icons row on encounter detail view</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Platinum Pulse, Legendary Encounter, Retro Circuit badges</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Visual Shop — unlock effects with Joules (CRT, Pixelated Aura, Thunder Trail)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M4 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot partial">M4</div>
+        <div class="m-line"></div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">Accounts + Cloud Sync</span>
+          <span class="m-badge partial">🔄 In Progress</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item done-item"><span class="chk">✓</span>Supabase Email OTP sign-in (6-digit code, no password, 30-day session)</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Auto-sync profile to Supabase after every save and every Spark</div>
+          <div class="m-item done-item"><span class="chk">✓</span>Web dashboard (this page!) — look up any player by Installation ID</div>
+          <div class="m-item todo-item"><span class="chk">○</span>Optional encounter backup / restore</div>
+          <div class="m-item todo-item"><span class="chk">○</span>Remote blocklist / privacy controls</div>
+          <div class="m-item todo-item"><span class="chk">○</span>GitHub-managed deployment automation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M5 -->
+    <div class="milestone">
+      <div class="m-left">
+        <div class="m-dot future">M5</div>
+      </div>
+      <div class="m-content">
+        <div class="m-header">
+          <span class="m-title">Platform — The Future</span>
+          <span class="m-badge future">🔭 Planned</span>
+        </div>
+        <div class="m-items">
+          <div class="m-item todo-item"><span class="chk">○</span>Public "payload provider" API / SDK for third-party apps</div>
+          <div class="m-item todo-item"><span class="chk">○</span>Versioned protocol extensions</div>
+          <div class="m-item todo-item"><span class="chk">○</span>Power Surge Events — location-based 2× Energy multipliers</div>
+          <div class="m-item todo-item"><span class="chk">○</span>Hardware capability check (BLE multi-advertisement, Doze bypass)</div>
+          <div class="m-item todo-item"><span class="chk">○</span>OTA update delivery from the app</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ── COMING SOON ── -->
+<section id="coming">
+  <div class="section-label">Coming Soon</div>
+  <h2 class="section-title">What we're building next</h2>
+  <p class="section-sub">The roadmap doesn't stop at M4. Here's a taste of what's on the horizon for ThunderPass.</p>
+  <div class="coming-grid">
+    <div class="coming-card">
+      <span class="c-icon">🗺️</span>
+      <h3>Power Surge Events</h3>
+      <p>Location-based zones that double your Joule earnings during limited-time events.</p>
+    </div>
+    <div class="coming-card">
+      <span class="c-icon">🔌</span>
+      <h3>Payload Provider SDK</h3>
+      <p>Let other Android apps plug in to the ThunderPass BLE exchange protocol.</p>
+    </div>
+    <div class="coming-card">
+      <span class="c-icon">🔐</span>
+      <h3>Privacy Controls</h3>
+      <p>Remote blocklist, private profiles, and GDPR-ready data management.</p>
+    </div>
+    <div class="coming-card">
+      <span class="c-icon">⬆️</span>
+      <h3>OTA Updates</h3>
+      <p>Get the latest version of ThunderPass delivered right from inside the app.</p>
+    </div>
+    <div class="coming-card">
+      <span class="c-icon">🌐</span>
+      <h3>Encounter Backup</h3>
+      <p>Cloud-backup your full encounter history and restore it on a new device.</p>
+    </div>
+    <div class="coming-card">
+      <span class="c-icon">🤝</span>
+      <h3>Friends List</h3>
+      <p>Track the travelers you've sparked with, see their profiles and badge progress.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROFILE LOOKUP ── -->
+<section id="lookup" style="padding-top:0">
+  <div class="lookup-wrap">
+    <h2>🔍 Look Up a Profile</h2>
+    <p>Paste any player's Installation ID to see their Thunder card.</p>
+    <div class="search-row">
+      <input id="idInput" type="text" placeholder="Paste installation ID…" />
+      <button onclick="lookup()">Look up</button>
+    </div>
+    <div id="status"></div>
+    <div id="card">
+      <div class="card-header">
+        <div class="avatar" id="avatarWrap">⚡</div>
+        <div><h2 id="cardName"></h2><p id="cardGreeting"></p></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="val" id="statSparks">0</div><div class="lbl">Sparks</div></div>
+        <div class="stat"><div class="val" id="statJoules">0</div><div class="lbl">Joules</div></div>
+        <div class="stat"><div class="val" id="statStickers">0</div><div class="lbl">Badges</div></div>
+      </div>
+      <div class="section" id="ghostSection" style="display:none">
+        <h3>Ghost Challenge</h3>
+        <div class="ghost-card"><div class="ghost-icon">👻</div><div><div class="game" id="ghostGame"></div><div class="score" id="ghostScore"></div></div></div>
+      </div>
+      <div class="section" id="stickersSection" style="display:none"><h3>Badges Earned</h3><div class="stickers" id="stickerList"></div></div>
+      <div class="section" id="retroSection" style="display:none"><h3>RetroAchievements</h3><a id="retroLink" href="#" target="_blank" rel="noopener" style="color:var(--yellow)"></a></div>
+      <div class="section">
+        <h3>Share this profile</h3>
+        <div class="share-link" id="shareUrl"></div>
+        <div class="sync-time" id="syncTime"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── EMAIL SIGNUP ── -->
+<section style="padding-top:0;padding-bottom:80px">
+  <div class="email-wrap">
+    <h2>⚡ Stay in the Loop</h2>
+    <p>Get notified about ThunderPass updates, new features, and early access drops.</p>
+    <div class="email-row">
+      <input id="emailInput" type="email" placeholder="your@email.com" />
+      <button id="emailBtn" onclick="subscribeEmail()">Notify me</button>
+    </div>
+    <div id="emailStatus"></div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <strong>ThunderPass</strong> — Made with ❤️ by <a href="https://github.com/guilhermelimait" target="_blank" rel="noopener">@guilhermelimait</a><br>
+  <a href="https://ko-fi.com/guilhermelimait" target="_blank" rel="noopener">☕ Support on Ko-fi</a> &nbsp;·&nbsp;
+  <a href="https://github.com/guilhermelimait/ThunderPass/issues" target="_blank" rel="noopener">🐛 Report an Issue</a> &nbsp;·&nbsp;
+  <a href="https://github.com/guilhermelimait/ThunderPass" target="_blank" rel="noopener">⭐ Star on GitHub</a>
+</footer>
+
 <script>
 const SUPABASE_URL='https://wrunnzrxuapqpxoxvzpa.supabase.co';
 const ANON_KEY='REDACTED_ANON_KEY';
@@ -103,7 +491,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 async function lookup(){
   const id=document.getElementById('idInput').value.trim();
   if(!id)return;
-  setStatus('Searching...');hideCard();
+  setStatus('Searching…');hideCard();
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/profiles?installation_id=eq.${encodeURIComponent(id)}&select=*&limit=1`,{headers:{'apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY}});
     if(!res.ok)throw new Error('HTTP '+res.status);
