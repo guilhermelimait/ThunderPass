@@ -131,77 +131,87 @@ fun HomeScreenContent(
                 PermissionPrompt { onGrantPermissions() }
             }
         } else if (isLandscape) {
-            // ── Landscape: exact 50/50 width split ───────────────────────────
-            // weight(1f) on both panels = animation occupies exactly half screen width.
-            Row(
+            // Landscape: left=info, right=animation 50% width x 50% HEIGHT, 12dp gap
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                // Left panel — greeting + avatar + last-passed-by
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier              = Modifier.fillMaxWidth(),
+                val animLandscapeH = maxHeight / 2
+                Row(modifier = Modifier.fillMaxSize()) {
+                    // Left panel
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text       = "Hi, $displayName \uD83D\uDC4B",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color      = MaterialTheme.colorScheme.onBackground,
-                            )
-                            Text(
-                                text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier              = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text       = "Hi, $displayName \uD83D\uDC4B",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onBackground,
+                                )
+                                Text(
+                                    text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            DiceBearAvatar(
+                                seed     = avatarSeed.ifEmpty { "default" },
+                                size     = 40.dp,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { onNavigate("profile") },
                             )
                         }
-                        DiceBearAvatar(
-                            seed     = avatarSeed.ifEmpty { "default" },
-                            size     = 40.dp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { onNavigate("profile") },
-                        )
+                        val lastEnc = encounters.firstOrNull()
+                        if (lastEnc != null) {
+                            LastPassedByCard(
+                                encounter = lastEnc,
+                                onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                            )
+                        }
                     }
-                    val lastEnc = encounters.firstOrNull()
-                    if (lastEnc != null) {
-                        LastPassedByCard(
-                            encounter = lastEnc,
-                            onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                        )
-                    }
-                }
 
-                // Right panel — animation: exactly 50% screen width, full height
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                ) {
-                    WalkingSceneCard(
-                        avatarSeed     = avatarSeed.ifEmpty { "default" },
-                        serviceRunning = serviceRunning,
-                        fillHeight     = true,
-                    )
-                    ThunderPassToggleCard(
-                        active      = serviceRunning,
-                        onToggle    = onToggleService,
-                        transparent = true,
-                        modifier    = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    )
+                    // Right panel: 50% screen width x 50% screen HEIGHT, 12dp gap on all edges
+                    Box(
+                        modifier         = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(animLandscapeH)
+                                .padding(12.dp),
+                        ) {
+                            WalkingSceneCard(
+                                avatarSeed     = avatarSeed.ifEmpty { "default" },
+                                serviceRunning = serviceRunning,
+                                fillHeight     = true,
+                            )
+                            ThunderPassToggleCard(
+                                active      = serviceRunning,
+                                onToggle    = onToggleService,
+                                transparent = true,
+                                modifier    = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -249,13 +259,14 @@ fun HomeScreenContent(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // ── Animation — exactly half the available screen height ────
+                    // -- Animation -- exactly half the available screen height ----
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(animHeight),
+                            .height(animHeight)
+                            .padding(8.dp),
                     ) {
-                        // Scene scales proportionally to fill the fixed 50 % box
+                        // Scene scales proportionally; 8dp gap keeps animation off edges
                         WalkingSceneCard(
                             avatarSeed     = avatarSeed.ifEmpty { "default" },
                             serviceRunning = serviceRunning,
