@@ -160,7 +160,7 @@ private fun BadgeCategoryCard(
         modifier = modifier
             .fillMaxWidth()
             .height(if (compact) 84.dp else 110.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .drawBehind {
                 drawRect(
@@ -208,11 +208,18 @@ private fun BadgeCategoryCard(
                 verticalArrangement = Arrangement.Center,
             ) {
                 if (category == BadgeCategory.ENCOUNTERS) {
-                    // Encounters: logo only — no emoji, no shield
+                    // Encounters: logo above shield badge
                     androidx.compose.foundation.Image(
                         painter            = painterResource(R.drawable.logo),
                         contentDescription = null,
-                        modifier           = Modifier.size(if (compact) 40.dp else 52.dp),
+                        modifier           = Modifier.size(if (compact) 32.dp else 40.dp),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    ThunderShield(
+                        tier          = topTier,
+                        categoryColor = category.accentColor,
+                        darkBg        = categoryDarkBg(category, topTier),
+                        size          = 28.dp,
                     )
                 } else {
                     Text(

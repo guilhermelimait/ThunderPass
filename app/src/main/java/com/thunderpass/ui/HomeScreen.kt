@@ -215,13 +215,6 @@ fun HomeScreenContent(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // Toggle above the animation (not overlaid on it)
-                        ThunderPassToggleCard(
-                            active      = serviceRunning,
-                            onToggle    = onToggleService,
-                            transparent = false,
-                        )
-
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -231,6 +224,14 @@ fun HomeScreenContent(
                                 avatarSeed     = avatarSeed.ifEmpty { "default" },
                                 serviceRunning = serviceRunning,
                                 fillHeight     = true,
+                            )
+                            ThunderPassToggleCard(
+                                active      = serviceRunning,
+                                onToggle    = onToggleService,
+                                transparent = true,
+                                modifier    = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 4.dp, start = 4.dp, end = 4.dp),
                             )
                         }
                         val lastEnc = encounters.firstOrNull()
@@ -296,26 +297,24 @@ fun HomeScreenContent(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // ── 2. ThunderPass radio toggle (solid card, above animation) ─
-                    ThunderPassToggleCard(
-                        active      = serviceRunning,
-                        onToggle    = onToggleService,
-                        transparent = false,
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // ── 3. Animation — exactly 1/3 of available screen height ──
+                    // ── 2+3. Animation with ThunderPass toggle overlaid at top ─
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(animHeight)
-                            .padding(horizontal = 0.dp, vertical = 4.dp),
+                            .height(animHeight),
                     ) {
                         WalkingSceneCard(
                             avatarSeed     = avatarSeed.ifEmpty { "default" },
                             serviceRunning = serviceRunning,
                             fillHeight     = true,
+                        )
+                        ThunderPassToggleCard(
+                            active      = serviceRunning,
+                            onToggle    = onToggleService,
+                            transparent = true,
+                            modifier    = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp),
                         )
                     }
 
@@ -355,7 +354,7 @@ private fun ThunderPassToggleCard(
     transparent: Boolean  = false,
     modifier:    Modifier = Modifier,
 ) {
-    val containerColor = if (transparent) Color.Transparent else when {
+    val containerColor = if (transparent) MaterialTheme.colorScheme.surface.copy(alpha = 0.75f) else when {
         active -> MaterialTheme.colorScheme.primaryContainer
         else   -> MaterialTheme.colorScheme.surfaceVariant
     }
