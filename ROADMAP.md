@@ -88,7 +88,7 @@
   - [x] Data layer: `Encounter.isFriend` flag, DAO methods (`setFriend`, `observeFriends`, `countFriends`), `HomeViewModel.friends` StateFlow + `toggleFriend()`.
 
 ### 5.7 Profile Screen
-- [ ] Avatar maker: DiceBear seed selector + Randomise button. Syncs to walking animation and bottom-bar icon immediately; saved to Supabase.
+- [x] Avatar maker: DiceBear seed selector + Randomise button. Syncs to walking animation and bottom-bar icon immediately; saved to Supabase.
 - [x] Privacy toggle: when on, BLE exchange shows "Private User" to peers. Toggle in Settings > General.
 - [x] Badge gallery: horizontal scrollable row, exotic/legendary first, achieved only. Remove legend row and duplicate Volt Badge.
 - [ ] Share ID uses display name, not installation ID.

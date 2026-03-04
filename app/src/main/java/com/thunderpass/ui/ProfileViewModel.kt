@@ -96,6 +96,20 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Immediately persists a new avatar seed to the local DB without requiring
+     * the user to press "Save Profile".  The change propagates to the Home screen's
+     * walking animation and the nav-bar avatar icon through [HomeViewModel.avatarSeed],
+     * which observes the same DB flow.
+     */
+    fun saveAvatarSeed(seed: String) {
+        viewModelScope.launch {
+            val current = profileDao.get() ?: return@launch
+            if (current.avatarSeed == seed) return@launch
+            profileDao.upsert(current.copy(avatarSeed = seed))
+        }
+    }
+
+    /**
      * Returns true if this is a first-run (profile is null or still has all defaults).
      * "Traveler" is the entity default — treat it the same as a blank name so new
      * users are always routed through onboarding to set their actual name.

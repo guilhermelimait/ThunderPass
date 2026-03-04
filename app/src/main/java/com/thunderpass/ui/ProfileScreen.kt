@@ -3,6 +3,7 @@ package com.thunderpass.ui
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -11,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +60,7 @@ fun ProfileScreen(
             vm.save(name, greeting, retroUser, avatarSeed = seed)
             // RetroAuthManager logic...
         },
+        onAvatarSeedChange = { vm.saveAvatarSeed(it) },
         onComplete = onComplete,
         onBack = onBack,
     )
@@ -72,6 +75,7 @@ fun ProfileScreenContent(
     joulesTotal: Long,
     firstRun: Boolean = false,
     onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
+    onAvatarSeedChange: ((String) -> Unit)? = null,
     onComplete: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
 ) {
@@ -154,7 +158,9 @@ fun ProfileScreenContent(
                 // Shuffle / randomize avatar button (top-right corner of banner)
                 IconButton(
                     onClick = {
-                        avatarSeed = UUID.randomUUID().toString()
+                        val newSeed = UUID.randomUUID().toString()
+                        avatarSeed = newSeed
+                        onAvatarSeedChange?.invoke(newSeed)
                         saved = false
                     },
                     modifier = Modifier
@@ -171,7 +177,17 @@ fun ProfileScreenContent(
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Stats row ───────────────────────────────────────────────────
+            // ── Avatar seed picker ─────────────────────────────────────────
+            AvatarSeedPicker(
+                currentSeed = avatarSeed,
+                onSeedSelected = { seed ->
+                    avatarSeed = seed
+                    onAvatarSeedChange?.invoke(seed)
+                    saved = false
+                },
+            )
+
+            Spacer(Modifier.height(4.dp))
             Row(
                 modifier              = Modifier
                     .fillMaxWidth()
@@ -352,5 +368,96 @@ fun ProfileScreenPreview() {
             streak = 3,
             joulesTotal = 2500
         )
+    }
+}
+
+// ── Avatar Seed Picker ────────────────────────────────────────────────────────────
+
+/**
+ * Horizontally-scrollable strip of avatar candidates.
+ * - Shows 5 alternative seeds + the currently-selected one (always visible first).
+ * - Tapping a candidate immediately selects it (calls [onSeedSelected]).
+ * - The 🎲 button regenerates the 5 alternative candidates without changing
+ *   the current selection.
+ *
+ * Because [onSeedSelected] is wired to [ProfileViewModel.saveAvatarSeed], the
+ * walking animation and nav-bar icon update straight away.
+ */
+@Composable
+fun AvatarSeedPicker(
+    currentSeed:    String,
+    onSeedSelected: (String) -> Unit,
+    modifier:       Modifier = Modifier,
+) {
+    // 5 candidate seeds — regenerated when the dice button is tapped
+    var candidates by remember { mutableStateOf(List(5) { UUID.randomUUID().toString() }) }
+
+    // All tiles to display: current seed first, then the 5 candidates
+    // (filter out the current seed from candidates so we never show a duplicate)
+    val tiles = remember(currentSeed, candidates) {
+        listOf(currentSeed) + candidates.filter { it != currentSeed }.take(5)
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            verticalAlignment    = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp),
+        ) {
+            Text(
+                text      = "AVATAR",
+                style     = MaterialTheme.typography.labelSmall,
+                color     = MaterialTheme.colorScheme.outline,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+            )
+            Spacer(Modifier.weight(1f))
+            // Dice button — rolls 5 new candidate seeds
+            FilledTonalIconButton(
+                onClick  = { candidates = List(5) { UUID.randomUUID().toString() } },
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector        = Icons.Filled.Casino,
+                    contentDescription = "Roll new avatars",
+                    modifier           = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        LazyRow(
+            contentPadding        = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(tiles) { seed ->
+                val isSelected = seed == currentSeed
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (isSelected) Modifier.border(
+                                width = 3.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape,
+                            ) else Modifier.border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = CircleShape,
+                            )
+                        )
+                        .clickable { onSeedSelected(seed) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DiceBearAvatar(
+                        seed     = seed,
+                        size     = 60.dp,
+                        modifier = Modifier.padding(2.dp),
+                    )
+                }
+            }
+        }
     }
 }
