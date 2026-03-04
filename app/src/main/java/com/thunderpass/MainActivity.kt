@@ -102,11 +102,11 @@ class MainActivity : ComponentActivity() {
      * LEDs via Settings.System on encounter. Silently no-ops on other devices.
      */
     private fun requestWriteSettingsIfNeeded() {
-        if (Settings.System.canWrite(this)) return
-        val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
-        if (prefs.getBoolean("write_settings_prompt_shown", false)) return
-        prefs.edit().putBoolean("write_settings_prompt_shown", true).apply()
         runCatching {
+            if (Settings.System.canWrite(this)) return
+            val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
+            if (prefs.getBoolean("write_settings_prompt_shown", false)) return
+            prefs.edit().putBoolean("write_settings_prompt_shown", true).apply()
             startActivity(
                 Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
                     data = Uri.parse("package:$packageName")
@@ -124,12 +124,12 @@ class MainActivity : ComponentActivity() {
      */
     @SuppressLint("BatteryLife")
     private fun requestIgnoreBatteryOptimizationsIfNeeded() {
-        val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
-        if (prefs.getBoolean("doze_prompt_shown", false)) return
-        val pm = getSystemService(PowerManager::class.java)
-        if (pm.isIgnoringBatteryOptimizations(packageName)) return
-        prefs.edit().putBoolean("doze_prompt_shown", true).apply()
         runCatching {
+            val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
+            if (prefs.getBoolean("doze_prompt_shown", false)) return
+            val pm = getSystemService(PowerManager::class.java) ?: return
+            if (pm.isIgnoringBatteryOptimizations(packageName)) return
+            prefs.edit().putBoolean("doze_prompt_shown", true).apply()
             startActivity(
                 Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
