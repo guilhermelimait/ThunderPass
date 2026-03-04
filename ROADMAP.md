@@ -108,7 +108,7 @@
 - [ ] Joules explanation panel: what they are and how to earn them.
 
 ### 5.10 Settings
-- [ ] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
+- [x] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
 - [x] Keep screen on (FLAG_KEEP_SCREEN_ON) while ThunderPass service is active.
 - [ ] OTA updates: poll GitHub Releases API; show banner + download link if newer version exists.
 - [x] Background music toggle — default ON. Play assets/thunderpass-bg.mp3 on app open; skip if user disabled it.

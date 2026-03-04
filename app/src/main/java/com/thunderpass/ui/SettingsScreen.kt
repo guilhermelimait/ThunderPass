@@ -7,11 +7,15 @@ import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.ble.ScanMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +40,10 @@ fun SettingsScreen(
     val prefs = remember { context.getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE) }
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_enabled", true)) }
     var screenOnActive by remember { mutableStateOf(prefs.getBoolean("screen_on_active", true)) }
+
+    val safeZoneActive by vm.safeZoneActive.collectAsState()
+    val scanMode       by vm.scanMode.collectAsState()
+    var advancedExpanded by remember { mutableStateOf(false) }
 
     // ── Permission state — re-checked on every recomposition ──────────────────
     var notifGranted by remember {
@@ -182,6 +191,86 @@ fun SettingsScreen(
                     }
                 },
             )
+        }
+
+        // ── Advanced (collapsible) ────────────────────────────────────────────
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier              = Modifier
+                    .fillMaxWidth()
+                    .clickable { advancedExpanded = !advancedExpanded },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text       = "ADVANCED",
+                    style      = MaterialTheme.typography.labelSmall,
+                    color      = MaterialTheme.colorScheme.primary,
+                    fontFamily = FontFamily.Monospace,
+                )
+                Icon(
+                    imageVector        = if (advancedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.primary,
+                )
+            }
+            AnimatedVisibility(visible = advancedExpanded) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    ),
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Safe Zone — pauses BLE scanning/advertising
+                        SettingToggleRow(
+                            label           = "Safe Zone",
+                            subtitle        = "Pause BLE scanning and advertising (e.g. at home or work)",
+                            checked         = safeZoneActive,
+                            onCheckedChange = { vm.setSafeZone(it) },
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        // Scan Intensity selector
+                        Column(
+                            modifier            = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text       = "Scan Intensity",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text  = "Higher intensity finds more Travelers but uses more battery.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Row(
+                                modifier              = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ScanMode.entries.forEach { mode ->
+                                    FilterChip(
+                                        selected = scanMode == mode,
+                                        onClick  = { vm.setScanMode(mode) },
+                                        label    = {
+                                            Text(
+                                                text  = mode.name.lowercase().replaceFirstChar { it.uppercase() },
+                                                style = MaterialTheme.typography.labelMedium,
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // ── Updates ───────────────────────────────────────────────────────────
