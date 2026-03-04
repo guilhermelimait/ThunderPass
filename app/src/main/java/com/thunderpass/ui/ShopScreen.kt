@@ -1,7 +1,10 @@
 package com.thunderpass.ui
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -9,7 +12,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -21,6 +27,8 @@ fun ShopScreen(
 ) {
     val joulesTotal    by vm.joulesTotal.collectAsState()
     val unlockedEffects by vm.unlockedEffects.collectAsState()
+    val encounters      by vm.encounters.collectAsState()
+    val installationId  by vm.installationId.collectAsState()
     var confirmEffect  by remember { mutableStateOf<ShopItem?>(null) }
     var toastMessage   by remember { mutableStateOf<String?>(null) }
 
@@ -50,26 +58,71 @@ fun ShopScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Balance banner ───────────────────────────────────────────────
+            // ── Energy card (moved from Home) ────────────────────────────────
+            EnergyCard(joulesTotal = joulesTotal)
+
+            // ── How to earn Joules (moved from Home) ─────────────────────────
+            JoulesInfoCard()
+
+            // ── Recent encounters (moved from Home) ───────────────────────────
+            if (encounters.isNotEmpty()) {
+                Text(
+                    text       = "Recent Encounters",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.onBackground,
+                )
+                Row(
+                    modifier              = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    encounters.take(20).forEach { ewp ->
+                        val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
+                        val name = ewp.snapshot?.displayName ?: "Unknown"
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier            = Modifier.width(56.dp),
+                        ) {
+                            DiceBearAvatar(seed = seed, size = 48.dp,
+                                           modifier = Modifier.clip(CircleShape))
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text      = name,
+                                style     = MaterialTheme.typography.labelSmall,
+                                maxLines  = 1,
+                                overflow  = TextOverflow.Ellipsis,
+                                color     = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            // ── Shop header ───────────────────────────────────────────────────
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color    = MaterialTheme.colorScheme.primaryContainer,
                 shape    = MaterialTheme.shapes.medium,
             ) {
                 Row(
-                    modifier            = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment   = Alignment.CenterVertically,
+                    modifier              = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text       = "⚡ Your Energy",
+                        text       = "🛒 Visual Shop",
                         style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color      = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                     Text(
                         text       = "%,d J".format(joulesTotal),
-                        style      = MaterialTheme.typography.headlineSmall,
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color      = MaterialTheme.colorScheme.onPrimaryContainer,
                     )

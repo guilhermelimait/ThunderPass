@@ -304,62 +304,8 @@ fun HomeScreenContent(
                 HomeNavGrid(onNavigate = onNavigate)
                 Spacer(Modifier.height(16.dp))
 
-                Text(
-                    text       = "Recent Encounters",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = MaterialTheme.colorScheme.onBackground,
-                )
-                Spacer(Modifier.height(12.dp))
-
-                if (encounters.isEmpty()) {
-                    Box(
-                        modifier         = Modifier.fillMaxWidth().height(96.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text      = "None yet — go out and encounter someone!",
-                            style     = MaterialTheme.typography.bodySmall,
-                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier              = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        encounters.take(20).forEach { ewp ->
-                            val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
-                            val name = ewp.snapshot?.displayName ?: "Unknown"
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier            = Modifier
-                                    .width(64.dp)
-                                    .clickable { onNavigateToDetail(ewp.encounter.id) },
-                            ) {
-                                DiceBearAvatar(seed = seed, size = 52.dp)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text      = name,
-                                    style     = MaterialTheme.typography.labelSmall,
-                                    maxLines  = 1,
-                                    overflow  = TextOverflow.Ellipsis,
-                                    color     = MaterialTheme.colorScheme.onBackground,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(28.dp))
-
-                EnergyCard(joulesTotal = joulesTotal)
-
-                JoulesInfoCard()
+                // ── Walking scene (replaces dormant area) ─────────────────────
+                WalkingSceneCard(avatarSeed = installationId.ifEmpty { "default" })
 
                 Spacer(Modifier.height(16.dp))
             }
@@ -494,7 +440,7 @@ private fun ThunderPassToggleCard(active: Boolean, onToggle: () -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun JoulesInfoCard() {
+internal fun JoulesInfoCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors   = CardDefaults.cardColors(
