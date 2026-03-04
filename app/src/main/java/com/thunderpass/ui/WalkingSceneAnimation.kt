@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.*
+import kotlinx.coroutines.delay
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Walking Scene Card — parallax running animation
@@ -127,43 +128,61 @@ fun WalkingSceneCard(
         label = "cycle",
     )
 
-    // Display values: updated every frame when running, frozen in place when stopped
+    // ── Scroll/walk display state (frozen in place when stopped) ──────────────
     val serviceRunningState = rememberUpdatedState(serviceRunning)
-    var scrollFrac by remember { mutableStateOf(0f) }
-    var walkPhase  by remember { mutableStateOf(0f) }
+    var scrollOffset by remember { mutableStateOf(0f) }   // keeps parallax continuous on resume
+    var scrollFrac   by remember { mutableStateOf(0f) }
+    var walkPhase    by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         snapshotFlow { Triple(serviceRunningState.value, scrollFracLive, walkPhaseLive) }
             .collect { (running, s, p) ->
                 if (running) {
-                    scrollFrac = s
+                    scrollFrac = ((s + scrollOffset) % 1f + 1f) % 1f
                     walkPhase  = p
                 }
             }
     }
 
-    // Wind-down: when service stops, animate pose smoothly to rest (swing = 0)
+    // ── Wind-down (stop) and wind-up (start) animations ───────────────────────
     val windDownAnim = remember { Animatable(0f) }
+    val windUpAnim   = remember { Animatable(0f) }
     var windingDown  by remember { mutableStateOf(false) }
+    var windingUp    by remember { mutableStateOf(false) }
+    var showBubble   by remember { mutableStateOf(false) }
+
     LaunchedEffect(serviceRunning) {
         if (!serviceRunning) {
+            // ── Stopping: wind limbs to rest, then show dream bubble after 1 s
+            showBubble  = false
             windingDown = true
-            windDownAnim.snapTo(walkPhase)           // start from frozen pose
-            windDownAnim.animateTo(
-                targetValue   = 0f,
-                animationSpec = tween(700, easing = FastOutSlowInEasing),
-            )
+            windDownAnim.snapTo(walkPhase)
+            windDownAnim.animateTo(0f, tween(700, easing = FastOutSlowInEasing))
             windingDown = false
+            delay(1_000L)
+            showBubble  = true
+        } else {
+            // ── Resuming: dismiss bubble, adjust scroll offset to resume seamlessly,
+            //    then play one wind-up cycle before handing off to live animation.
+            showBubble   = false
+            scrollOffset = scrollFrac - scrollFracLive   // freeze-point continuity
+            windingUp    = true
+            windUpAnim.snapTo(0f)
+            windUpAnim.animateTo(
+                targetValue   = (2f * PI).toFloat(),
+                animationSpec = tween(560, easing = LinearEasing),
+            )
+            windingUp = false
         }
     }
 
-    // Effective phase: live when running, animated wind-down, then rest
-    val effectiveWalkPhase = when {
-        serviceRunning -> walkPhase
-        windingDown    -> windDownAnim.value
-        else           -> 0f
+    // ── Effective animation values ────────────────────────────────────────────
+    val effectiveWalkPhase: Float = when {
+        serviceRunning && windingUp -> windUpAnim.value
+        serviceRunning              -> walkPhase
+        windingDown                 -> windDownAnim.value
+        else                        -> 0f
     }
-    // Show ZzZ bubble only after fully stopped
-    val showZzz = !serviceRunning && !windingDown
+    val showZzz = showBubble
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -471,7 +490,7 @@ private fun DrawScope.drawWalker(
 
     // Neck bottom — arms attach visibly below the neck rect
     val neckTopY    = shoulderY - h * 0.042f
-    val neckBottomY = neckTopY + h * 0.048f + h * 0.015f    // extra gap so arm is clearly below
+    val neckBottomY = neckTopY + h * 0.048f + h * 0.038f    // larger gap — arms clearly below neck
 
     // Arm endpoints — origin at neck bottom
     val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = neckBottomY + uArmLen
@@ -542,55 +561,63 @@ private fun DrawScope.drawWalker(
         cornerRadius = CornerRadius(neckW / 2f),
     )
 
-    // 8. ZzZ sleep bubble — shown only when fully stopped
+    // 8. Dream cloud bubble — shown 1 s after fully stopped (no border, white cloud)
     if (showZzz && textMeasurer != null) {
-        val zStyle   = TextStyle(fontSize = 13.sp, color = Color(0xFF888888))
+        val zStyle   = TextStyle(fontSize = 12.sp, color = Color(0xFF222222))
         val measured = textMeasurer.measure("ZzZ", zStyle)
-        val pad      = w * 0.018f
-        val bW       = measured.size.width  + pad * 2f
-        val bH       = measured.size.height + pad * 1.2f
-        val tailH    = h * 0.025f
-        val bLeft    = pX + torsoW * 0.4f
-        val bTop     = neckTopY - bH - tailH - h * 0.005f
-        // bubble background
-        drawRoundRect(Color.White,
-            topLeft      = Offset(bLeft, bTop),
-            size         = Size(bW, bH),
-            cornerRadius = CornerRadius(bH / 2f))
-        drawRoundRect(Color(0xFFCCCCCC),
-            topLeft      = Offset(bLeft, bTop),
-            size         = Size(bW, bH),
-            cornerRadius = CornerRadius(bH / 2f),
-            style        = Stroke(width = w * 0.004f))
-        // tail triangle pointing down-left toward head
-        val tailPath = Path().apply {
-            moveTo(bLeft + bW * 0.25f, bTop + bH)
-            lineTo(bLeft + bW * 0.10f, bTop + bH + tailH)
-            lineTo(bLeft + bW * 0.45f, bTop + bH)
-            close()
-        }
-        drawPath(tailPath, Color.White)
-        drawPath(tailPath, Color(0xFFCCCCCC), style = Stroke(width = w * 0.004f))
-        // text
-        drawText(textMeasurer, "ZzZ", topLeft = Offset(bLeft + pad, bTop + pad * 0.6f), style = zStyle)
+        val tw = measured.size.width.toFloat()
+        val th = measured.size.height.toFloat()
+
+        // Cloud anchor: just above and to the right of the head
+        val cloudCX = pX + torsoW * 0.3f + tw * 0.5f
+        val cloudCY = neckTopY - h * 0.06f
+        val cr1 = tw * 0.48f   // main cloud radius
+
+        // Draw cloud as overlapping white circles (no border)
+        val cc = Color.White
+        // Main body circles
+        drawCircle(cc, radius = cr1,       center = Offset(cloudCX,          cloudCY))
+        drawCircle(cc, radius = cr1 * 0.8f, center = Offset(cloudCX + cr1 * 1.10f, cloudCY + cr1 * 0.15f))
+        drawCircle(cc, radius = cr1 * 0.75f, center = Offset(cloudCX - cr1 * 1.05f, cloudCY + cr1 * 0.20f))
+        drawCircle(cc, radius = cr1 * 0.6f, center = Offset(cloudCX + cr1 * 0.55f,  cloudCY - cr1 * 0.60f))
+        drawCircle(cc, radius = cr1 * 0.55f, center = Offset(cloudCX - cr1 * 0.45f, cloudCY - cr1 * 0.55f))
+        // Bottom fill to make cloud base flat
+        drawRect(cc,
+            topLeft = Offset(cloudCX - cr1 * 1.75f, cloudCY),
+            size    = Size(cr1 * 3.9f, cr1 * 1.05f))
+        // Dream trail: three small descending circles toward the head
+        val t1R = cr1 * 0.28f
+        val t2R = cr1 * 0.19f
+        val t3R = cr1 * 0.11f
+        drawCircle(cc, radius = t1R, center = Offset(pX + torsoW * 0.5f, neckTopY + h * 0.01f))
+        drawCircle(cc, radius = t2R, center = Offset(pX + torsoW * 0.55f, neckTopY - h * 0.015f))
+        drawCircle(cc, radius = t3R, center = Offset(pX + torsoW * 0.5f, neckTopY - h * 0.038f))
+        // ZzZ text centred in cloud
+        drawText(textMeasurer, "ZzZ",
+            topLeft = Offset(cloudCX - tw / 2f, cloudCY - th / 2f + cr1 * 0.1f),
+            style   = zStyle)
     }
 
     // 7. Front arm — anchored at neck bottom, always topmost
     seg(lShX, neckBottomY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
 
-    // 8. Wrist device — small rounded smartwatch on the left (front) hand
-    val devW  = segStroke * 1.6f   // slightly wider than the arm stroke
-    val devH  = segStroke * 2.2f
-    val devTL = Offset(lHandX - devW / 2f, lHandY - devH / 2f)
-    val devSz = Size(devW, devH)
-    val devCR = CornerRadius(devW * 0.28f)
-    drawRoundRect(Color(0xFF2a2a2a), topLeft = devTL, size = devSz, cornerRadius = devCR)
-    // small screen highlight inside the device
-    val scrPad = devW * 0.15f
+    // 9. Handheld console — landscape-oriented rounded dark-gray device in left hand
+    val devW  = segStroke * 3.4f   // wide landscape body
+    val devH  = segStroke * 1.5f   // low / squat (wider than tall)
+    val devTL = Offset(lHandX - devW * 0.5f, lHandY - devH * 0.5f)
+    // Main body — dark charcoal, generously rounded
     drawRoundRect(
-        Color(0xFF5BC8F5),
-        topLeft      = Offset(devTL.x + scrPad, devTL.y + scrPad),
-        size         = Size(devW - scrPad * 2f, devH - scrPad * 2f),
-        cornerRadius = CornerRadius(devW * 0.15f),
+        Color(0xFF303030),
+        topLeft      = devTL,
+        size         = Size(devW, devH),
+        cornerRadius = CornerRadius(devH * 0.42f),
     )
+    // Subtle shoulder buttons: two small raised rects on top edge
+    val btnW = devW * 0.18f; val btnH = devH * 0.22f
+    drawRoundRect(Color(0xFF404040),
+        topLeft      = Offset(devTL.x + devW * 0.12f, devTL.y - btnH * 0.6f),
+        size         = Size(btnW, btnH), cornerRadius = CornerRadius(btnH * 0.4f))
+    drawRoundRect(Color(0xFF404040),
+        topLeft      = Offset(devTL.x + devW * 0.70f, devTL.y - btnH * 0.6f),
+        size         = Size(btnW, btnH), cornerRadius = CornerRadius(btnH * 0.4f))
 }
