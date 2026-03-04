@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thunderpass.retro.RetroAuthManager
@@ -186,31 +190,49 @@ fun ProfileScreenContent(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CompactVoltBadge(
-                    joulesTotal = profile.joulesTotal,
-                    modifier    = Modifier.fillMaxWidth(),
-                )
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                // ── Badges ───────────────────────────────────────────────────
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text       = "BADGES",
-                        style      = MaterialTheme.typography.labelSmall,
-                        color      = MaterialTheme.colorScheme.outline,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                    RarityLegend()
-                    BadgeShelf(modifier = Modifier.fillMaxWidth())
-                    Text(
-                        text  = "Unlock badges by playing, exploring, and connecting.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
+                // ── Badges — horizontal gallery, achieved only, highest tier first ─
+                val achievedBadges = remember(Unit) {
+                    ALL_BADGES.filter { it.tier > 0 }.sortedByDescending { it.tier }
+                }
+                if (achievedBadges.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text       = "BADGES",
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = MaterialTheme.colorScheme.outline,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding        = PaddingValues(horizontal = 4.dp),
+                        ) {
+                            items(achievedBadges) { badge ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    ThunderShield(
+                                        tier          = badge.tier,
+                                        categoryColor = badge.category.accentColor,
+                                        darkBg        = categoryDarkBg(badge.category, badge.tier),
+                                        size          = 52.dp,
+                                    )
+                                    Text(
+                                        text      = badge.label,
+                                        style     = MaterialTheme.typography.labelSmall,
+                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines  = 2,
+                                        overflow  = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center,
+                                        modifier  = Modifier.width(60.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

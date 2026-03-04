@@ -89,17 +89,17 @@
 ### 5.7 Profile Screen
 - [ ] Avatar maker: DiceBear seed selector + Randomise button. Syncs to walking animation and bottom-bar icon immediately; saved to Supabase.
 - [ ] Privacy toggle: when on, BLE exchange shows "Private User" to peers.
-- [ ] Badge gallery: horizontal scrollable row, exotic/legendary first, achieved only. Remove legend row and duplicate Volt Badge.
+- [x] Badge gallery: horizontal scrollable row, exotic/legendary first, achieved only. Remove legend row and duplicate Volt Badge.
 - [ ] Share ID uses display name, not installation ID.
 - [ ] All edits saved to Supabase; Room is source-of-truth offline.
 
 ### 5.8 Badges
 - [ ] Replace star icon with a thunder bolt on every badge.
 - [ ] Six categories: Consoles · Player Numbers · Geolocation · Shared Games · RetroAchievements · Auto.
-- [ ] Tier colours: Dark grey=Not achieved, Blue=Common (1-2), Purple=Uncommon (3-4), Orange=Rare (5-6), Gold=Legendary (7).
+- [x] Tier colours: Dark grey=Not achieved, Blue=Common (1-2), Purple=Uncommon (3-4), Orange=Rare (5-6), Gold=Legendary (7).
 - [ ] Category grid: small squares in landscape, large cards in portrait.
-- [ ] Remove "Best" highlight from categories overview.
-- [ ] Create badges/badges.csv — columns: id, category, name, description, how_to_achieve, tier, colour.
+- [x] Remove "Best" highlight from categories overview.
+- [x] Create badges/badges.csv — columns: id, category, name, description, how_to_achieve, tier, colour.
 
 ### 5.9 Shop
 - [ ] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
