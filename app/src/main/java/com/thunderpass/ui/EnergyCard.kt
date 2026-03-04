@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +53,7 @@ fun EnergyCard(
 ) {
     val level    = voltLevelFor(joulesTotal)
     val accent   = level.color
-    val cardBg   = Color(0xFF0B0B0B)
+    val cardBg   = MaterialTheme.colorScheme.surfaceVariant
 
     // Progress fraction within current level
     val progressFraction: Float = when {
@@ -67,18 +66,14 @@ fun EnergyCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(cardBg, Color(0xFF141414)),
-                )
-            )
+            .background(cardBg)
             .padding(20.dp),
     ) {
         // ── Decorative background lightning bolt ─────────────────────────────
         Text(
             text     = "⚡",
             fontSize = 180.sp,
-            color    = accent.copy(alpha = 0.06f),
+            color    = accent.copy(alpha = 0.10f),
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .offset(x = 32.dp, y = (-8).dp),
@@ -101,7 +96,7 @@ fun EnergyCard(
                 )
                 Text(
                     text       = level.name,
-                    color      = Color.White,
+                    color      = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Black,
                     fontSize   = 26.sp,
                     letterSpacing = 0.5.sp,
@@ -148,7 +143,7 @@ fun EnergyCard(
                                     when {
                                         filled    -> accent
                                         isCurrent -> accent.copy(alpha = progressFraction.coerceAtLeast(0.25f))
-                                        else      -> Color.White.copy(alpha = 0.08f)
+                                        else      -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                                     }
                                 ),
                         )
@@ -164,7 +159,7 @@ fun EnergyCard(
                 ) {
                     Text(
                         text  = level.tagline,
-                        color = Color.White.copy(alpha = 0.45f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         modifier = Modifier.weight(1f),
                     )
@@ -209,7 +204,7 @@ fun CompactVoltBadge(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(Color(0xFF0D0D0D))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -226,7 +221,7 @@ fun CompactVoltBadge(
             )
             Text(
                 text  = "%,d Joules accumulated".format(joulesTotal),
-                color = Color.White.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize  = 10.sp,
             )
         }
