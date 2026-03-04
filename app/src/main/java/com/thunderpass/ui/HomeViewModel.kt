@@ -63,7 +63,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val safeZoneActive: StateFlow<Boolean> = _safeZoneActive
 
     // ── Service running state ─────────────────────────────────────────────────
-    private val _serviceRunning = MutableStateFlow(false)
+    private val _serviceRunning = MutableStateFlow(prefs.getBoolean(BleService.PREF_SERVICE_ACTIVE, false))
     val serviceRunning: StateFlow<Boolean> = _serviceRunning
 
     // ── Scan mode ─────────────────────────────────────────────────────────────
@@ -154,6 +154,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             Intent(ctx, BleService::class.java).apply { action = BleService.ACTION_START }
         )
         _serviceRunning.value = true
+        prefs.edit().putBoolean(BleService.PREF_SERVICE_ACTIVE, true).apply()
     }
 
     fun stopService() {
@@ -162,6 +163,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             Intent(ctx, BleService::class.java).apply { action = BleService.ACTION_STOP }
         )
         _serviceRunning.value = false
+        prefs.edit().putBoolean(BleService.PREF_SERVICE_ACTIVE, false).apply()
     }
 
     // ── Scan mode ─────────────────────────────────────────────────────────────

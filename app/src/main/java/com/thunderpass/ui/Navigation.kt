@@ -10,21 +10,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,30 +28,19 @@ import androidx.navigation.navArgument
 import com.thunderpass.ui.theme.ThunderPassTheme
 
 private object Routes {
-    const val SPLASH           = "splash"
-    const val ONBOARDING       = "onboarding"
-    const val HOME             = "home"
-    const val ENCOUNTERS       = "encounters"
-    const val ENCOUNTER_DETAIL = "encounter_detail/{encounterId}"
-    const val PROFILE          = "profile"
-    const val BADGES           = "badges"
-    const val SHOP             = "shop"
-    const val SETTINGS         = "settings"
+    const val SPLASH            = "splash"
+    const val ONBOARDING        = "onboarding"
+    const val HOME              = "home"
+    const val ENCOUNTERS        = "encounters"
+    const val ENCOUNTER_DETAIL  = "encounter_detail/{encounterId}"
+    const val PROFILE           = "profile"
+    const val BADGES            = "badges"
+    const val BADGES_CATEGORY   = "badges_category/{categoryName}"
+    const val SHOP              = "shop"
+    const val SETTINGS          = "settings"
     fun encounterDetail(id: Long) = "encounter_detail/$id"
+    fun badgesCategory(name: String) = "badges_category/$name"
 }
-
-private data class NavItem(val route: String, val label: String, val icon: ImageVector)
-
-private val NAV_ITEMS = listOf(
-    NavItem(Routes.HOME,       "Home",     Icons.Filled.Home),
-    NavItem(Routes.ENCOUNTERS, "Passes",   Icons.AutoMirrored.Filled.List),
-    NavItem(Routes.PROFILE,    "Profile",  Icons.Filled.Person),
-    NavItem(Routes.BADGES,     "Badges",   Icons.Filled.Star),
-    NavItem(Routes.SHOP,       "Shop",     Icons.Filled.ShoppingCart),
-    NavItem(Routes.SETTINGS,   "Settings", Icons.Filled.Settings),
-)
-
-private val TOP_LEVEL_ROUTES = NAV_ITEMS.map { it.route }.toSet()
 
 @Composable
 fun ThunderPassNavGraph(
@@ -73,40 +52,9 @@ fun ThunderPassNavGraph(
 
     val homeVm: HomeViewModel = viewModel()
 
-    val backStack    by navController.currentBackStackEntryAsState()
-    val currentRoute  = backStack?.destination?.route
-    val showBottomBar = currentRoute in TOP_LEVEL_ROUTES
-    val isLandscape   = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
     ThunderPassTheme(darkTheme = darkMode) {
         Scaffold(
             contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                if (showBottomBar) {
-                    NavigationBar(
-                        modifier       = if (isLandscape) Modifier.height(52.dp) else Modifier,
-                        tonalElevation = 2.dp,
-                    ) {
-                        NAV_ITEMS.forEach { item ->
-                            NavigationBarItem(
-                                selected = currentRoute == item.route,
-                                onClick  = {
-                                    if (currentRoute != item.route) {
-                                        navController.navigate(item.route) {
-                                            popUpTo(Routes.HOME) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState    = true
-                                        }
-                                    }
-                                },
-                                icon            = { Icon(item.icon, contentDescription = item.label) },
-                                label           = { if (!isLandscape) Text(item.label) },
-                                alwaysShowLabel = !isLandscape,
-                            )
-                        }
-                    }
-                }
-            },
         ) { innerPadding ->
             NavHost(
                 navController    = navController,
@@ -151,12 +99,20 @@ fun ThunderPassNavGraph(
                 composable(Routes.HOME) {
                     HomeScreen(
                         onNavigateToDetail = { id -> navController.navigate(Routes.encounterDetail(id)) },
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                popUpTo(Routes.HOME) { saveState = true }
+                                launchSingleTop = true
+                                restoreState    = true
+                            }
+                        },
                         vm = homeVm,
                     )
                 }
                 composable(Routes.ENCOUNTERS) {
                     EncounterListScreen(
                         onNavigateToDetail = { id -> navController.navigate(Routes.encounterDetail(id)) },
+                        onBack = { navController.popBackStack() },
                         vm = homeVm,
                     )
                 }
@@ -184,9 +140,26 @@ fun ThunderPassNavGraph(
                         onComplete = if (firstRun) {
                             { navController.navigate(Routes.HOME) { popUpTo(Routes.PROFILE) { inclusive = true } } }
                         } else null,
+                        onBack = if (!firstRun) { { navController.popBackStack() } } else null,
                     )
                 }
-                composable(Routes.BADGES)   { BadgesScreen(vm = homeVm) }
+                composable(Routes.BADGES) {
+                    BadgesScreen(
+                        onNavigateToCategory = { cat -> navController.navigate(Routes.badgesCategory(cat)) },
+                        onBack = { navController.popBackStack() },
+                        vm = homeVm,
+                    )
+                }
+                composable(
+                    route     = Routes.BADGES_CATEGORY,
+                    arguments = listOf(navArgument("categoryName") { type = NavType.StringType }),
+                ) { bs ->
+                    val categoryName = bs.arguments?.getString("categoryName") ?: return@composable
+                    BadgeCategoryDetailScreen(
+                        categoryName = categoryName,
+                        onBack       = { navController.popBackStack() },
+                    )
+                }
                 composable(Routes.SHOP)     { ShopScreen(onBack = { navController.popBackStack() }, vm = homeVm) }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
@@ -195,6 +168,7 @@ fun ThunderPassNavGraph(
                             darkMode = enabled
                             prefs.edit().putBoolean("dark_mode", enabled).apply()
                         },
+                        onBack = { navController.popBackStack() },
                         vm = homeVm,
                     )
                 }

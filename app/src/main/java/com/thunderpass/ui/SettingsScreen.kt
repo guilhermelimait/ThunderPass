@@ -10,6 +10,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,10 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     darkMode: Boolean,
     onDarkModeToggle: (Boolean) -> Unit,
+    onBack: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -58,22 +62,27 @@ fun SettingsScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results -> bleGranted = results.values.all { it } }
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .padding(innerPadding)
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            text       = "Settings",
-            style      = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color      = MaterialTheme.colorScheme.onBackground,
-        )
-
+        Spacer(Modifier.height(8.dp))
         // ── Appearance ────────────────────────────────────────────────────────
         SettingsSection("Appearance") {
             SettingToggleRow(
@@ -200,6 +209,7 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(24.dp))
+    }
     }
 }
 

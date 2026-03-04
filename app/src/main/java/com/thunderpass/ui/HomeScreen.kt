@@ -47,6 +47,7 @@ private val BLE_PERMISSIONS = arrayOf(
 @Composable
 fun HomeScreen(
     onNavigateToDetail: (Long) -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context        = LocalContext.current
