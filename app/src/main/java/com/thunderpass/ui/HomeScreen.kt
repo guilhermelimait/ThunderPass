@@ -192,67 +192,15 @@ fun HomeScreenContent(
                     color     = MaterialTheme.colorScheme.outlineVariant,
                 )
 
-                // Right panel — stats + encounters
-                Column(
-                    modifier = Modifier
+                // Right panel — walking animation
+                Box(
+                    modifier         = Modifier
                         .weight(0.58f)
                         .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
                         .padding(vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // Stats
-                    EnergyCard(joulesTotal = joulesTotal)
-                    JoulesInfoCard()
-                    // Encounters
-                    Text(
-                        text       = "Recent Encounters",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color      = MaterialTheme.colorScheme.onBackground,
-                    )
-                    if (encounters.isEmpty()) {
-                        Box(
-                            modifier         = Modifier.fillMaxWidth().height(72.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text      = "None yet — go out and encounter someone!",
-                                style     = MaterialTheme.typography.bodySmall,
-                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    } else {
-                        Row(
-                            modifier              = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            encounters.take(20).forEach { ewp ->
-                                val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
-                                val name = ewp.snapshot?.displayName ?: "Unknown"
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier            = Modifier
-                                        .width(56.dp)
-                                        .clickable { onNavigateToDetail(ewp.encounter.id) },
-                                ) {
-                                    DiceBearAvatar(seed = seed, size = 44.dp)
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text      = name,
-                                        style     = MaterialTheme.typography.labelSmall,
-                                        maxLines  = 1,
-                                        overflow  = TextOverflow.Ellipsis,
-                                        color     = MaterialTheme.colorScheme.onBackground,
-                                        textAlign = TextAlign.Center,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    WalkingSceneCard(avatarSeed = installationId.ifEmpty { "default" })
                 }
             }
         } else {
