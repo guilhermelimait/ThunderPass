@@ -85,17 +85,17 @@ fun BadgeCategoryDetailScreen(
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .height(50.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(color)
-                            .padding(vertical = 6.dp),
+                            .background(color),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text      = name,
                             style     = MaterialTheme.typography.labelSmall.copy(
-                                fontSize   = 8.5.sp,
+                                fontSize   = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                lineHeight = 10.sp,
+                                lineHeight = 13.sp,
                             ),
                             color     = Color.White,
                             textAlign = TextAlign.Center,
@@ -141,22 +141,24 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                     colors = listOf(cardColor, cardColor.copy(alpha = 0.75f)),
                 ),
             )
-            .height(130.dp),
+            .height(155.dp),
     ) {
-        // ── Ripple circles (right side, like reference) ───────────────────────
+        // ── Ripple circles — center aligned to shield center ──────────────────
+        // Shield: 115dp box, offset(-12dp) from right → center = 12+57.5 = 69.5dp from right
+        // Canvas 170dp wide → cx fraction = (170-69.5)/170 ≈ 0.591
         Canvas(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(160.dp)
+                .width(170.dp)
                 .align(Alignment.CenterEnd),
         ) {
-            val cx = size.width * 0.72f
+            val cx = size.width * 0.591f
             val cy = size.height * 0.5f
             val baseAlpha = if (locked) 0.07f else 0.15f
             for (i in 4 downTo 1) {
                 drawCircle(
                     color  = Color.White.copy(alpha = baseAlpha - i * 0.025f + 0.025f),
-                    radius = size.height * (0.38f + i * 0.16f),
+                    radius = size.height * (0.38f + i * 0.14f),
                     center = Offset(cx, cy),
                 )
             }
@@ -171,16 +173,16 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
         // ── Shield in right circle ────────────────────────────────────────────
         Box(
             modifier = Modifier
-                .size(90.dp)
+                .size(115.dp)
                 .align(Alignment.CenterEnd)
-                .offset(x = (-20).dp),
+                .offset(x = (-12).dp),
             contentAlignment = Alignment.Center,
         ) {
             ThunderShield(
                 tier          = badge.tier,
                 categoryColor = rarColor,
                 darkBg        = darkBg,
-                size          = 72.dp,
+                size          = 100.dp,
             )
         }
 
@@ -217,8 +219,8 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                     text       = badge.label.uppercase(),
                     style      = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize   = 20.sp,
-                        lineHeight = 22.sp,
+                        fontSize   = 23.sp,
+                        lineHeight = 25.sp,
                     ),
                     color      = Color.White.copy(alpha = textAlpha),
                     maxLines   = 2,
@@ -229,7 +231,7 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                 // Description
                 Text(
                     text  = badge.description,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = Color.White.copy(alpha = if (locked) 0.4f else 0.80f),
                     maxLines = 2,
                 )
