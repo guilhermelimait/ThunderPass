@@ -63,26 +63,26 @@
 - [ ] Remove Safe Zones and Battery Mode from Home — move to Settings (5.10).
 
 ### 5.3 Navigation & Bottom Bar
-- [ ] Fixed bottom bar always visible across all screens (no teardown on navigate).
-- [ ] Seven tabs: Home · Passes · Profile · Badges · Shop · Settings · About
-- [ ] Tab icons: Home=walking figure, Passes=thunder bolt, Profile=live avatar head, Badges=thunder badge, Shop=cart, Settings=cog, About=coffee mug
-- [ ] Landscape: bar height ~48 dp, icons only (no labels).
+- [x] Fixed bottom bar always visible across all screens (no teardown on navigate).
+- [x] Seven tabs: Home · Passes · Profile · Badges · Shop · Settings · About
+- [x] Tab icons: Home=walking figure, Passes=thunder bolt, Profile=live avatar head, Badges=thunder badge, Shop=cart, Settings=cog, About=coffee mug
+- [x] Landscape: bar height ~48 dp, icons only (no labels).
 
 ### 5.4 Home Screen
 - [ ] Remove Today/Streak stat cards; move data to Profile.
-- [ ] "Last Passed By" strip below walking animation: peer avatar + name + relative time. Tap opens encounter detail.
-- [ ] Tapping the user avatar in the walking scene navigates to Profile.
+- [x] "Last Passed By" strip below walking animation: peer avatar + name + relative time. Tap opens encounter detail.
+- [x] Tapping the user avatar in the walking scene navigates to Profile.
 
 ### 5.5 Bluetooth Reliability & Permissions
-- [ ] Check PackageManager.FEATURE_BLUETOOTH_LE on start; show blocking error if unsupported.
-- [ ] Check BluetoothAdapter.isMultipleAdvertisementSupported(); warn if background sync is limited.
-- [ ] If BT is off when toggling ON, request enable via BluetoothAdapter.ACTION_REQUEST_ENABLE.
-- [ ] First-launch prompt: disable battery optimisation (Doze-mode whitelist).
+- [x] Check PackageManager.FEATURE_BLUETOOTH_LE on start; show blocking error if unsupported.
+- [x] Check BluetoothAdapter.isMultipleAdvertisementSupported(); warn if background sync is limited.
+- [x] If BT is off when toggling ON, request enable via BluetoothAdapter.ACTION_REQUEST_ENABLE.
+- [x] First-launch prompt: disable battery optimisation (Doze-mode whitelist).
 - [ ] Audit BLE concurrency; verify both test devices (RP4 Pro + AYN Thor) discover each other reliably.
 
 ### 5.6 Passes (Encounters)
-- [ ] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
-- [ ] Double-pulse vibration if haptics are enabled.
+- [x] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
+- [x] Double-pulse vibration if haptics are enabled.
 - [ ] Passes screen: live list with peer avatar, name, RSSI, relative time.
 - [ ] Friends list accessible from Passes and Profile. Tap a friend to open their badge dashboard.
 
@@ -109,18 +109,18 @@
 
 ### 5.10 Settings
 - [ ] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
-- [ ] Keep screen on (FLAG_KEEP_SCREEN_ON) while ThunderPass service is active.
+- [x] Keep screen on (FLAG_KEEP_SCREEN_ON) while ThunderPass service is active.
 - [ ] OTA updates: poll GitHub Releases API; show banner + download link if newer version exists.
-- [ ] Background music toggle — default ON. Play assets/thunderpass-bg.mp3 on app open; skip if user disabled it.
+- [x] Background music toggle — default ON. Play assets/thunderpass-bg.mp3 on app open; skip if user disabled it.
 
 ### 5.11 About Screen
-- [ ] Ko-fi link: https://ko-fi.com/guilhermelimait/ — styled as a support/donation button.
-- [ ] Developer avatar + short bio.
-- [ ] "Report an Issue" button — opens GitHub Issues URL in browser.
-- [ ] App version + build number.
+- [x] Ko-fi link: https://ko-fi.com/guilhermelimait/ — styled as a support/donation button.
+- [x] Developer avatar + short bio.
+- [x] "Report an Issue" button — opens GitHub Issues URL in browser.
+- [x] App version + build number.
 
 ### 5.12 Removals
-- [ ] Remove Sticker Book screen and all related code.
+- [x] Remove Sticker Book screen and all related code.
 - [ ] Remove Safe Zone toggle from Home.
 - [ ] Remove Battery Mode selector from Home.
 - [ ] Remove duplicate Volt Badge widget from Profile Joules area.

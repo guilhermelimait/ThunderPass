@@ -25,6 +25,9 @@
     <!-- VIBRATE required for "The Spark" haptic feedback on successful BLE exchange -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Allows showing the battery optimisation whitelist request dialog -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <!-- Require BLE hardware; set required="false" if you also want to support non-BLE devices -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"

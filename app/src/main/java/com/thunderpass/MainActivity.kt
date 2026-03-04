@@ -1,9 +1,12 @@
 package com.thunderpass
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleSupabaseDeepLink(intent)
+        requestIgnoreBatteryOptimizationsIfNeeded()
         setContent { ThunderPassNavGraph() }
     }
 
@@ -82,6 +86,29 @@ class MainActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // ── Battery optimization whitelist ──────────────────────────────────────
+
+    /**
+     * On first launch, if the app is not already exempt from battery restrictions,
+     * open the system dialog so the user can add it to the Doze whitelist.
+     * Without this, BLE scanning is throttled or killed in background.
+     */
+    @SuppressLint("BatteryLife")
+    private fun requestIgnoreBatteryOptimizationsIfNeeded() {
+        val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
+        if (prefs.getBoolean("doze_prompt_shown", false)) return
+        val pm = getSystemService(PowerManager::class.java)
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        prefs.edit().putBoolean("doze_prompt_shown", true).apply()
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
         }
     }
 

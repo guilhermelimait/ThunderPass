@@ -1,6 +1,11 @@
 package com.thunderpass.ui
 
 import android.Manifest
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,6 +82,13 @@ fun HomeScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results -> allGranted = results.values.all { it } }
 
+    // BT enable launcher: when system dialog confirms BT on, start the service
+    val btEnableLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) vm.startService()
+    }
+
     // Compute start-of-today for the "Today" stat (seenAt is epoch millis)
     val todayStart = remember {
         Calendar.getInstance().apply {
@@ -97,7 +109,19 @@ fun HomeScreen(
         installationId = installationId,
         encounters = encounters,
         joulesTotal = joulesTotal,
-        onToggleService = { if (serviceRunning) vm.stopService() else vm.startService() },
+        onToggleService = {
+            if (serviceRunning) {
+                vm.stopService()
+            } else {
+                val btAdapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+                if (btAdapter?.isEnabled == true) {
+                    vm.startService()
+                } else {
+                    @Suppress("DEPRECATION")
+                    btEnableLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                }
+            }
+        },
         onNavigateToDetail = onNavigateToDetail,
         onNavigate = onNavigate,
         onGrantPermissions = { permLauncher.launch(BLE_PERMISSIONS) }
