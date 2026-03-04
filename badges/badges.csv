@@ -1,43 +1,43 @@
-id,category,name,description,how_to_achieve,tier,colour
-consoles_001,Consoles,First Contact,Met another ThunderPasser on the same console family,Have 1 encounter with a user on the same platform,1,Blue
-consoles_002,Consoles,Circuit Buddy,5 encounters on the same console family,Accumulate 5 same-platform encounters,2,Blue
-consoles_003,Consoles,Cross-Platform Spark,Encounter users on 3 different console families,Meet peers on 3 distinct platforms,3,Purple
-consoles_004,Consoles,Handheld Legend,10 encounters on handheld devices,Accumulate 10 handheld encounters,4,Purple
-consoles_005,Consoles,Multi-Verse Traveler,Encounter users on 5 different console families,Meet peers on 5 distinct platforms,5,Orange
-consoles_006,Consoles,Grid Integrator,25 total cross-platform encounters,Accumulate 25 cross-platform encounters,6,Orange
-consoles_007,Consoles,Retro Supreme,Encounter all supported console families,Meet at least one peer on every supported platform,7,Gold
-players_001,Player Numbers,First Spark,Your very first ThunderPass encounter,Complete 1 encounter,1,Blue
-players_002,Player Numbers,Social Node,5 total encounters,Complete 5 encounters,2,Blue
-players_003,Player Numbers,Street Runner,25 total encounters,Complete 25 encounters,3,Purple
-players_004,Player Numbers,Grid Walker,100 total encounters,Complete 100 encounters,4,Purple
-players_005,Player Numbers,Thunder Network,250 total encounters,Complete 250 encounters,5,Orange
-players_006,Player Numbers,Storm Chaser,500 total encounters,Complete 500 encounters,6,Orange
-players_007,Player Numbers,Legendary Node,1000 total encounters,Complete 1000 encounters,7,Gold
-geo_001,Geolocation,Home Spark,First encounter in your home city,Complete 1 encounter detected in your home area,1,Blue
-geo_002,Geolocation,Neighborhood Hero,10 encounters in the same area,Complete 10 encounters in one geographic zone,2,Blue
-geo_003,Geolocation,City Hopper,Encounters detected in 3 different cities,Rack up encounters across 3 distinct cities,3,Purple
-geo_004,Geolocation,Cross-Region,5 different regions visited,Rack up encounters across 5 distinct regions,4,Purple
-geo_005,Geolocation,Globe Trotter,Encounters across 3 different countries,Meet peers in 3 distinct countries,5,Orange
-geo_006,Geolocation,World Traveler,10 different countries,Rack up encounters across 10 countries,6,Orange
-geo_007,Geolocation,Grid Cartographer,All continents represented in encounters,Meet peers on 5+ continents,7,Gold
-games_001,Shared Games,Common Ground,Share 1 game in recently-played with a peer,Trigger Legendary Encounter achievement once,1,Blue
-games_002,Shared Games,Multiplayer Spirit,3 different shared-game encounters,Trigger Legendary Encounter 3 times,2,Blue
-games_003,Shared Games,Genres United,Shared games in 3 different genres,Match on games across 3 genres,3,Purple
-games_004,Shared Games,Series Fan,Shared game from the same series 5 times,Match on a game series 5 encounters,4,Purple
-games_005,Shared Games,Library Crossed,25 unique games shared across all encounters,Accumulate 25 distinct game matches,5,Orange
-games_006,Shared Games,The Archivist,50 unique games shared,Accumulate 50 distinct game matches,6,Orange
-games_007,Shared Games,Legendary Library,100 unique games shared,Accumulate 100 distinct game matches,7,Gold
-ra_001,RetroAchievements,Achievement Hunter,First RA profile exchanged with a peer,Complete 1 encounter where both users have RA linked,1,Blue
-ra_002,RetroAchievements,Points Collector,Peer has >5000 RA points,Meet a peer with over 5000 RA points,2,Blue
-ra_003,RetroAchievements,Rank Rival,Meet a peer in the top 10000 RA ranking,Encounter a peer with a top-10000 global rank,3,Purple
-ra_004,RetroAchievements,Mastery Transfer,Both users hold at least one mastery,You and your peer both have a game mastered,4,Purple
-ra_005,RetroAchievements,Platinum Pulse,Peer has >20000 RA points,Trigger the Platinum Pulse reference achievement,5,Orange
-ra_006,RetroAchievements,Master of Masters,Peer mastered a game in the last 30 days 5 times,Trigger Retro Circuit 5 times,6,Orange
-ra_007,RetroAchievements,Retro Oracle,Peer has >50000 RA points,Meet a peer with over 50000 RetroAchievements points,7,Gold
-auto_001,Auto,Early Adopter,Joined ThunderPass in the first year,Account created before cutoff date,1,Blue
-auto_002,Auto,Profile Complete,All profile fields filled in,Display Name + RA Username + RA API Key all set,2,Blue
-auto_003,Auto,Shop Explorer,Unlocked your first visual effect in the Shop,Purchase any Shop item,3,Purple
-auto_004,Auto,Joule Hoarder,Accumulated 1000 Joules,Earn 1000 Joules total,4,Purple
-auto_005,Auto,Thunder Streak,7-day encounter streak,Have at least one encounter every day for 7 days,5,Orange
-auto_006,Auto,Grid Veteran,30-day encounter streak,Have at least one encounter every day for 30 days,6,Orange
-auto_007,Auto,ThunderPass Legend,Complete all other badge tiers,Hold at least one badge from every other category at tier 3+,7,Gold
+id,category,name,description,how_to_achieve,tier,colour,joules
+consoles_001,Consoles,First Contact,Met another ThunderPasser on the same console family,Have 1 encounter with a user on the same platform,1,Blue,300
+consoles_002,Consoles,Circuit Buddy,5 encounters on the same console family,Accumulate 5 same-platform encounters,2,Blue,500
+consoles_003,Consoles,Cross-Platform Spark,Encounter users on 3 different console families,Meet peers on 3 distinct platforms,3,Purple,700
+consoles_004,Consoles,Handheld Legend,10 encounters on handheld devices,Accumulate 10 handheld encounters,4,Purple,1000
+consoles_005,Consoles,Multi-Verse Traveler,Encounter users on 5 different console families,Meet peers on 5 distinct platforms,5,Orange,2000
+consoles_006,Consoles,Grid Integrator,25 total cross-platform encounters,Accumulate 25 cross-platform encounters,6,Orange,5000
+consoles_007,Consoles,Retro Supreme,Encounter all supported console families,Meet at least one peer on every supported platform,7,Gold,10000
+players_001,Player Numbers,First Spark,Your very first ThunderPass encounter,Complete 1 encounter,1,Blue,300
+players_002,Player Numbers,Social Node,5 total encounters,Complete 5 encounters,2,Blue,500
+players_003,Player Numbers,Street Runner,25 total encounters,Complete 25 encounters,3,Purple,700
+players_004,Player Numbers,Grid Walker,100 total encounters,Complete 100 encounters,4,Purple,1000
+players_005,Player Numbers,Thunder Network,250 total encounters,Complete 250 encounters,5,Orange,2000
+players_006,Player Numbers,Storm Chaser,500 total encounters,Complete 500 encounters,6,Orange,5000
+players_007,Player Numbers,Legendary Node,1000 total encounters,Complete 1000 encounters,7,Gold,10000
+geo_001,Geolocation,Home Spark,First encounter in your home city,Complete 1 encounter detected in your home area,1,Blue,300
+geo_002,Geolocation,Neighborhood Hero,10 encounters in the same area,Complete 10 encounters in one geographic zone,2,Blue,500
+geo_003,Geolocation,City Hopper,Encounters detected in 3 different cities,Rack up encounters across 3 distinct cities,3,Purple,700
+geo_004,Geolocation,Cross-Region,5 different regions visited,Rack up encounters across 5 distinct regions,4,Purple,1000
+geo_005,Geolocation,Globe Trotter,Encounters across 3 different countries,Meet peers in 3 distinct countries,5,Orange,2000
+geo_006,Geolocation,World Traveler,10 different countries,Rack up encounters across 10 countries,6,Orange,5000
+geo_007,Geolocation,Grid Cartographer,All continents represented in encounters,Meet peers on 5+ continents,7,Gold,10000
+games_001,Shared Games,Common Ground,Share 1 game in recently-played with a peer,Trigger Legendary Encounter achievement once,1,Blue,300
+games_002,Shared Games,Multiplayer Spirit,3 different shared-game encounters,Trigger Legendary Encounter 3 times,2,Blue,500
+games_003,Shared Games,Genres United,Shared games in 3 different genres,Match on games across 3 genres,3,Purple,700
+games_004,Shared Games,Series Fan,Shared game from the same series 5 times,Match on a game series 5 encounters,4,Purple,1000
+games_005,Shared Games,Library Crossed,25 unique games shared across all encounters,Accumulate 25 distinct game matches,5,Orange,2000
+games_006,Shared Games,The Archivist,50 unique games shared,Accumulate 50 distinct game matches,6,Orange,5000
+games_007,Shared Games,Legendary Library,100 unique games shared,Accumulate 100 distinct game matches,7,Gold,10000
+ra_001,RetroAchievements,Achievement Hunter,First RA profile exchanged with a peer,Complete 1 encounter where both users have RA linked,1,Blue,300
+ra_002,RetroAchievements,Points Collector,Peer has >5000 RA points,Meet a peer with over 5000 RA points,2,Blue,500
+ra_003,RetroAchievements,Rank Rival,Meet a peer in the top 10000 RA ranking,Encounter a peer with a top-10000 global rank,3,Purple,700
+ra_004,RetroAchievements,Mastery Transfer,Both users hold at least one mastery,You and your peer both have a game mastered,4,Purple,1000
+ra_005,RetroAchievements,Platinum Pulse,Peer has >20000 RA points,Trigger the Platinum Pulse reference achievement,5,Orange,2000
+ra_006,RetroAchievements,Master of Masters,Peer mastered a game in the last 30 days 5 times,Trigger Retro Circuit 5 times,6,Orange,5000
+ra_007,RetroAchievements,Retro Oracle,Peer has >50000 RA points,Meet a peer with over 50000 RetroAchievements points,7,Gold,10000
+auto_001,Auto,Early Adopter,Joined ThunderPass in the first year,Account created before cutoff date,1,Blue,300
+auto_002,Auto,Profile Complete,All profile fields filled in,Display Name + RA Username + RA API Key all set,2,Blue,500
+auto_003,Auto,Shop Explorer,Unlocked your first visual effect in the Shop,Purchase any Shop item,3,Purple,700
+auto_004,Auto,Joule Hoarder,Accumulated 1000 Joules,Earn 1000 Joules total,4,Purple,1000
+auto_005,Auto,Thunder Streak,7-day encounter streak,Have at least one encounter every day for 7 days,5,Orange,2000
+auto_006,Auto,Grid Veteran,30-day encounter streak,Have at least one encounter every day for 30 days,6,Orange,5000
+auto_007,Auto,ThunderPass Legend,Complete all other badge tiers,Hold at least one badge from every other category at tier 3+,7,Gold,10000
