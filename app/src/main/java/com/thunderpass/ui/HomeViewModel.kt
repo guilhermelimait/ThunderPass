@@ -38,25 +38,28 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val installationId: StateFlow<String> = profileDao.observe()
         .filterNotNull()
         .map { it.installationId }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     /** The seed used to generate the user's DiceBear avatar. Falls back to installationId. */
     val avatarSeed: StateFlow<String> = profileDao.observe()
         .filterNotNull()
         .map { p -> p.avatarSeed.ifEmpty { p.installationId } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "")
 
     val displayName: StateFlow<String> = profileDao.observe()
         .filterNotNull()
         .map { p ->
-            p.displayName.ifBlank {
+            // Treat the never-customised default ("Traveler") as blank so the
+            // device name is used until the user actually saves their own name.
+            val saved = p.displayName
+            if (saved.isBlank() || saved == "Traveler") {
                 android.provider.Settings.Global.getString(
                     getApplication<Application>().contentResolver,
                     android.provider.Settings.Global.DEVICE_NAME
                 )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
-            }
+            } else saved
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), android.os.Build.MODEL)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, android.os.Build.MODEL)
 
     // ── Visual Shop unlocks ───────────────────────────────────────────────────
     private val _unlockedEffects = MutableStateFlow(
@@ -92,7 +95,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val joulesTotal: StateFlow<Long> = profileDao.observe()
         .filterNotNull()
         .map { it.joulesTotal }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
     // ── Owned Stickers ────────────────────────────────────────────────────────
     val ownedStickers: StateFlow<Set<String>> = profileDao.observe()

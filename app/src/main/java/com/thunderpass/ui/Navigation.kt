@@ -1,7 +1,6 @@
 package com.thunderpass.ui
 
 import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,23 +9,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ElectricBolt
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,7 +22,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.thunderpass.ui.theme.ThunderPassTheme
@@ -56,27 +42,6 @@ internal object Routes {
     fun badgesCategory(name: String) = "badges_category/$name"
 }
 
-// Routes that show the persistent bottom navigation bar
-private val BOTTOM_NAV_ROUTES = setOf(
-    Routes.HOME, Routes.ENCOUNTERS, Routes.PROFILE,
-    Routes.BADGES, Routes.SHOP, Routes.SETTINGS, Routes.ABOUT,
-)
-
-private data class NavTab(
-    val route: String,
-    val label: String,
-    val icon:  ImageVector,
-)
-
-private val NAV_TABS = listOf(
-    NavTab(Routes.HOME,       "Home",     Icons.Filled.Home),
-    NavTab(Routes.ENCOUNTERS, "Passes",   Icons.Filled.ElectricBolt),
-    NavTab(Routes.PROFILE,    "Profile",  Icons.Filled.Person),
-    NavTab(Routes.BADGES,     "Badges",   Icons.Filled.WorkspacePremium),
-    NavTab(Routes.SHOP,       "Shop",     Icons.Filled.ShoppingCart),
-    NavTab(Routes.SETTINGS,   "Settings", Icons.Filled.Settings),
-    NavTab(Routes.ABOUT,      "About",    Icons.Filled.LocalCafe),
-)
 
 @Composable
 fun ThunderPassNavGraph(
@@ -88,50 +53,9 @@ fun ThunderPassNavGraph(
 
     val homeVm: HomeViewModel = viewModel()
 
-    val backStack by navController.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-    val showBottomBar = BOTTOM_NAV_ROUTES.any { route ->
-        currentRoute == route ||
-        currentRoute?.startsWith("$route?") == true ||
-        currentRoute?.startsWith("$route/") == true
-    }
-
-    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
     ThunderPassTheme(darkTheme = darkMode) {
         Scaffold(
             contentWindowInsets = WindowInsets(0),
-            bottomBar = {
-                if (showBottomBar) {
-                    NavigationBar(
-                        modifier = if (isLandscape) Modifier.height(54.dp) else Modifier,
-                    ) {
-                        NAV_TABS.forEach { tab ->
-                            val selected = currentRoute == tab.route
-                            NavigationBarItem(
-                                selected        = selected,
-                                onClick         = {
-                                    navController.navigate(tab.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState    = true
-                                    }
-                                },
-                                icon            = {
-                                    Icon(
-                                        imageVector        = tab.icon,
-                                        contentDescription = tab.label,
-                                    )
-                                },
-                                label           = if (isLandscape) null else ({ Text(tab.label) }),
-                                alwaysShowLabel = false,
-                            )
-                        }
-                    }
-                }
-            },
         ) { innerPadding ->
             NavHost(
                 navController    = navController,

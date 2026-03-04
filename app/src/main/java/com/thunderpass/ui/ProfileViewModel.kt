@@ -90,10 +90,12 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Returns true if this is a first-run (profile is null or still has all defaults).
+     * "Traveler" is the entity default — treat it the same as a blank name so new
+     * users are always routed through onboarding to set their actual name.
      */
     suspend fun isFirstRun(): Boolean {
         val profile = profileDao.get() ?: return true
-        return profile.displayName.isBlank() &&
-               profile.greeting == "Hey, greetings from ThunderPass!"
+        val nameIsDefault = profile.displayName.isBlank() || profile.displayName == "Traveler"
+        return nameIsDefault && profile.greeting == "Hey, greetings from ThunderPass!"
     }
 }

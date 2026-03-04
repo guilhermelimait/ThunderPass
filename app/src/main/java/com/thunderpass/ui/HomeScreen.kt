@@ -12,16 +12,25 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -137,7 +146,7 @@ fun HomeScreenContent(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                val animLandscapeH = maxHeight / 2
+                val animLandscapeH = maxHeight / 3
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Left panel
                     Column(
@@ -174,6 +183,8 @@ fun HomeScreenContent(
                                     .clickable { onNavigate("profile") },
                             )
                         }
+                        NavShortcuts(onNavigate = onNavigate)
+
                         val lastEnc = encounters.firstOrNull()
                         if (lastEnc != null) {
                             LastPassedByCard(
@@ -188,7 +199,7 @@ fun HomeScreenContent(
                         modifier         = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.TopCenter,
                     ) {
                         Box(
                             modifier = Modifier
@@ -224,7 +235,7 @@ fun HomeScreenContent(
                     .padding(innerPadding)
                     .windowInsetsPadding(WindowInsets.statusBars),
             ) {
-                val animHeight = maxHeight / 2
+                val animHeight = maxHeight / 3
 
                 Column(
                     modifier = Modifier
@@ -257,9 +268,13 @@ fun HomeScreenContent(
                         )
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                    // -- Animation -- exactly half the available screen height ----
+                    NavShortcuts(onNavigate = onNavigate)
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // -- Animation -- exactly 1/3 of the available screen height --
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -483,6 +498,50 @@ private fun PermissionPrompt(onGrant: () -> Unit) {
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onGrant) { Text("Grant Permissions") }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation shortcut buttons (replaces the bottom bar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+private data class NavEntry(val label: String, val icon: ImageVector, val route: String)
+
+private val NAV_ENTRIES = listOf(
+    NavEntry("Passes",   Icons.Filled.ElectricBolt,    "encounters"),
+    NavEntry("Profile",  Icons.Filled.Person,          "profile"),
+    NavEntry("Badges",   Icons.Filled.WorkspacePremium,"badges"),
+    NavEntry("Shop",     Icons.Filled.ShoppingCart,    "shop"),
+    NavEntry("Settings", Icons.Filled.Settings,        "settings"),
+    NavEntry("About",    Icons.Filled.LocalCafe,       "about"),
+)
+
+@Composable
+internal fun NavShortcuts(onNavigate: (String) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding        = PaddingValues(horizontal = 0.dp),
+    ) {
+        NAV_ENTRIES.forEach { entry ->
+            item(key = entry.route) {
+                OutlinedButton(
+                    onClick         = { onNavigate(entry.route) },
+                    contentPadding  = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    shape           = RoundedCornerShape(50),
+                ) {
+                    Icon(
+                        imageVector        = entry.icon,
+                        contentDescription = entry.label,
+                        modifier           = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text  = entry.label,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+        }
     }
 }
 
