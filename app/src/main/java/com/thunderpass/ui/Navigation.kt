@@ -38,6 +38,7 @@ internal object Routes {
     const val SHOP              = "shop"
     const val SETTINGS          = "settings"
     const val ABOUT             = "about"
+    const val SPARKY_EDITOR     = "sparky_editor"
     fun encounterDetail(id: Long) = "encounter_detail/$id"
     fun badgesCategory(name: String) = "badges_category/$name"
 }
@@ -174,8 +175,9 @@ fun ThunderPassNavGraph(
                 ) { bs ->
                     val firstRun = bs.arguments?.getBoolean("firstRun") ?: false
                     ProfileScreen(
-                        firstRun   = firstRun,
-                        onComplete = if (firstRun) {
+                        firstRun     = firstRun,
+                        onEditSparky = { navController.navigate(Routes.SPARKY_EDITOR) },
+                        onComplete   = if (firstRun) {
                             { navController.navigate(Routes.HOME) { popUpTo(Routes.PROFILE) { inclusive = true } } }
                         } else null,
                         onBack = if (!firstRun) { { navController.popBackStack() } } else null,
@@ -213,6 +215,11 @@ fun ThunderPassNavGraph(
                 }
                 composable(Routes.ABOUT) {
                     AboutScreen()
+                }
+                composable(Routes.SPARKY_EDITOR) {
+                    SparkyEditorScreen(
+                        onBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

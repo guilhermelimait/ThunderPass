@@ -48,6 +48,7 @@ fun ProfileScreen(
     firstRun:            Boolean       = false,
     onComplete:          (() -> Unit)? = null,
     onBack:              (() -> Unit)? = null,
+    onEditSparky:        (() -> Unit)? = null,
     vm:                  ProfileViewModel = viewModel(),
     homeVm:              HomeViewModel    = viewModel(),
 ) {
@@ -74,6 +75,7 @@ fun ProfileScreen(
             vm.fetchAndCacheOwnRetroProfile()
         },
         onAvatarSeedChange = { vm.saveAvatarSeed(it) },
+        onEditSparky = onEditSparky,
         onComplete = onComplete,
         onBack = onBack,
     )
@@ -89,6 +91,7 @@ fun ProfileScreenContent(
     firstRun: Boolean = false,
     onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
     onAvatarSeedChange: ((String) -> Unit)? = null,
+    onEditSparky: (() -> Unit)? = null,
     onComplete: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
 ) {
@@ -192,6 +195,21 @@ fun ProfileScreenContent(
                         contentDescription = "Randomize avatar",
                         tint               = Color.White,
                     )
+                }
+                // Edit Sparky button (top-left corner of banner)
+                if (onEditSparky != null) {
+                    IconButton(
+                        onClick  = onEditSparky,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp),
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Filled.Casino,
+                            contentDescription = "Edit Sparky",
+                            tint               = Color.White,
+                        )
+                    }
                 }
             }
 
