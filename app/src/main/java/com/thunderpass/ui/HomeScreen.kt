@@ -192,15 +192,57 @@ fun HomeScreenContent(
                     color     = MaterialTheme.colorScheme.outlineVariant,
                 )
 
-                // Right panel — walking animation
-                Box(
-                    modifier         = Modifier
+                // Right panel — walking animation + recent bypassers
+                Column(
+                    modifier = Modifier
                         .weight(0.58f)
                         .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
                         .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    WalkingSceneCard(avatarSeed = installationId.ifEmpty { "default" })
+                    WalkingSceneCard(
+                        avatarSeed     = installationId.ifEmpty { "default" },
+                        serviceRunning = serviceRunning,
+                    )
+                    if (encounters.isNotEmpty()) {
+                        Text(
+                            text  = "Recent bypassers",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        encounters.take(5).forEach { enc ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onNavigateToDetail(enc.encounter.id) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                ),
+                            ) {
+                                Row(
+                                    modifier          = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    DiceBearAvatar(
+                                        seed = enc.snapshot?.rotatingId ?: enc.encounter.rotatingId,
+                                        size = 36.dp,
+                                        modifier = Modifier.clip(CircleShape),
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text       = enc.snapshot?.displayName ?: "Unknown traveler",
+                                            style      = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines   = 1,
+                                            overflow   = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -253,7 +295,10 @@ fun HomeScreenContent(
                 Spacer(Modifier.height(16.dp))
 
                 // ── Walking scene (replaces dormant area) ─────────────────────
-                WalkingSceneCard(avatarSeed = installationId.ifEmpty { "default" })
+                WalkingSceneCard(
+                    avatarSeed     = installationId.ifEmpty { "default" },
+                    serviceRunning = serviceRunning,
+                )
 
                 Spacer(Modifier.height(16.dp))
             }
