@@ -82,7 +82,7 @@ fun BadgeCategoryDetailScreen(
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                listOf(0 to "Locked", 1 to "Bronze", 2 to "Silver", 3 to "Gold").forEach { (t, name) ->
+                listOf(0 to "Locked", 1 to "Common", 3 to "Uncommon", 5 to "Rare", 6 to "Legendary", 7 to "Exotic").forEach { (t, name) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -181,11 +181,15 @@ private fun BadgeShieldCard(badge: BadgeDef, categoryColor: Color) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Military Shield drawn with Canvas  — rank grows with tier
-//   Tier 0 (Locked)  — gray outline, no fill, no stripes
-//   Tier 1 (Bronze)  — filled shield + 1 chevron
-//   Tier 2 (Silver)  — filled + 2 chevrons
-//   Tier 3 (Gold)    — filled + 3 chevrons + ⚡ thunder mark at top
+// Military Shield drawn with Canvas — rank grows with tier (0–7)
+//   Tier 0 (Locked)     — gray outline only
+//   Tier 1 (Common)     — green fill + 1 chevron
+//   Tier 2 (Common)     — green fill + 2 chevrons
+//   Tier 3 (Uncommon)   — blue fill  + 3 chevrons
+//   Tier 4 (Uncommon)   — blue fill  + 4 chevrons
+//   Tier 5 (Rare)       — purple fill + 4 chevrons (bolder stroke)
+//   Tier 6 (Legendary)  — orange fill + 4 chevrons + double crown bar
+//   Tier 7 (Exotic)     — gold fill   + 4 chevrons + double crown + ⚡ lightning
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -209,11 +213,18 @@ fun MilitaryShield(
 
         // ── Background fill ───────────────────────────────────────────────────
         if (tier > 0) {
-            // Solid color fill with slight gradient effect
+            // Fill gets richer at higher tiers
+            val topAlpha = when {
+                tier >= 6 -> 0.55f
+                tier >= 5 -> 0.45f
+                tier >= 3 -> 0.35f
+                else      -> 0.25f
+            }
+            val botAlpha = topAlpha * 0.30f
             drawPath(
                 path  = shieldPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(tierColor.copy(alpha = 0.35f), tierColor.copy(alpha = 0.12f)),
+                    colors = listOf(tierColor.copy(alpha = topAlpha), tierColor.copy(alpha = botAlpha)),
                     startY = 0f,
                     endY   = h,
                 ),
@@ -230,24 +241,30 @@ fun MilitaryShield(
             )
         }
 
-        // ── Chevron stripes (one per tier level) ──────────────────────────────
-        if (tier > 0) {
-            val chevronCount = tier
-            val chevronY0    = h * 0.48f
-            val chevronSpacing = h * 0.13f
-
-            repeat(chevronCount) { i ->
-                val cy = chevronY0 + i * chevronSpacing
+        // ── Chevron stripes — count scales with tier ─────────────────────────
+        // Tier 0=0, 1=1, 2=2, 3=3, 4=4, 5+=4 chevrons (colour differentiates)
+        val chevronCount = when (tier) {
+            0    -> 0
+            1    -> 1
+            2    -> 2
+            3    -> 3
+            else -> 4   // tiers 4-7 all get 4 chevrons
+        }
+        if (chevronCount > 0) {
+            // Fixed Y slots for up to 4 chevrons, evenly spaced inside shield body
+            val slots = listOf(h * 0.42f, h * 0.54f, h * 0.66f, h * 0.78f)
+            val strokeMult = if (tier >= 5) 1.05f else 0.85f
+            slots.take(chevronCount).forEach { cy ->
                 val chevronPath = Path().apply {
-                    moveTo(w * 0.22f, cy - h * 0.07f)
-                    lineTo(w * 0.50f, cy + h * 0.07f)
-                    lineTo(w * 0.78f, cy - h * 0.07f)
+                    moveTo(w * 0.22f, cy - h * 0.06f)
+                    lineTo(w * 0.50f, cy + h * 0.06f)
+                    lineTo(w * 0.78f, cy - h * 0.06f)
                 }
                 drawPath(
                     path  = chevronPath,
                     color = tierColor,
                     style = Stroke(
-                        width = stroke * 0.85f,
+                        width = stroke * strokeMult,
                         cap   = StrokeCap.Round,
                         join  = StrokeJoin.Round,
                     ),
@@ -255,8 +272,8 @@ fun MilitaryShield(
             }
         }
 
-        // ── Thunder bolt (⚡) for Gold — drawn as a lightning path ────────────
-        if (tier == 3) {
+        // ── Thunder bolt (⚡) for Exotic (tier 7) only ────────────────────────
+        if (tier == 7) {
             drawLightningBolt(w = w, h = h, color = tierColor)
         }
 
@@ -268,17 +285,30 @@ fun MilitaryShield(
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // ── Top crown bar (appears from Bronze+) ─────────────────────────────
+        // ── Top crown bar(s) ──────────────────────────────────────────────────
         if (tier > 0) {
+            // Single bar for all achieved tiers
             val crownPath = Path().apply {
-                moveTo(w * 0.22f, h * 0.18f)
-                lineTo(w * 0.78f, h * 0.18f)
+                moveTo(w * 0.22f, h * 0.20f)
+                lineTo(w * 0.78f, h * 0.20f)
             }
             drawPath(
                 path  = crownPath,
                 color = tierColor,
-                style = Stroke(width = stroke * 0.65f, cap = StrokeCap.Round),
+                style = Stroke(width = stroke * 0.70f, cap = StrokeCap.Round),
             )
+            // Second bar for Legendary (6) and Exotic (7) — double crown
+            if (tier >= 6) {
+                val crownPath2 = Path().apply {
+                    moveTo(w * 0.28f, h * 0.27f)
+                    lineTo(w * 0.72f, h * 0.27f)
+                }
+                drawPath(
+                    path  = crownPath2,
+                    color = tierColor,
+                    style = Stroke(width = stroke * 0.55f, cap = StrokeCap.Round),
+                )
+            }
         }
     }
 }
@@ -306,7 +336,7 @@ private fun shieldPath(w: Float, h: Float): Path = Path().apply {
     close()
 }
 
-// ── Helper: lightning bolt for Gold tier ──────────────────────────────────────
+// ── Helper: lightning bolt for Exotic tier (7) ──────────────────────────────
 
 private fun DrawScope.drawLightningBolt(w: Float, h: Float, color: Color) {
     val boltPath = Path().apply {
