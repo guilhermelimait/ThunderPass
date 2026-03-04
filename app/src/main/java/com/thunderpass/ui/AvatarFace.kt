@@ -63,13 +63,15 @@ fun skinToneForSeed(seed: String): Color {
  * skinColor   → locked to the same tone used to paint the walking body.
  * transparent → omits backgroundColor so the SVG has no fill behind the face.
  */
-fun diceBearUrl(seed: String, transparent: Boolean = false): String =
-    "https://api.dicebear.com/9.x/big-smile/svg" +
-    "?seed=${Uri.encode(seed)}" +
+fun diceBearUrl(seed: String, transparent: Boolean = false): String {
+    val safeSeed = seed.ifBlank { "thunderpass-default" }
+    return "https://api.dicebear.com/9.x/big-smile/svg" +
+    "?seed=${Uri.encode(safeSeed)}" +
     "&radius=50" +
     "&size=128" +
-    "&skinColor=${skinToneHexForSeed(seed)}" +
+    "&skinColor=${skinToneHexForSeed(safeSeed)}" +
     if (transparent) "" else "&backgroundColor=$BG_COLORS"
+}
 
 /**
  * Loads a unique, deterministic DiceBear "big-smile" avatar for [seed].
@@ -91,6 +93,15 @@ fun DiceBearAvatar(
             .size(size)
             .clip(CircleShape),
         loading = {
+            if (showLoadingBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
+        },
+        error = {
             if (showLoadingBackground) {
                 Box(
                     modifier = Modifier
