@@ -87,9 +87,10 @@ fun BadgesScreen(
                         color      = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
-                MilitaryShield(
+                ThunderShield(
                     tier          = topTier,
                     tierColor     = tierColor(topTier),
+                    darkBg        = Color(0xFF2D1E00),
                     categoryColor = Color(0xFFFFD700),
                     size          = 44.dp,
                 )
@@ -208,9 +209,10 @@ private fun BadgeCategoryCard(
                 )
                 if (earned > 0) {
                     Spacer(Modifier.height(2.dp))
-                    MilitaryShield(
+                    ThunderShield(
                         tier          = topTier,
                         tierColor     = tierColor(topTier),
+                        darkBg        = categoryDarkBg(category, topTier),
                         categoryColor = category.accentColor,
                         size          = 28.dp,
                     )

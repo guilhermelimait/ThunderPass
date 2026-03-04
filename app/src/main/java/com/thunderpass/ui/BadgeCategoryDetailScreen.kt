@@ -3,9 +3,9 @@ package com.thunderpass.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,10 +14,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -27,14 +26,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.min
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Badge Category Detail Screen
+// Badge Category Detail Screen — full single-column list, all tiers visible
 // ─────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,20 +40,17 @@ fun BadgeCategoryDetailScreen(
     categoryName: String,
     onBack: () -> Unit,
 ) {
-    val category = BadgeCategory.entries.find { it.name == categoryName }
-        ?: return
-    val badges = badgesForCategory(category)
+    val category = BadgeCategory.entries.find { it.name == categoryName } ?: return
+    val badges   = badgesForCategory(category)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text       = "${category.emoji}  ${category.label}",
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    Text(
+                        text       = "${category.emoji}  ${category.label}",
+                        fontWeight = FontWeight.Bold,
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -75,51 +69,42 @@ fun BadgeCategoryDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // ── Tier legend — one pill per unique rarity ─────────────────────
+            // ── Tier legend row ───────────────────────────────────────────────
             Row(
                 modifier              = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment     = Alignment.CenterVertically,
             ) {
-                listOf(
-                    0 to "Locked",
-                    1 to "Common",
-                    3 to "Uncommon",
-                    5 to "Rare",
-                    6 to "Legendary",
-                    7 to "Exotic",
-                ).forEach { (t, name) ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(tierColor(t)),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                listOf(0 to "Locked", 1 to "Bronze", 2 to "Silver", 3 to "Gold").forEach { (t, name) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(tierColor(t)),
+                        )
+                        Spacer(Modifier.width(5.dp))
                         Text(
-                            text     = name,
-                            style    = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
-                            color    = if (t == 0) Color.White.copy(alpha = 0.9f) else Color(0xFF1A1A1A),
-                            maxLines = 1,
-                            modifier = Modifier.padding(vertical = 5.dp, horizontal = 2.dp),
+                            text  = name,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = tierColor(t).copy(alpha = if (t == 0) 0.6f else 0.9f),
                         )
                     }
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-            // ── Badge grid ────────────────────────────────────────────────────
-            LazyVerticalGrid(
-                columns             = GridCells.Fixed(3),
-                contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier            = Modifier.fillMaxSize(),
+            // ── All badge cards ───────────────────────────────────────────────
+            LazyColumn(
+                contentPadding    = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier          = Modifier.fillMaxSize(),
             ) {
                 items(badges) { badge ->
-                    BadgeShieldCard(badge = badge, categoryColor = category.accentColor)
+                    BadgeListCard(badge = badge, category = category)
                 }
             }
         }
@@ -127,140 +112,241 @@ fun BadgeCategoryDetailScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Individual badge card with military shield
+// Single badge card — horizontal layout: shield on left, info on right
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BadgeShieldCard(badge: BadgeDef, categoryColor: Color) {
-    val locked = badge.tier == 0
-    val tColor = tierColor(badge.tier)
+private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
+    val locked  = badge.tier == 0
+    val tColor  = tierColor(badge.tier)
+    val darkBg  = categoryDarkBg(category, badge.tier)
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier            = Modifier.fillMaxWidth(),
+    // Card background: dark category-tinted, slightly lighter for earned badges
+    val cardBg = if (locked) {
+        darkBg.copy(alpha = 0.85f)
+    } else {
+        darkBg
+    }
+
+    Surface(
+        shape  = RoundedCornerShape(16.dp),
+        color  = Color.Transparent,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        // Military shield badge
-        MilitaryShield(
-            tier          = badge.tier,
-            tierColor     = tColor,
-            categoryColor = categoryColor,
-            progress      = badge.progress,
-            size          = 72.dp,
-        )
-
-        Spacer(Modifier.height(6.dp))
-
-        Text(
-            text       = badge.label,
-            style      = MaterialTheme.typography.labelSmall,
-            fontWeight = if (!locked) FontWeight.SemiBold else FontWeight.Normal,
-            color      = if (!locked)
-                MaterialTheme.colorScheme.onBackground
-            else
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            textAlign  = TextAlign.Center,
-            maxLines   = 2,
-            overflow   = TextOverflow.Ellipsis,
-        )
-
-        if (badge.tier > 0) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text  = tierLabel(badge.tier),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize   = 8.sp,
-                    fontFamily = FontFamily.Monospace,
-                ),
-                color = tColor,
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            cardBg,
+                            cardBg.copy(alpha = 0.7f),
+                        ),
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                )
+                .clip(RoundedCornerShape(16.dp)),
+        ) {
+            // Subtle accent stripe on left edge
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(
+                        color = if (locked) Color(0xFF5D5D5D).copy(alpha = 0.4f) else tColor.copy(alpha = 0.8f),
+                    )
+                    .align(Alignment.CenterStart),
             )
-        } else if (badge.progress > 0f) {
-            Spacer(Modifier.height(4.dp))
-            LinearProgressIndicator(
-                progress       = { badge.progress },
-                modifier       = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color          = categoryColor.copy(alpha = 0.7f),
-                trackColor     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
+
+            Row(
+                modifier          = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // ── Shield ────────────────────────────────────────────────────
+                ThunderShield(
+                    tier          = badge.tier,
+                    tierColor     = tColor,
+                    darkBg        = darkBg,
+                    categoryColor = category.accentColor,
+                    size          = 80.dp,
+                )
+
+                Spacer(Modifier.width(14.dp))
+
+                // ── Text info ─────────────────────────────────────────────────
+                Column(modifier = Modifier.weight(1f)) {
+
+                    // Badge name
+                    Text(
+                        text       = badge.label,
+                        style      = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color      = if (locked)
+                            Color.White.copy(alpha = 0.45f)
+                        else
+                            Color.White,
+                        maxLines   = 1,
+                    )
+
+                    Spacer(Modifier.height(3.dp))
+
+                    // Description
+                    Text(
+                        text  = badge.description,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        color = if (locked)
+                            Color.White.copy(alpha = 0.28f)
+                        else
+                            Color.White.copy(alpha = 0.72f),
+                        maxLines   = 2,
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Progress row: X/Y bar + tier dots
+                    Row(
+                        verticalAlignment      = Alignment.CenterVertically,
+                        horizontalArrangement  = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Progress X/Y label
+                        Text(
+                            text  = "${badge.progressCurrent} / ${badge.progressMax}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize   = 10.sp,
+                            ),
+                            color = if (locked)
+                                Color.White.copy(alpha = 0.3f)
+                            else
+                                tColor.copy(alpha = 0.9f),
+                        )
+
+                        // Progress bar
+                        LinearProgressIndicator(
+                            progress   = { badge.progress.coerceIn(0f, 1f) },
+                            modifier   = Modifier
+                                .weight(1f)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color      = if (locked)
+                                Color(0xFF5D5D5D).copy(alpha = 0.5f)
+                            else
+                                tColor.copy(alpha = 0.9f),
+                            trackColor = Color.White.copy(alpha = 0.08f),
+                        )
+
+                        // Tier dots: 3 dots — filled = achieved, hollow = not yet
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            (1..3).forEach { t ->
+                                val achieved = badge.tier >= t
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            color = if (achieved)
+                                                tierColor(t).copy(alpha = 0.9f)
+                                            else
+                                                Color.White.copy(alpha = 0.12f),
+                                        ),
+                                )
+                            }
+                        }
+
+                        // Tier label for earned badges
+                        if (!locked) {
+                            Text(
+                                text  = tierLabel(badge.tier),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize   = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = tColor,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Military Shield drawn with Canvas  — rank grows with tier
-//   Tier 0 (Locked)       — gray outline, no fill, no stripes
-//   Tier 1 (Common)       — green fill + 1 chevron
-//   Tier 2 (Common II)    — bright green fill + 1 chevron
-//   Tier 3 (Uncommon)     — blue fill + 2 chevrons
-//   Tier 4 (Uncommon II)  — bright blue fill + 2 chevrons
-//   Tier 5 (Rare)         — purple fill + 3 chevrons
-//   Tier 6 (Legendary)    — orange fill + 4 chevrons
-//   Tier 7 (Exotic)       — gold fill + 5 chevrons + ⚡ thunder mark at top
+// ThunderShield — military shield with:
+//   • ⚡ bolt protruding ABOVE the shield (never touching chevrons)
+//   • Dark category-tinted interior
+//   • Tier-colored chevrons in the lower 55% of the shield
+//   • Bold border in tier color (gray when locked)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun MilitaryShield(
+fun ThunderShield(
     tier:          Int,
     tierColor:     Color,
+    darkBg:        Color,
     categoryColor: Color,
-    progress:      Float = 0f,
-    size:          Dp    = 72.dp,
+    size:          Dp = 80.dp,
 ) {
-    val density = LocalDensity.current
-    val sizePx  = with(density) { size.toPx() }
+    val density    = LocalDensity.current
+    // Canvas is taller than shield: 28% extra at top for the bolt
+    val boltFrac   = 0.28f
+    val canvasW    = size
+    val canvasH    = size * (1f + boltFrac)
 
-    Canvas(modifier = Modifier.size(size)) {
-        val w = sizePx
-        val h = sizePx
-        val stroke = w * 0.065f
+    Canvas(modifier = Modifier.size(width = canvasW, height = canvasH)) {
+        val w       = this.size.width
+        val h       = this.size.height
+        val shieldTop = h * boltFrac          // shield body starts here
+        val shieldH   = h * (1f - boltFrac)  // shield body height
+        val stroke    = w * 0.055f
 
-        // ── Build shield path ─────────────────────────────────────────────────
-        val shieldPath = shieldPath(w, h)
+        val tC = if (tier == 0) Color(0xFF5D5D5D).copy(alpha = 0.5f) else tierColor
 
-        // ── Background fill ───────────────────────────────────────────────────
+        // ── 1. Shield path (body starts at shieldTop) ─────────────────────────
+        val shieldPath = buildShieldPath(w, shieldTop, shieldH)
+
+        // ── 2. Dark interior fill ─────────────────────────────────────────────
+        drawPath(
+            path  = shieldPath,
+            color = darkBg,
+        )
+
+        // ── 3. Very subtle inner glow on non-locked badges ───────────────────
         if (tier > 0) {
-            // Solid color fill with slight gradient effect
             drawPath(
                 path  = shieldPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(tierColor.copy(alpha = 0.35f), tierColor.copy(alpha = 0.12f)),
-                    startY = 0f,
-                    endY   = h,
-                ),
-            )
-        } else if (progress > 0f) {
-            // Partial-progress fill clipped to shield shape
-            drawPath(
-                path  = shieldPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(categoryColor.copy(alpha = 0.2f), categoryColor.copy(alpha = 0.05f)),
-                    startY = h * (1f - progress),
-                    endY   = h,
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        tierColor.copy(alpha = 0.18f),
+                        Color.Transparent,
+                    ),
+                    center = androidx.compose.ui.geometry.Offset(w * 0.5f, shieldTop + shieldH * 0.45f),
+                    radius = shieldH * 0.55f,
                 ),
             )
         }
 
-        // ── Chevron stripes (count driven by tier rarity group) ──────────────
-        val chevronCount = tierChevrons(tier)
-        if (chevronCount > 0) {
-            // Raise start-Y so 5 chevrons still fit inside the shield
-            val chevronY0      = h * 0.36f
-            val chevronSpacing = h * 0.11f
+        // ── 4. Chevrons — strictly in lower 55% of shield ────────────────────
+        if (tier > 0) {
+            val chevStart  = shieldTop + shieldH * 0.44f
+            val chevSpacing = shieldH * 0.155f
+            val chevW      = stroke * 0.9f
 
-            repeat(chevronCount) { i ->
-                val cy = chevronY0 + i * chevronSpacing
-                val chevronPath = Path().apply {
-                    moveTo(w * 0.22f, cy - h * 0.06f)
-                    lineTo(w * 0.50f, cy + h * 0.06f)
-                    lineTo(w * 0.78f, cy - h * 0.06f)
+            repeat(tier) { i ->
+                val cy = chevStart + i * chevSpacing
+                val chevPath = Path().apply {
+                    moveTo(w * 0.20f, cy - shieldH * 0.055f)
+                    lineTo(w * 0.50f, cy + shieldH * 0.055f)
+                    lineTo(w * 0.80f, cy - shieldH * 0.055f)
                 }
                 drawPath(
-                    path  = chevronPath,
+                    path  = chevPath,
                     color = tierColor,
                     style = Stroke(
-                        width = stroke * 0.85f,
+                        width = chevW,
                         cap   = StrokeCap.Round,
                         join  = StrokeJoin.Round,
                     ),
@@ -268,68 +354,87 @@ fun MilitaryShield(
             }
         }
 
-        // ── Thunder bolt (⚡) for Exotic (tier 7) only ────────────────────────
-        if (tier == 7) {
-            drawLightningBolt(w = w, h = h, color = tierColor)
-        }
-
-        // ── Shield border ─────────────────────────────────────────────────────
-        val borderColor = if (tier > 0) tierColor else Color(0xFF9E9E9E).copy(alpha = 0.45f)
+        // ── 5. Shield border ──────────────────────────────────────────────────
         drawPath(
             path  = shieldPath,
-            color = borderColor,
+            color = tC,
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // ── Top crown bar (appears from Bronze+) ─────────────────────────────
+        // ── 6. Top bar (Bronze+) inside shield, below bolt entry ──────────────
         if (tier > 0) {
-            val crownPath = Path().apply {
-                moveTo(w * 0.22f, h * 0.18f)
-                lineTo(w * 0.78f, h * 0.18f)
+            val barY = shieldTop + shieldH * 0.175f
+            val barPath = Path().apply {
+                moveTo(w * 0.28f, barY)
+                lineTo(w * 0.72f, barY)
             }
             drawPath(
-                path  = crownPath,
+                path  = barPath,
                 color = tierColor,
-                style = Stroke(width = stroke * 0.65f, cap = StrokeCap.Round),
+                style = Stroke(width = stroke * 0.6f, cap = StrokeCap.Round),
             )
         }
+
+        // ── 7. Lightning bolt ABOVE the shield ────────────────────────────────
+        // Bolt tip at y=0, base at shieldTop (sits on shield rim)
+        val boltColor = if (tier == 0) Color(0xFF9E9E9E).copy(alpha = 0.5f) else tierColor
+        drawBoltAboveShield(w = w, boltBottom = shieldTop, color = boltColor)
     }
 }
 
-// ── Helper: shield path ────────────────────────────────────────────────────────
+// ── Helper: shield path with flat top entry for bolt ──────────────────────────
 
-private fun shieldPath(w: Float, h: Float): Path = Path().apply {
-    // Top flat edge with corner notch (classic military shield silhouette)
-    moveTo(w * 0.5f, h * 0.04f)
-    lineTo(w * 0.92f, h * 0.14f)
-    lineTo(w * 0.92f, h * 0.52f)
-    // Right curve down to point
+private fun buildShieldPath(w: Float, topY: Float, shieldH: Float): Path = Path().apply {
+    // Start at top-center (where bolt meets shield)
+    moveTo(w * 0.50f, topY)
+    // Top-right
+    lineTo(w * 0.91f, topY + shieldH * 0.13f)
+    // Right side down
+    lineTo(w * 0.91f, topY + shieldH * 0.50f)
+    // Right curve to bottom point
     cubicTo(
-        w * 0.92f, h * 0.76f,
-        w * 0.50f, h * 0.97f,
-        w * 0.50f, h * 0.97f,
+        w * 0.91f, topY + shieldH * 0.78f,
+        w * 0.50f, topY + shieldH * 0.97f,
+        w * 0.50f, topY + shieldH * 0.97f,
     )
-    // Left curve up
+    // Left curve back up
     cubicTo(
-        w * 0.50f, h * 0.97f,
-        w * 0.08f, h * 0.76f,
-        w * 0.08f, h * 0.52f,
+        w * 0.50f, topY + shieldH * 0.97f,
+        w * 0.09f, topY + shieldH * 0.78f,
+        w * 0.09f, topY + shieldH * 0.50f,
     )
-    lineTo(w * 0.08f, h * 0.14f)
+    // Top-left
+    lineTo(w * 0.09f, topY + shieldH * 0.13f)
     close()
 }
 
-// ── Helper: lightning bolt for Gold tier ──────────────────────────────────────
+// ── Helper: ⚡ lightning bolt rising ABOVE the shield ─────────────────────────
+// boltBottom = y coordinate where bolt base meets the shield top-center
 
-private fun DrawScope.drawLightningBolt(w: Float, h: Float, color: Color) {
+private fun DrawScope.drawBoltAboveShield(w: Float, boltBottom: Float, color: Color) {
+    if (boltBottom <= 0f) return
+
+    val midH = boltBottom * 0.48f
+
+    // Classic asymmetric lightning bolt shape, centered on w*0.50
     val boltPath = Path().apply {
-        moveTo(w * 0.57f, h * 0.22f)
-        lineTo(w * 0.42f, h * 0.38f)
-        lineTo(w * 0.53f, h * 0.38f)
-        lineTo(w * 0.43f, h * 0.56f)
-        lineTo(w * 0.60f, h * 0.37f)
-        lineTo(w * 0.49f, h * 0.37f)
+        moveTo(w * 0.555f, 0f)           // tip — slightly right of center
+        lineTo(w * 0.630f, midH)         // right slope down to mid
+        lineTo(w * 0.560f, midH)         // step inward (creates notch)
+        lineTo(w * 0.650f, boltBottom)   // bottom-right of bolt (rests on shield)
+        lineTo(w * 0.445f, midH * 1.05f) // sweep back left across center
+        lineTo(w * 0.520f, midH * 1.05f) // step inward (left notch)
+        lineTo(w * 0.400f, 0f)           // tip — back to upper left
         close()
     }
+
+    // Fill
     drawPath(boltPath, color = color)
+
+    // Thin crisp outline to define edges against dark bg
+    drawPath(
+        path  = boltPath,
+        color = color.copy(alpha = (color.alpha * 0.35f).coerceIn(0f, 1f)),
+        style = Stroke(width = w * 0.025f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+    )
 }
