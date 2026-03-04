@@ -99,10 +99,10 @@ fun BadgeCategoryDetailScreen(
                     ) {
                         Text(
                             text     = name,
-                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                            style    = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
                             color    = if (t == 0) Color.White.copy(alpha = 0.9f) else Color(0xFF1A1A1A),
                             maxLines = 1,
-                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp),
+                            modifier = Modifier.padding(vertical = 5.dp, horizontal = 2.dp),
                         )
                     }
                 }
