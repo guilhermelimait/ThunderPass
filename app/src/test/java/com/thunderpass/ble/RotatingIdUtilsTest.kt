@@ -16,8 +16,8 @@ class RotatingIdUtilsTest {
 
     @Test
     fun `same installationId and window index produce identical rotating ID`() {
-        val id1 = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 100)
-        val id2 = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 100)
+        val id1 = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 100L)
+        val id2 = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 100L)
         assertEquals(id1, id2)
     }
 
@@ -25,8 +25,8 @@ class RotatingIdUtilsTest {
 
     @Test
     fun `different window indices produce different rotating IDs`() {
-        val id1 = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 100)
-        val id2 = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 101)
+        val id1 = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 100L)
+        val id2 = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 101L)
         assertNotEquals(id1, id2)
     }
 
@@ -34,8 +34,8 @@ class RotatingIdUtilsTest {
 
     @Test
     fun `different installationIds produce different rotating IDs in same window`() {
-        val id1 = RotatingIdUtils.deriveRotatingId("device-A", windowIndex = 50)
-        val id2 = RotatingIdUtils.deriveRotatingId("device-B", windowIndex = 50)
+        val id1 = RotatingIdUtils.deriveRotatingId("device-A", timeWindowIndex = 50L)
+        val id2 = RotatingIdUtils.deriveRotatingId("device-B", timeWindowIndex = 50L)
         assertNotEquals(id1, id2)
     }
 
@@ -43,20 +43,20 @@ class RotatingIdUtilsTest {
 
     @Test
     fun `rotating ID is non-empty`() {
-        val id = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 0)
+        val id = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 0L)
         assert(id.isNotEmpty()) { "Expected non-empty rotating ID" }
     }
 
     @Test
     fun `rotating ID does not contain Base64 padding`() {
         // URL-safe Base64 with NO_PADDING should never have '='
-        val id = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 42)
+        val id = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 42L)
         assert('=' !in id) { "Expected no padding character in '$id'" }
     }
 
     @Test
     fun `rotating ID does not contain whitespace or newlines`() {
-        val id = RotatingIdUtils.deriveRotatingId(installationId, windowIndex = 42)
+        val id = RotatingIdUtils.deriveRotatingId(installationId, timeWindowIndex = 42L)
         assert(id.none { it.isWhitespace() }) { "Expected no whitespace in '$id'" }
     }
 

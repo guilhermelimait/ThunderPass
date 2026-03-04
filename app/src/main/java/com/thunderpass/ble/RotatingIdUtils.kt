@@ -1,6 +1,5 @@
 package com.thunderpass.ble
 
-import android.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -8,6 +7,9 @@ import javax.crypto.spec.SecretKeySpec
  * Pure, context-free functions for rotating ID derivation.
  * Separated from [RotatingIdManager] so they can be unit-tested on the JVM
  * without an Android runtime.
+ *
+ * Uses [java.util.Base64] (not android.util.Base64) so this file is
+ * testable in pure-JVM unit tests without mocking.
  */
 object RotatingIdUtils {
 
@@ -29,10 +31,7 @@ object RotatingIdUtils {
         mac.init(SecretKeySpec(installationId.toByteArray(Charsets.UTF_8), "HmacSHA256"))
         val digest = mac.doFinal(timeWindowIndex.toString().toByteArray(Charsets.UTF_8))
         val truncated = digest.copyOf(16)
-        return Base64.encodeToString(
-            truncated,
-            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
-        )
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(truncated)
     }
 
     /**
