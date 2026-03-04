@@ -150,7 +150,7 @@
 -[x] remove the heads avatars area on the profile, keep the random button but on place of the one on top right of the profile, if the user changes it, always save, even if the user doesnt go to the button to save on the bottom
 -[ ] update the badges view, add the shield badge on it, and remove the edge large as it was created on the previous change, on the user profile there are some badges on it that were as it should be on this badge area format
 -[ ] on users profile, show the badges that were achieved, and respect their colors
--[ ] share id on profile, make it clear, respect the colors of the app if on darkmode or not, but add a button to share and user decide whatever it uses on the device to share, whatsapp, copy, email, whatever, is it possible to connect it as a friend if i share the link with a special code to recognize the user?
+-[x] share id on profile, make it clear, respect the colors of the app if on darkmode or not, but add a button to share and user decide whatever it uses on the device to share, whatsapp, copy, email, whatever, is it possible to connect it as a friend if i share the link with a special code to recognize the user?
 -[x] on badges, over encounters, remove the badge and the thunder and keep just the logo on it
 -[x] respect dark and bright mode if the user uses a profile with RA or for daily play time graph area
 -[x] ra api key is not being saved to the local profile, and if the installation is updated, it is losing the profile information, what to do if the profiel is exchanged, will the receiver user be able to search and see this receiver data about its games played, consoles used and so on? we need that to update the badges on the app.
