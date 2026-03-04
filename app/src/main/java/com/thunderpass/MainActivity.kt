@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleSupabaseDeepLink(intent)
         requestIgnoreBatteryOptimizationsIfNeeded()
+        requestWriteSettingsIfNeeded()
         setContent {
             ThunderPassNavGraph(onMusicChange = { enabled ->
                 if (enabled) startMusicIfEnabled() else { mediaPlayer?.pause() }
@@ -90,6 +91,27 @@ class MainActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // ── Modify system settings (AYN Thor joystick LEDs) ─────────────────────
+
+    /**
+     * On first launch, opens the "Modify system settings" special-access page
+     * so the user can grant WRITE_SETTINGS. Required to flash AYN Thor joystick
+     * LEDs via Settings.System on encounter. Silently no-ops on other devices.
+     */
+    private fun requestWriteSettingsIfNeeded() {
+        if (Settings.System.canWrite(this)) return
+        val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
+        if (prefs.getBoolean("write_settings_prompt_shown", false)) return
+        prefs.edit().putBoolean("write_settings_prompt_shown", true).apply()
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
         }
     }
 

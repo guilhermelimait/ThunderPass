@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothAdapter
+import android.provider.Settings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
@@ -34,6 +35,7 @@ import com.thunderpass.data.db.ThunderPassDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -430,12 +432,42 @@ class BleService : Service() {
             .notify(BleConstants.NOTIF_ID + 1, notif)
     }
 
+    /**
+     * Flashes the AYN Thor joystick LEDs yellow 3× then restores original colours.
+     * Operates via Settings.System keys specific to the Odin/Thor firmware:
+     *   joystick_led_light_picker_color  = "#AARRGGBB,#AARRGGBB"  (left, right)
+     *   joystick_light_enabled           = "1,1" | "0,0"
+     * Requires the user to grant "Modify system settings" once.
+     * Silently no-ops on other devices or if permission not granted.
+     */
+    private fun flashThorLeds() {
+        if (!Settings.System.canWrite(this)) return
+        val cr = contentResolver
+        val prevColor   = Settings.System.getString(cr, "joystick_led_light_picker_color") ?: return
+        val prevEnabled = Settings.System.getString(cr, "joystick_light_enabled") ?: "1,1"
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                Settings.System.putString(cr, "joystick_led_light_picker_color", "#ffffff00,#ffffff00")
+                repeat(3) {
+                    Settings.System.putString(cr, "joystick_light_enabled", "1,1")
+                    delay(300)
+                    Settings.System.putString(cr, "joystick_light_enabled", "0,0")
+                    delay(200)
+                }
+            } finally {
+                Settings.System.putString(cr, "joystick_led_light_picker_color", prevColor)
+                Settings.System.putString(cr, "joystick_light_enabled", prevEnabled)
+            }
+        }
+    }
+
     /** Update the encounter notification once we know the peer's display name. */
     private fun updateEncounterNotification(encounterId: Long, displayName: String) {
         // ⚡ "The Spark" — double-pulse haptic feedback on successful profile exchange
         val vibrator = getSystemService(VibratorManager::class.java).defaultVibrator
         // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
         vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
+        flashThorLeds()
 
         val tapIntent = PendingIntent.getActivity(
             this, encounterId.toInt(),

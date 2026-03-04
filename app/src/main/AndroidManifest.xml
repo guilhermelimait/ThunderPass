@@ -26,6 +26,13 @@
     <!-- VIBRATE required for "The Spark" haptic feedback on successful BLE exchange -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- WRITE_SETTINGS: lets us flash the AYN Thor joystick LEDs via Settings.System
+         (joystick_led_light_picker_color / joystick_light_enabled).
+         User must grant "Modify system settings" once in Special App Access. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Allows showing the battery optimisation whitelist request dialog -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
