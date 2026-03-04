@@ -229,77 +229,86 @@ fun HomeScreenContent(
             }
         } else {
             // ── Portrait layout ───────────────────────────────────────────────
-            // No verticalScroll — animation expands to fill all available height.
-            Column(
+            // BoxWithConstraints measures the full available height so we can
+            // pin the animation to exactly 50 % of it, keeping all proportions.
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(horizontal = 20.dp),
+                    .windowInsetsPadding(WindowInsets.statusBars),
             ) {
-                Spacer(Modifier.height(16.dp))
+                val animHeight = maxHeight / 2
 
-                // ── Greeting + avatar row ──────────────────────────────────────
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp),
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text       = "Hi, $displayName 👋",
-                            style      = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onBackground,
+                    Spacer(Modifier.height(16.dp))
+
+                    // ── Greeting + avatar row ──────────────────────────────────
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text       = "Hi, $displayName 👋",
+                                style      = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
+                        DiceBearAvatar(
+                            seed     = avatarSeed.ifEmpty { "default" },
+                            size     = 52.dp,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable { onNavigate("profile") },
                         )
                     }
-                    DiceBearAvatar(
-                        seed     = avatarSeed.ifEmpty { "default" },
-                        size     = 52.dp,
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // ── Animation — exactly half the available screen height ────
+                    Box(
                         modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { onNavigate("profile") },
-                    )
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // ── Animation + toggle overlay — fills all remaining height ────
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    // Animated scene fills the box
-                    WalkingSceneCard(
-                        avatarSeed     = avatarSeed.ifEmpty { "default" },
-                        serviceRunning = serviceRunning,
-                        fillHeight     = true,
-                    )
-                    // Toggle floats at the bottom of the animation, transparent bg
-                    ThunderPassToggleCard(
-                        active      = serviceRunning,
-                        onToggle    = onToggleService,
-                        transparent = true,
-                        modifier    = Modifier
-                            .align(Alignment.BottomCenter)
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                    )
+                            .height(animHeight),
+                    ) {
+                        // Scene scales proportionally to fill the fixed 50 % box
+                        WalkingSceneCard(
+                            avatarSeed     = avatarSeed.ifEmpty { "default" },
+                            serviceRunning = serviceRunning,
+                            fillHeight     = true,
+                        )
+                        // Toggle floats at the bottom, fully transparent
+                        ThunderPassToggleCard(
+                            active      = serviceRunning,
+                            onToggle    = onToggleService,
+                            transparent = true,
+                            modifier    = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // ── Last Passed By ─────────────────────────────────────────
+                    val lastEnc = encounters.firstOrNull()
+                    if (lastEnc != null) {
+                        LastPassedByCard(
+                            encounter = lastEnc,
+                            onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                // ── Last Passed By ─────────────────────────────────────────────
-                val lastEnc = encounters.firstOrNull()
-                if (lastEnc != null) {
-                    LastPassedByCard(
-                        encounter = lastEnc,
-                        onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
             }
         }
     }
