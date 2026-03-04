@@ -462,10 +462,19 @@
   <div class="email-wrap">
     <h2>⚡ Stay in the Loop</h2>
     <p>Get notified about ThunderPass updates, new features, and early access drops.</p>
+
+    <!-- Step 1: email -->
     <div class="email-row">
       <input id="emailInput" type="email" placeholder="your@email.com" />
-      <button id="emailBtn" onclick="subscribeEmail()">Notify me</button>
+      <button id="emailBtn" onclick="sendWaitlistOtp()">Send code</button>
     </div>
+
+    <!-- Step 2: OTP (hidden until code sent) -->
+    <div class="email-row" id="otpRow" style="display:none">
+      <input id="otpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6-digit code" />
+      <button id="otpBtn" onclick="confirmWaitlistOtp()">Confirm</button>
+    </div>
+
     <div id="emailStatus"></div>
   </div>
 </section>
@@ -478,16 +487,25 @@
   <a href="https://github.com/guilhermelimait/ThunderPass" target="_blank" rel="noopener">⭐ Star on GitHub</a>
 </footer>
 
+<!-- Supabase JS (browser client) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 const SUPABASE_URL='https://wrunnzrxuapqpxoxvzpa.supabase.co';
 const ANON_KEY='REDACTED_ANON_KEY';
 const STICKER_MAP={first_spark:{icon:'⚡',name:'First Spark'},player_2:{icon:'🎮',name:'Player 2'},night_owl:{icon:'🦉',name:'Night Owl'},world_traveler:{icon:'🌍',name:'World Traveler'},glitch_hunter:{icon:'🐛',name:'Glitch Hunter'},power_surge:{icon:'🔋',name:'Power Surge'},ghost_buster:{icon:'👻',name:'Ghost Buster'},retro_fan:{icon:'🕹️',name:'Retro Fan'},social_spark:{icon:'🤝',name:'Social Spark'},early_adopter:{icon:'🚀',name:'Early Adopter'},marathon:{icon:'🏃',name:'Marathon'},collector:{icon:'🏆',name:'Collector'}};
+
+const supabase = window.supabase.createClient(SUPABASE_URL, ANON_KEY);
+
 window.addEventListener('DOMContentLoaded',()=>{
   const id=new URLSearchParams(window.location.search).get('id');
   if(id){document.getElementById('idInput').value=id;lookup();}
   document.getElementById('idInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookup();});
-  document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')subscribeEmail();});
+
+  document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendWaitlistOtp();});
+  document.getElementById('otpInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmWaitlistOtp();});
 });
+
 async function lookup(){
   const id=document.getElementById('idInput').value.trim();
   if(!id)return;
@@ -519,22 +537,117 @@ function renderCard(p){
   if(p.updated_at)document.getElementById('syncTime').textContent='Last synced: '+new Date(p.updated_at*1000).toLocaleString();
   showCard();
 }
+
 function setStatus(m){document.getElementById('status').textContent=m;}
 function showCard(){document.getElementById('card').style.display='';}
 function hideCard(){document.getElementById('card').style.display='none';}
-async function subscribeEmail(){
+
+// -----------------------------
+// Waitlist (double opt-in via Supabase Auth OTP)
+// -----------------------------
+let pendingEmail = null;
+
+function setEmailStatus(text, kind){
+  const statusEl=document.getElementById('emailStatus');
+  statusEl.className = kind ? kind : '';
+  statusEl.textContent = text || '';
+}
+function showOtpRow(show){
+  document.getElementById('otpRow').style.display = show ? '' : 'none';
+}
+
+async function sendWaitlistOtp(){
   const input=document.getElementById('emailInput');
   const btn=document.getElementById('emailBtn');
-  const statusEl=document.getElementById('emailStatus');
   const email=input.value.trim();
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){statusEl.className='err';statusEl.textContent='Please enter a valid email address.';return;}
-  btn.disabled=true;statusEl.className='';statusEl.textContent='Submitting…';
+
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    setEmailStatus('Please enter a valid email address.','err');
+    return;
+  }
+
+  btn.disabled=true;
+  setEmailStatus('Sending code…');
+
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/email_subscribers`,{method:'POST',headers:{'apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({email})});
-    if(res.ok){statusEl.className='ok';statusEl.textContent='✓ You\'re on the list! We\'ll keep you posted.';input.value='';btn.disabled=false;}
-    else if(res.status===409){statusEl.className='ok';statusEl.textContent='✓ You\'re already subscribed!';btn.disabled=false;}
-    else{console.error('Email subscribe failed:',res.status,await res.text());throw new Error('Something went wrong. Please try again later.');}
-  }catch(e){statusEl.className='err';statusEl.textContent='Error: '+e.message;btn.disabled=false;}
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    });
+    if(error) throw error;
+
+    pendingEmail = email;
+    showOtpRow(true);
+    setEmailStatus('✓ Code sent. Check your inbox and enter the 6-digit code.','ok');
+    document.getElementById('otpInput').focus();
+  }catch(e){
+    setEmailStatus('Error sending code: ' + (e?.message || 'Unknown error'),'err');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function confirmWaitlistOtp(){
+  const otpBtn=document.getElementById('otpBtn');
+  const otpInput=document.getElementById('otpInput');
+  const code=(otpInput.value || '').trim();
+
+  if(!pendingEmail){
+    setEmailStatus('Please enter your email first.','err');
+    return;
+  }
+  if(!/^\d{6}$/.test(code)){
+    setEmailStatus('Please enter the 6-digit code.','err');
+    return;
+  }
+
+  otpBtn.disabled=true;
+  setEmailStatus('Confirming…');
+
+  try{
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: pendingEmail,
+      token: code,
+      type: 'email'
+    });
+    if(error) throw error;
+
+    const user = data?.user || (await supabase.auth.getUser()).data?.user;
+    if(!user) throw new Error('No authenticated user returned after OTP verification.');
+
+    const { error: insertError } = await supabase
+      .from('newsletter_subscribers')
+      .insert({ user_id: user.id, email: pendingEmail, source: 'web' });
+
+    if(insertError){
+      const msg = (insertError.message || '').toLowerCase().includes('duplicate')
+        ? '✓ You’re already subscribed!'
+        : ('Database error: ' + insertError.message);
+
+      setEmailStatus(msg, msg.startsWith('✓') ? 'ok' : 'err');
+
+      // Privacy: sign out even if already subscribed
+      await supabase.auth.signOut();
+      return;
+    }
+
+    setEmailStatus('✓ Subscribed! You’re confirmed and on the list.','ok');
+
+    // Reset UI
+    pendingEmail = null;
+    otpInput.value = '';
+    document.getElementById('emailInput').value = '';
+    showOtpRow(false);
+
+    // Privacy: sign out immediately
+    await supabase.auth.signOut();
+
+  }catch(e){
+    setEmailStatus('Error confirming code: ' + (e?.message || 'Unknown error'),'err');
+    try{ await supabase.auth.signOut(); }catch{}
+  }finally{
+    otpBtn.disabled=false;
+  }
 }
 </script>
 </body>
