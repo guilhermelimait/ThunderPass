@@ -42,7 +42,7 @@
 
 ## Milestone 4 — Accounts + Cloud Sync (partial)
 - [x] Supabase Email OTP sign-in
-- [x] Auto-sync profile to Supabase profiles table
+- [x] Auto-sync profile to Supabase profiles table (display name, greeting, avatar seed, ghost score, stickers)
 - [x] Web dashboard (GitHub Pages)
 - [x] Profile sync after Spark encounters
 - [ ] Optional encounter backup/restore
@@ -84,14 +84,15 @@
 - [x] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
 - [x] Double-pulse vibration if haptics are enabled.
 - [x] Passes screen: live list with peer avatar, name, RSSI, relative time.
-- [ ] Friends list accessible from Passes and Profile. Tap a friend to open their badge dashboard.
+- [ ] Friends list UI: accessible from Passes and Profile. Tap a friend to open their badge dashboard.
+  - [x] Data layer: `Encounter.isFriend` flag, DAO methods (`setFriend`, `observeFriends`, `countFriends`), `HomeViewModel.friends` StateFlow + `toggleFriend()`.
 
 ### 5.7 Profile Screen
 - [ ] Avatar maker: DiceBear seed selector + Randomise button. Syncs to walking animation and bottom-bar icon immediately; saved to Supabase.
-- [ ] Privacy toggle: when on, BLE exchange shows "Private User" to peers.
+- [x] Privacy toggle: when on, BLE exchange shows "Private User" to peers. Toggle in Settings > General.
 - [x] Badge gallery: horizontal scrollable row, exotic/legendary first, achieved only. Remove legend row and duplicate Volt Badge.
 - [ ] Share ID uses display name, not installation ID.
-- [ ] All edits saved to Supabase; Room is source-of-truth offline.
+- [x] All edits saved to Supabase; Room is source-of-truth offline. (`avatarSeed` now synced.)
 
 ### 5.8 Badges
 - [ ] Replace star icon with a thunder bolt on every badge.
@@ -103,15 +104,16 @@
 
 ### 5.9 Shop
 - [ ] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
-- [ ] On load: recalculate Joules from achieved badges and award missing points.
-- [ ] Keep existing unlockable effects (CRT Scanlines, Pixelated Aura, Thunder Trail).
+- [x] On boot: recalculate Joules from encounter count (100 J per unique Spark) and award any missing points.
+- [x] Keep existing unlockable effects (CRT Scanlines, Pixelated Aura, Thunder Trail).
 - [ ] Joules explanation panel: what they are and how to earn them.
 
 ### 5.10 Settings
 - [x] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
 - [x] Keep screen on (FLAG_KEEP_SCREEN_ON) while ThunderPass service is active.
-- [ ] OTA updates: poll GitHub Releases API; show banner + download link if newer version exists.
+- [x] OTA updates: poll GitHub Releases API on launch; show amber banner + Download button if newer version exists.
 - [x] Background music toggle — default ON. Play assets/thunderpass-bg.mp3 on app open; skip if user disabled it.
+- [x] Privacy Mode toggle — hides name, avatar, and greeting from BLE peers.
 
 ### 5.11 About Screen
 - [x] Ko-fi link: https://ko-fi.com/guilhermelimait/ — styled as a support/donation button.

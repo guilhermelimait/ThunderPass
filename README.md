@@ -48,7 +48,7 @@ That's it. No tapping required. Just live your life and let ThunderPass do its t
 ### 🧑‍🎨 Your Profile
 - Pick a display name, write a greeting, and choose (or randomize!) your avatar.
 - Your profile is what others see when you spark — make it yours.
-- Optional **privacy mode**: appear as *Anonymous Traveler* to everyone you pass.
+- **Privacy mode**: flip the toggle in Settings and nearby devices see only *"Private User"* — no name, avatar, or greeting is shared.
 
 ### 🏆 Badges
 Badges are earned by living your ThunderPass life — sparking new people, playing retro games, hitting streaks, and more. They come in five tiers:
@@ -64,7 +64,7 @@ Badges are earned by living your ThunderPass life — sparking new people, playi
 Each badge shows a **thunder bolt** instead of a star — because of course it does.
 
 ### 🔋 Joules — Energy System
-Every unique Spark earns you **100 Joules**. Spend them in the Shop to unlock cool profile effects:
+Every unique Spark earns you **100 Joules**. Your balance is recalculated automatically on app launch so it's always accurate. Spend Joules in the Shop to unlock cool profile effects:
 - **CRT Scanlines** — retro TV vibes on your profile card.
 - **Pixelated Aura** — 8-bit glow around your avatar.
 - **Thunder Trail** — leave a lightning trail wherever you go.
@@ -79,6 +79,11 @@ Connect your [RetroAchievements](https://retroachievements.org) account and unlo
 
 ### 🛍️ Shop
 Spend your hard-earned Joules on profile effects and cosmetics. The more you spark, the more you unlock.
+
+### ⚙️ Settings
+- **Privacy Mode** — hide your identity from BLE peers in one tap.
+- **OTA Updates** — the app polls GitHub Releases on launch and shows an update banner if a newer version is available.
+- Background music, keep-screen-on, safe zones, scan intensity, and permission shortcuts.
 
 ### 📱 Widget
 A handy home screen widget shows your **total encounters** and how many happened **today** — at a glance, without opening the app.
