@@ -58,9 +58,9 @@ object BleConstants {
 
     /**
      * Encounter dedup cooldown in milliseconds.
-     * A re-encounter with the same rotating ID is ignored for 10 minutes.
+     * Lowered to 60 s for testing; raise back to 10L * 60 * 1000 for production.
      */
-    const val DEDUP_COOLDOWN_MS = 10L * 60 * 1000
+    const val DEDUP_COOLDOWN_MS = 60_000L
 
     /** Preferred MTU requested by the GATT client (Android max = 517 but 512 is safe). */
     const val PREFERRED_MTU = 512

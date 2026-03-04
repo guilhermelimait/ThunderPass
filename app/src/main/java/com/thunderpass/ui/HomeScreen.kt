@@ -234,8 +234,7 @@ fun HomeScreenContent(
             }
         } else {
             // ── Portrait layout ───────────────────────────────────────────────
-            // BoxWithConstraints measures the full available height so we can
-            // pin the animation to exactly 50 % of it, keeping all proportions.
+            // Order: greeting → toggle → animation (1/3 height) → last-passed-by → nav buttons
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -252,7 +251,7 @@ fun HomeScreenContent(
                 ) {
                     Spacer(Modifier.height(16.dp))
 
-                    // ── Greeting + avatar row ──────────────────────────────────
+                    // ── 1. Greeting + avatar row ───────────────────────────────
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         verticalAlignment     = Alignment.CenterVertically,
@@ -275,47 +274,45 @@ fun HomeScreenContent(
                         )
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                    NavShortcuts(onNavigate = onNavigate)
+                    // ── 2. ThunderPass radio toggle (solid card, above animation) ─
+                    ThunderPassToggleCard(
+                        active      = serviceRunning,
+                        onToggle    = onToggleService,
+                        transparent = false,
+                    )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                    // -- Animation -- exactly 1/3 of the available screen height --
+                    // ── 3. Animation — exactly 1/3 of available screen height ──
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(animHeight)
-                            .padding(8.dp),
+                            .padding(horizontal = 0.dp, vertical = 4.dp),
                     ) {
-                        // Scene scales proportionally; 8dp gap keeps animation off edges
                         WalkingSceneCard(
                             avatarSeed     = avatarSeed.ifEmpty { "default" },
                             serviceRunning = serviceRunning,
                             fillHeight     = true,
                         )
-                        // Toggle floats at the top, fully transparent
-                        ThunderPassToggleCard(
-                            active      = serviceRunning,
-                            onToggle    = onToggleService,
-                            transparent = true,
-                            modifier    = Modifier
-                                .align(Alignment.TopCenter)
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                        )
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                    // ── Last Passed By ─────────────────────────────────────────
+                    // ── 4. Last Passed By ──────────────────────────────────────
                     val lastEnc = encounters.firstOrNull()
                     if (lastEnc != null) {
                         LastPassedByCard(
                             encounter = lastEnc,
                             onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
                         )
+                        Spacer(Modifier.height(10.dp))
                     }
+
+                    // ── 5. Navigation buttons grid ─────────────────────────────
+                    NavShortcuts(onNavigate = onNavigate)
 
                     Spacer(Modifier.height(16.dp))
                 }
