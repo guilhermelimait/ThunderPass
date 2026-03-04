@@ -174,7 +174,9 @@ fun WalkingSceneCard(
                     .align(Alignment.TopStart)
                     .offset(
                         x = personXDp - headHalfDp,
-                        y = cardHeight * HEAD_TOP_FRAC,
+                        // Push the DiceBear image down so the visible face
+                        // sits flush against the neck (avatars have top padding)
+                        y = cardHeight * HEAD_TOP_FRAC + headDiamDp * 0.12f,
                     ),
             )
         }
@@ -445,32 +447,26 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         drawCircle(color, radius = sw * 0.50f, center = Offset(x1, y1))
     }
 
-    val leftLegForward = swingA >= 0f
+    // 1. Right leg — always behind (same side as back arm)
+    seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColor, segStroke)
 
-    // 1. Back leg
-    if (leftLegForward) {
-        seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColor, segStroke)
-    } else {
-        seg(lHipX, hipY, lKneeX, lKneeY, lFootX, lFootY, legColor, segStroke)
-    }
-
-    // 2. Back arm
+    // 2. Back arm — screen-right, always behind body
     seg(rShX, shoulderY, rElbowX, rElbowY, rHandX, rHandY, armBackC, segStroke * 0.82f)
 
-    // 3. Bag — flush against left side of body, below front arm
+    // 3. Bag — flush against left side of body, near the top
     val bagW = torsoW * 1.20f
     drawRoundRect(
         color        = Color(0xFF7888A0),
-        topLeft      = Offset(pX - torsoW - bagW, bodyTopY + bodyHeight * 0.20f),
+        topLeft      = Offset(pX - torsoW - bagW, bodyTopY + bodyHeight * 0.02f),
         size         = Size(bagW, bodyHeight * 0.55f),
         cornerRadius = CornerRadius(w * 0.010f),
     )
 
-    // 4. Body — gradient pill: shirt (top) to pants/legs (bottom)
-    val bodyBrush = Brush.verticalGradient(
-        colors = listOf(shirtColor, legColor),
-        startY = bodyTopY,
-        endY   = bodyTopY + bodyHeight,
+    // 4. Body — horizontal gradient: shirt edges → pants center (3D pill look)
+    val bodyBrush = Brush.horizontalGradient(
+        colors = listOf(shirtColor, legColor, shirtColor),
+        startX = pX - torsoW,
+        endX   = pX + torsoW,
     )
     drawRoundRect(
         brush        = bodyBrush,
@@ -479,19 +475,15 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         cornerRadius = CornerRadius(torsoW),
     )
 
-    // 5. Front leg — drawn over body so it appears in front
-    if (leftLegForward) {
-        seg(lHipX, hipY, lKneeX, lKneeY, lFootX, lFootY, legColor, segStroke)
-    } else {
-        seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColor, segStroke)
-    }
+    // 5. Left leg — always in front, drawn over body
+    seg(lHipX, hipY, lKneeX, lKneeY, lFootX, lFootY, legColor, segStroke)
 
-    // 6. Neck — skin-tone bridge, covers gap between head bottom and body top
+    // 6. Neck — tall enough to cover any gap between head image and body top
     val neckW = torsoW * 0.65f
     drawRoundRect(
         color        = armColor,
-        topLeft      = Offset(pX - neckW / 2f, shoulderY - h * 0.018f),
-        size         = Size(neckW, h * 0.024f),
+        topLeft      = Offset(pX - neckW / 2f, shoulderY - h * 0.042f),
+        size         = Size(neckW, h * 0.048f),
         cornerRadius = CornerRadius(neckW / 2f),
     )
 
