@@ -84,7 +84,7 @@
 - [x] On new encounter: status-bar notification "ThunderPass! [DisplayName] is nearby." Omit name if peer is private.
 - [x] Double-pulse vibration if haptics are enabled.
 - [x] Passes screen: live list with peer avatar, name, RSSI, relative time.
-- [ ] Friends list UI: accessible from Passes and Profile. Tap a friend to open their badge dashboard.
+- [x] Friends list UI: accessible from Passes and Profile. Tap a friend to open their badge dashboard.
   - [x] Data layer: `Encounter.isFriend` flag, DAO methods (`setFriend`, `observeFriends`, `countFriends`), `HomeViewModel.friends` StateFlow + `toggleFriend()`.
 
 ### 5.7 Profile Screen

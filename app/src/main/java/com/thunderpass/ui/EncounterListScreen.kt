@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
@@ -26,11 +27,14 @@ fun EncounterListScreen(
     vm: HomeViewModel = viewModel(),
 ) {
     val encounters by vm.encounters.collectAsState()
+    val friends    by vm.friends.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("All Sparks", "Friends")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Encounters") },
+                title = { Text("Passes") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -42,32 +46,81 @@ fun EncounterListScreen(
             )
         },
     ) { padding ->
-        if (encounters.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                EmptyEncountersState()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(encounters, key = { it.encounter.id }) { item ->
-                    EncounterCard(
-                        item = item,
-                        onClick = { onNavigateToDetail(item.encounter.id) },
-                        modifier = Modifier.animateItem(),
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            // ── Tab row ─────────────────────────────────────────────────────
+            TabRow(selectedTabIndex = selectedTab) {
+                tabs.forEachIndexed { index, label ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick  = { selectedTab = index },
+                        text     = { Text(label) },
+                        icon     = if (index == 1) ({
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }) else null,
                     )
                 }
             }
+
+            // ── Content ───────────────────────────────────────────────────────
+            val list = if (selectedTab == 0) encounters else friends
+
+            if (list.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selectedTab == 0) EmptyEncountersState() else EmptyFriendsState()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(list, key = { it.encounter.id }) { item ->
+                        EncounterCard(
+                            item    = item,
+                            onClick = { onNavigateToDetail(item.encounter.id) },
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun EmptyFriendsState() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(32.dp),
+    ) {
+        Text(
+            text     = "\u2605",
+            fontSize = 72.sp,
+        )
+        Text(
+            text       = "No friends yet",
+            style      = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color      = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text      = "Open an encounter and tap\n\"Add Friend\" to star it here.",
+            style     = MaterialTheme.typography.bodyMedium,
+            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -181,6 +234,17 @@ private fun EncounterCard(
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
+            }
+
+            // Friend star indicator
+            if (enc.isFriend) {
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector        = Icons.Filled.Star,
+                    contentDescription = "Friend",
+                    tint               = MaterialTheme.colorScheme.primary,
+                    modifier           = Modifier.size(20.dp),
+                )
             }
         }
     }

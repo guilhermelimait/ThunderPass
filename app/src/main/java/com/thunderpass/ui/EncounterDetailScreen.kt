@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -111,6 +113,27 @@ fun EncounterDetailScreen(
                         onClick = {},
                         label = { Text("Profile exchange pending\u2026") },
                     )
+                }
+
+                // ── Friend toggle ─────────────────────────────────────────────
+                Spacer(Modifier.height(20.dp))
+                val isFriend = enc.isFriend
+                FilledTonalButton(
+                    onClick = { vm.toggleFriend(enc.id, isFriend) },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (isFriend)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isFriend) "Remove Friend" else "Add Friend")
                 }
 
                 Spacer(Modifier.height(32.dp))
