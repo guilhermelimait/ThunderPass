@@ -11,22 +11,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,10 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.thunderpass.ble.ScanMode
-import java.util.Calendar
 import androidx.compose.ui.tooling.preview.Preview
-import com.thunderpass.data.db.entity.Encounter
 
 private val BLE_PERMISSIONS = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
@@ -61,15 +48,10 @@ fun HomeScreen(
 ) {
     val context        = LocalContext.current
     val serviceRunning by vm.serviceRunning.collectAsState()
-    val encounterCount by vm.encounterCount.collectAsState()
-    val encounterStreak by vm.encounterStreak.collectAsState()
     val joulesTotal     by vm.joulesTotal.collectAsState()
-    val ownedStickers   by vm.ownedStickers.collectAsState()
     val installationId by vm.installationId.collectAsState()
     val displayName    by vm.displayName.collectAsState()
     val encounters     by vm.encounters.collectAsState()
-    val scanMode       by vm.scanMode.collectAsState()
-    val safeZoneActive by vm.safeZoneActive.collectAsState()
 
     var allGranted by remember {
         mutableStateOf(
@@ -87,19 +69,6 @@ fun HomeScreen(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) vm.startService()
-    }
-
-    // Compute start-of-today for the "Today" stat (seenAt is epoch millis)
-    val todayStart = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-    val todayCount = remember(encounters) {
-        encounters.count { it.encounter.seenAt >= todayStart }
     }
 
     HomeScreenContent(

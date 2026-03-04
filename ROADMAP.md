@@ -121,10 +121,10 @@
 
 ### 5.12 Removals
 - [x] Remove Sticker Book screen and all related code.
-- [ ] Remove Safe Zone toggle from Home.
-- [ ] Remove Battery Mode selector from Home.
-- [ ] Remove duplicate Volt Badge widget from Profile Joules area.
-- [ ] Remove badge legend row from Profile.
+- [x] Remove Safe Zone toggle from Home.
+- [x] Remove Battery Mode selector from Home.
+- [x] Remove duplicate Volt Badge widget from Profile Joules area.
+- [x] Remove badge legend row from Profile.
 
 ---
 
