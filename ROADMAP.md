@@ -82,3 +82,25 @@ Blue - first two levels achieved - name: common
 Purple - badge 3 and 4 achieved - name uncommon
 Orange - badge 5 and 6 achieved - name rare 
 gold - badge 7 - name legendary
+
+
+[x] Android project scaffold
+
+[ ] Hardware Capability Check: - [ ] Add packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE) check.
+
+[ ] Add BluetoothAdapter.isMultipleAdvertisementSupported() check (Critical for AYN/Retroid background syncing).
+
+[ ] Battery Optimization Bypass: Add a UI prompt to whitelist ThunderPass from Android's "Doze" mode.
+
+
+1- make another button on the first area, about is the name, on it, add the link to my kofi and make it clear that it was made with love, https://ko-fi.com/guilhermelimait/
+
+2- make all buttons like :
+passes: a thunder, since it is the idea of the project
+profile: should be the head of the user that was generated
+badges: should be a badge like the ones we created
+shop: a market cart is fine
+settings: fine as well
+about: 
+
+3- badges, should be the

@@ -4,14 +4,12 @@ import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -21,83 +19,102 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.*
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Walking Scene Card — parallax runner animation for the Home screen
-//   • 4-scene looping world: City → Park → Volcano → Space
-//   • Pastel palette per scene, sky gradient blends between scenes
-//   • Person body drawn via Canvas, DiceBear avatar head overlaid
+// Walking Scene Card — parallax running animation
+//   • 4-scene world: City → Park → Volcano → Space  (seamless loop)
+//   • Far silhouette: sine-wave based → zero seam at any speed ratio
+//   • Near objects: tiled at 1× speed (4 tiles per 28 s = seamless)
+//   • Canvas walking figure: articulated 2-segment limbs, Z-order, NO feet
+//   • DiceBear SVG head placed exactly at neck
+//   • Paused when serviceRunning == false
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** DiceBear URL without background — transparent head for the walking figure. */
-fun diceBearTransparentUrl(seed: String): String =
-    "https://api.dicebear.com/9.x/big-smile/svg" +
-    "?seed=${Uri.encode(seed)}" +
-    "&radius=50" +
-    "&size=128"
 
 // ── Pastel palettes per scene ─────────────────────────────────────────────────
 
 private data class ScenePalette(
-    val sky1: Color,       // sky gradient top
-    val sky2: Color,       // sky gradient bottom
-    val groundA: Color,    // ground top strip
-    val groundB: Color,    // ground base
-    val far1: Color,       // far element fill
-    val far2: Color,       // far element accent
-    val near1: Color,      // near element fill
-    val near2: Color,      // near element accent
+    val sky1: Color, val sky2: Color,
+    val groundA: Color, val groundB: Color,
+    val silhouette: Color,
+    val near1: Color, val near2: Color,
 )
 
-private val PAL_CITY = ScenePalette(
-    sky1   = Color(0xFFB4D4EE), sky2   = Color(0xFFCEE5F5),
-    groundA = Color(0xFF9EB8C4), groundB = Color(0xFF7E9EAE),
-    far1   = Color(0xFF90AEC8), far2   = Color(0xFFB4CCE0),
-    near1  = Color(0xFF6E9AB2), near2  = Color(0xFF5882A0),
+private val PAL_CITY    = ScenePalette(
+    sky1 = Color(0xFFB4D4EE), sky2 = Color(0xFFCEE5F5),
+    groundA = Color(0xFFA2BCC8), groundB = Color(0xFF7E9EAE),
+    silhouette = Color(0xFF90AEC8),
+    near1 = Color(0xFF6E9AB2), near2 = Color(0xFF5882A0),
 )
-private val PAL_PARK = ScenePalette(
-    sky1   = Color(0xFFA4DEB8), sky2   = Color(0xFFC4EDD0),
+private val PAL_PARK    = ScenePalette(
+    sky1 = Color(0xFFA4DEB8), sky2 = Color(0xFFC4EDD0),
     groundA = Color(0xFF72C48A), groundB = Color(0xFF52A66C),
-    far1   = Color(0xFF5DAA76), far2   = Color(0xFF90C8A0),
-    near1  = Color(0xFF3E8C58), near2  = Color(0xFF68B480),
+    silhouette = Color(0xFF5DAA76),
+    near1 = Color(0xFF3E8C58), near2 = Color(0xFF68B480),
 )
 private val PAL_VOLCANO = ScenePalette(
-    sky1   = Color(0xFFFFB894), sky2   = Color(0xFFFFD4B0),
+    sky1 = Color(0xFFFFB894), sky2 = Color(0xFFFFD4B0),
     groundA = Color(0xFFBE7E6E), groundB = Color(0xFF9E6254),
-    far1   = Color(0xFFD08070), far2   = Color(0xFFE8A098),
-    near1  = Color(0xFFE06060), near2  = Color(0xFFFF8870),
+    silhouette = Color(0xFFD08070),
+    near1 = Color(0xFFE06060), near2 = Color(0xFFFF8870),
 )
-private val PAL_SPACE = ScenePalette(
-    sky1   = Color(0xFF68789E), sky2   = Color(0xFF8898BE),
+private val PAL_SPACE   = ScenePalette(
+    sky1 = Color(0xFF68789E), sky2 = Color(0xFF8898BE),
     groundA = Color(0xFF505878), groundB = Color(0xFF383E5E),
-    far1   = Color(0xFFB0A0D8), far2   = Color(0xFFD4C8F0),
-    near1  = Color(0xFF6878A8), near2  = Color(0xFF8898C0),
+    silhouette = Color(0xFFB0A0D8),
+    near1 = Color(0xFF6878A8), near2 = Color(0xFF8898C0),
 )
 
 private val PALETTES = listOf(PAL_CITY, PAL_PARK, PAL_VOLCANO, PAL_SPACE)
 
+// ── Layout fractions (height-relative) ───────────────────────────────────────
+
+private const val GROUND_FRAC   = 0.80f
+private const val LEG_FRAC      = 0.28f
+private const val TORSO_FRAC    = 0.22f
+private const val HEAD_R_FRAC   = 0.10f   // head radius as fraction of card height
+private const val PERSON_X_FRAC = 0.25f
+
+// Derived (all fractions of height)
+// hipFracY     = 0.80 - 0.28 = 0.52
+// shoulderFracY = 0.52 - 0.22 = 0.30
+// headCenterFracY = 0.30 - 0.10 = 0.20
+// headTopFracY    = 0.20 - 0.10 = 0.10
+private const val HEAD_TOP_FRAC = 0.10f
+
 // ── Main composable ───────────────────────────────────────────────────────────
 
 @Composable
-fun WalkingSceneCard(avatarSeed: String) {
+fun WalkingSceneCard(
+    avatarSeed:     String,
+    serviceRunning: Boolean = true,
+    cardHeight:     Dp      = 200.dp,
+) {
     val inf = rememberInfiniteTransition(label = "walk_scene")
 
-    // Scene scroll: 0→1 in 28 s — drives the parallax world
-    val scrollFrac by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = 1f,
-        animationSpec = infiniteRepeatable(tween(28_000, easing = LinearEasing)),
-        label         = "scroll",
-    )
-    // Walk cycle: 0→2π in 540 ms
-    val walkPhase by inf.animateFloat(
-        initialValue  = 0f,
-        targetValue   = (2f * PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(540, easing = LinearEasing)),
-        label         = "cycle",
-    )
+    // Scene scroll 0→1 in 28 s; near layer travels exactly 4 tile-widths → seamless
+    val scrollFrac by if (serviceRunning) {
+        inf.animateFloat(
+            initialValue  = 0f, targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(28_000, easing = LinearEasing)),
+            label = "scroll",
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
+
+    // Walk cycle 0→2π in 560 ms
+    val walkPhase by if (serviceRunning) {
+        inf.animateFloat(
+            initialValue  = 0f, targetValue = (2f * PI).toFloat(),
+            animationSpec = infiniteRepeatable(tween(560, easing = LinearEasing)),
+            label = "cycle",
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -107,123 +124,148 @@ fun WalkingSceneCard(avatarSeed: String) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
+                .height(cardHeight),
         ) {
-            val sceneW   = maxWidth           // Dp
-            val sceneH   = 200.dp
+            val cardW      = maxWidth
+            val headDiamDp = cardHeight * (HEAD_R_FRAC * 2f)
+            val headHalfDp = headDiamDp / 2f
+            val personXDp  = cardW * PERSON_X_FRAC
 
-            // Fractional layout constants (must match drawWalkingBody)
-            val personFracX = 0.28f
-            val groundFracY = 0.80f
-            // head-top from canvas top (in fractions of height):
-            //  groundY - legLen(0.28) - torsoH(0.22) - headR(0.12) = 0.80-0.62 = 0.18
-            //  headTop = headCenter - headR = 0.18 - 0.12 = 0.06
-            val headFracTopY = 0.06f
-            val headFracR    = 0.12f   // head radius  as fraction of height
-
-            val headSizeDp  = sceneH * (headFracR * 2f)   // diameter
-            val headHalfDp  = headSizeDp / 2f
-
-            // 1 — Parallax background
+            // 1 ── Parallax background
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawParallaxBg(scrollFrac)
+                drawScene(scrollFrac)
             }
 
-            // 2 — Walking body (no head)
+            // 2 ── Walking body (no head)
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawWalkingBody(
-                    personFracX = personFracX,
-                    groundFracY = groundFracY,
-                    walkPhase   = walkPhase,
-                )
+                drawWalker(walkPhase, serviceRunning)
             }
 
-            // 3 — DiceBear avatar head (transparent background)
+            // 3 ── DiceBear head — no clip modifier; DiceBearAvatar handles its own shape
             DiceBearAvatar(
-                seed     = avatarSeed,
-                size     = headSizeDp,
-                modifier = Modifier
+                seed                  = avatarSeed,
+                size                  = headDiamDp,
+                showLoadingBackground = false,
+                modifier              = Modifier
                     .align(Alignment.TopStart)
                     .offset(
-                        x = sceneW * personFracX - headHalfDp,
-                        y = sceneH * headFracTopY,
-                    )
-                    .clip(CircleShape),
+                        x = personXDp - headHalfDp,
+                        y = cardHeight * HEAD_TOP_FRAC,
+                    ),
             )
         }
     }
 }
 
-// ── Parallax background ───────────────────────────────────────────────────────
+// ── Colour helpers ────────────────────────────────────────────────────────────
 
-private fun DrawScope.drawParallaxBg(scrollFrac: Float) {
-    val w        = size.width
-    val h        = size.height
-    val groundY  = h * 0.80f
+private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t.coerceIn(0f, 1f)
+private fun lerpColor(a: Color, b: Color, t: Float) = Color(
+    red   = lerp(a.red,   b.red,   t),
+    green = lerp(a.green, b.green, t),
+    blue  = lerp(a.blue,  b.blue,  t),
+)
 
-    // Total world = 4 scenes × w pixels, scroll through in 28 s
-    val fullScroll = scrollFrac * w * 4f
-
-    // Current scene blend for sky/ground color
-    val sWorld = (scrollFrac * 4f).coerceAtLeast(0f)
-    val sIdx   = (sWorld.toInt() % 4).coerceIn(0, 3)
-    val sFrac  = sWorld - floor(sWorld)
-    val p0     = PALETTES[sIdx]
-    val p1     = PALETTES[(sIdx + 1) % 4]
-
-    fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
-    fun lc(a: Color, b: Color, t: Float)   = Color(
-        lerp(a.red,   b.red,   t),
-        lerp(a.green, b.green, t),
-        lerp(a.blue,  b.blue,  t),
+private fun blendPalette(scrollFrac: Float): ScenePalette {
+    val world = (scrollFrac * 4f).coerceIn(0f, 4f - 1e-6f)
+    val idx   = world.toInt() % 4
+    val frac  = world - floor(world)
+    val p0    = PALETTES[idx]
+    val p1    = PALETTES[(idx + 1) % 4]
+    return ScenePalette(
+        sky1       = lerpColor(p0.sky1,       p1.sky1,       frac),
+        sky2       = lerpColor(p0.sky2,       p1.sky2,       frac),
+        groundA    = lerpColor(p0.groundA,    p1.groundA,    frac),
+        groundB    = lerpColor(p0.groundB,    p1.groundB,    frac),
+        silhouette = lerpColor(p0.silhouette, p1.silhouette, frac),
+        near1      = lerpColor(p0.near1,      p1.near1,      frac),
+        near2      = lerpColor(p0.near2,      p1.near2,      frac),
     )
+}
 
-    val skyTop   = lc(p0.sky1,    p1.sky1,    sFrac.toFloat())
-    val skyBot   = lc(p0.sky2,    p1.sky2,    sFrac.toFloat())
-    val gndA     = lc(p0.groundA, p1.groundA, sFrac.toFloat())
-    val gndB     = lc(p0.groundB, p1.groundB, sFrac.toFloat())
+// ── Background scene ─────────────────────────────────────────────────────────
+
+private fun DrawScope.drawScene(scrollFrac: Float) {
+    val w       = size.width
+    val h       = size.height
+    val groundY = h * GROUND_FRAC
+    val pal     = blendPalette(scrollFrac)
 
     // Sky
     drawRect(
-        brush = Brush.verticalGradient(listOf(skyTop, skyBot), endY = groundY),
+        brush = Brush.verticalGradient(listOf(pal.sky1, pal.sky2), startY = 0f, endY = groundY),
         size  = Size(w, groundY),
     )
     // Ground strips
-    drawRect(gndA, topLeft = Offset(0f, groundY),             size = Size(w, h * 0.07f))
-    drawRect(gndB, topLeft = Offset(0f, groundY + h * 0.07f), size = Size(w, h * 0.20f))
+    drawRect(pal.groundA, topLeft = Offset(0f, groundY),             size = Size(w, h * 0.07f))
+    drawRect(pal.groundB, topLeft = Offset(0f, groundY + h * 0.07f), size = Size(w, h * 0.20f))
 
-    // Far elements (scroll at 38 % speed)
-    val farScroll  = fullScroll * 0.38f
-    val nearScroll = fullScroll
+    // Far silhouette — sine-wave, seamlessly tileable, scrolls at 0.5× speed
+    drawSilhouetteWave(scrollFrac, w, h, groundY, pal.silhouette)
 
+    // Near tiled objects (streetlamps, trees, volcano, craters) scroll at 1×
+    val nearScroll = scrollFrac * w * 4f
     clipRect(0f, 0f, w, h) {
-        // Draw 6 tile slots to cover any wrapping
-        for (layer in 0..1) {
-            val layerScroll = if (layer == 0) farScroll else nearScroll
-            val baseTile    = floor(layerScroll / w).toInt()
-            for (off in 0..5) {
-                val tile      = baseTile + off
-                val tileType  = ((tile % 4) + 4) % 4
-                val tileLeft  = tile * w - layerScroll
-                if (tileLeft >= w + w * 0.2f || tileLeft + w <= -w * 0.2f) continue
-                val pal = PALETTES[tileType]
-                if (layer == 0) drawFarTile(tileType, tileLeft, w, h, groundY, pal)
-                else            drawNearTile(tileType, tileLeft, w, h, groundY, pal)
-            }
+        val baseTile = floor(nearScroll / w).toInt()
+        for (off in -1..5) {
+            val tile     = baseTile + off
+            val tileType = ((tile % 4) + 4) % 4
+            val tileLeft = tile * w - nearScroll
+            if (tileLeft > w * 1.1f || tileLeft + w < -w * 0.1f) continue
+            drawNearTile(tileType, tileLeft, w, h, groundY, pal)
         }
+    }
+
+    // Space extras (stars, planet) — blend in when world ≈ scene 3 (Space)
+    val world      = scrollFrac * 4f
+    val spaceFrac  = when {
+        world < 2.5f -> 0f
+        world < 3.0f -> (world - 2.5f) / 0.5f
+        world < 3.5f -> 1f
+        world < 4.0f -> (4f - world) / 0.5f
+        else         -> 0f
+    }
+    if (spaceFrac > 0.01f) {
+        for (i in 0..22) {
+            val sx = (i * 137.508f) % w
+            val sy = h * ((i * 0.053f) % 0.58f)
+            drawCircle(Color.White.copy(alpha = spaceFrac * (0.4f + (i % 3) * 0.2f)),
+                radius = w * 0.005f + (i % 2) * w * 0.003f, center = Offset(sx, sy))
+        }
+        val px = w * 0.74f; val py = h * 0.22f; val pr = h * 0.09f
+        drawCircle(pal.near1.copy(alpha = spaceFrac), radius = pr, center = Offset(px, py))
+        drawOval(pal.near2.copy(alpha = spaceFrac * 0.55f),
+            topLeft = Offset(px - pr * 1.8f, py - pr * 0.25f),
+            size    = Size(pr * 3.6f, pr * 0.5f),
+            style   = Stroke(width = w * 0.012f))
     }
 }
 
-// ── Far layer tiles (slower, smaller, upper area) ────────────────────────────
-
-private fun DrawScope.drawFarTile(
-    type: Int, left: Float, w: Float, h: Float, gY: Float, pal: ScenePalette,
-) = when (type) {
-    0 -> drawCityFar(left, w, h, gY, pal)
-    1 -> drawParkFar(left, w, h, gY, pal)
-    2 -> drawVolcanoFar(left, w, h, gY, pal)
-    else -> drawSpaceFar(left, w, h, gY, pal)
+/** Sine-wave far silhouette. All periods divide 4w evenly → zero seam. */
+private fun DrawScope.drawSilhouetteWave(
+    scrollFrac: Float, w: Float, h: Float, groundY: Float, color: Color,
+) {
+    // Far layer scrolls at 0.5× speed = 2w per 28 s; periods 2w, 1w, 0.5w all divide 2w
+    val offset = scrollFrac * w * 2f
+    val path   = Path()
+    val steps  = 80
+    path.moveTo(0f, groundY)
+    for (i in 0..steps) {
+        val sx  = i / steps.toFloat() * w
+        val wx  = sx + offset
+        val dY  = h * (
+            0.13f * sin(2f * PI.toFloat() * wx / (w * 2f)) +
+            0.07f * sin(2f * PI.toFloat() * wx / (w * 1f)) +
+            0.035f* sin(2f * PI.toFloat() * wx / (w * 0.5f))
+        ) * 0.45f + h * 0.10f
+        if (i == 0) path.moveTo(sx, groundY - dY) else path.lineTo(sx, groundY - dY)
+    }
+    path.lineTo(w, groundY)
+    path.close()
+    drawPath(path, color.copy(alpha = 0.50f))
 }
+
+// ── Near tile dispatcher ──────────────────────────────────────────────────────
 
 private fun DrawScope.drawNearTile(
     type: Int, left: Float, w: Float, h: Float, gY: Float, pal: ScenePalette,
@@ -234,287 +276,178 @@ private fun DrawScope.drawNearTile(
     else -> drawSpaceNear(left, w, h, gY, pal)
 }
 
-// ── CITY ─────────────────────────────────────────────────────────────────────
-
-private fun DrawScope.drawCityFar(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Background buildings (shorter, lighter)
-    val blds = listOf(0.06f to 0.60f, 0.20f to 0.45f, 0.35f to 0.55f,
-                      0.50f to 0.50f, 0.65f to 0.62f, 0.80f to 0.42f, 0.92f to 0.52f)
-    blds.forEach { (rx, topFrac) ->
-        val bx = l + rx * w
-        val bw = w * 0.09f
-        val bt = gY * topFrac
-        drawRect(pal.far1, topLeft = Offset(bx - bw / 2f, bt), size = Size(bw, gY - bt))
-        // windows
-        for (row in 0..2) for (col in 0..1) {
-            drawRect(
-                Color.White.copy(alpha = 0.35f),
-                topLeft = Offset(bx - bw / 2f + bw * 0.15f + col * bw * 0.40f,
-                                 bt + (gY - bt) * 0.12f + row * (gY - bt) * 0.22f),
-                size    = Size(bw * 0.22f, (gY - bt) * 0.12f),
-            )
-        }
-    }
-}
+// ── Near: City ────────────────────────────────────────────────────────────────
 
 private fun DrawScope.drawCityNear(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Streetlamps at the ground line
-    val lampsX = listOf(0.10f, 0.40f, 0.72f)
-    lampsX.forEach { rx ->
+    listOf(0.12f, 0.44f, 0.76f).forEach { rx ->
         val lx = l + rx * w
-        // pole
-        drawLine(pal.near1, Offset(lx, gY - h * 0.22f), Offset(lx, gY), strokeWidth = w * 0.012f)
-        // arm
+        if (lx < -w * 0.1f || lx > size.width + w * 0.1f) return@forEach
+        drawLine(pal.near1, Offset(lx, gY - h * 0.22f), Offset(lx, gY), strokeWidth = w * 0.011f)
         drawLine(pal.near1, Offset(lx, gY - h * 0.22f), Offset(lx + w * 0.04f, gY - h * 0.22f),
-                 strokeWidth = w * 0.010f)
-        // bulb glow
-        drawCircle(Color(0xFFFFF0A0).copy(alpha = 0.7f), radius = w * 0.018f,
-                   center = Offset(lx + w * 0.04f, gY - h * 0.22f))
+            strokeWidth = w * 0.009f)
+        drawCircle(Color(0xFFFFF0A0).copy(alpha = 0.75f), radius = w * 0.016f,
+            center = Offset(lx + w * 0.04f, gY - h * 0.22f))
     }
-    // Road marking (dashes)
-    val dashCount = 6
-    for (d in 0 until dashCount) {
-        val dx = l + w * d / dashCount.toFloat() + w * 0.05f
+    for (d in 0..6) {
+        val dx = l + w * d / 7f + w * 0.02f
         if (dx < 0f || dx > size.width) continue
-        drawRect(Color.White.copy(alpha = 0.25f),
-                 topLeft = Offset(dx, gY + h * 0.035f), size = Size(w * 0.06f, h * 0.015f))
+        drawRect(Color.White.copy(alpha = 0.20f),
+            topLeft = Offset(dx, gY + h * 0.030f), size = Size(w * 0.055f, h * 0.012f))
     }
 }
 
-// ── PARK ─────────────────────────────────────────────────────────────────────
-
-private fun DrawScope.drawParkFar(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Rolling hills
-    val hillCentres = listOf(0.20f to 0.70f, 0.55f to 0.75f, 0.85f to 0.65f)
-    hillCentres.forEach { (rx, topFrac) ->
-        val cx    = l + rx * w
-        val hillW = w * 0.42f
-        val hillH = gY * (1f - topFrac)
-        val hillT = gY * topFrac
-        val path  = Path().apply {
-            moveTo(cx - hillW / 2f, gY)
-            cubicTo(cx - hillW / 2f, hillT, cx + hillW / 2f, hillT, cx + hillW / 2f, gY)
-            close()
-        }
-        drawPath(path, pal.far1)
-    }
-    // Distant tree dots
-    listOf(0.05f, 0.35f, 0.70f, 0.95f).forEach { rx ->
-        val tx = l + rx * w
-        drawCircle(pal.far2, radius = h * 0.08f, center = Offset(tx, gY - h * 0.16f))
-        drawLine(pal.far1, Offset(tx, gY - h * 0.10f), Offset(tx, gY), strokeWidth = w * 0.012f)
-    }
-}
+// ── Near: Park ────────────────────────────────────────────────────────────────
 
 private fun DrawScope.drawParkNear(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Trees (bigger, near ground)
-    listOf(0.12f, 0.48f, 0.82f).forEach { rx ->
+    listOf(0.10f, 0.44f, 0.76f).forEach { rx ->
         val tx = l + rx * w
-        // trunk
-        drawRect(pal.near1.copy(alpha = 0.8f),
-                 topLeft = Offset(tx - w * 0.012f, gY - h * 0.20f), size = Size(w * 0.024f, h * 0.20f))
-        // canopy
-        drawCircle(pal.near2, radius = h * 0.11f, center = Offset(tx, gY - h * 0.232f))
-        drawCircle(pal.near1, radius = h * 0.08f, center = Offset(tx - w * 0.02f, gY - h * 0.26f))
+        if (tx < -w * 0.1f || tx > size.width + w * 0.1f) return@forEach
+        drawRect(pal.near1.copy(alpha = 0.85f),
+            topLeft = Offset(tx - w * 0.010f, gY - h * 0.22f), size = Size(w * 0.020f, h * 0.22f))
+        drawCircle(pal.near2, radius = h * 0.095f, center = Offset(tx, gY - h * 0.25f))
+        drawCircle(pal.near1, radius = h * 0.065f, center = Offset(tx - w * 0.018f, gY - h * 0.28f))
     }
-    // Flowers (tiny dots on the ground)
-    val flowerColors = listOf(Color(0xFFFFB0C0), Color(0xFFFFF0A0), Color(0xFFD0C0FF))
-    for (i in 0..8) {
-        val fx = l + w * (i * 0.11f + 0.03f)
+    val fc = listOf(Color(0xFFFFB0C0), Color(0xFFFFF0A0), Color(0xFFD0C0FF))
+    for (i in 0..9) {
+        val fx = l + w * (i * 0.10f + 0.03f)
         if (fx < 0f || fx > size.width) continue
-        drawCircle(flowerColors[i % 3], radius = h * 0.016f, center = Offset(fx, gY + h * 0.018f))
+        drawCircle(fc[i % 3], radius = h * 0.013f, center = Offset(fx, gY + h * 0.016f))
     }
 }
 
-// ── VOLCANO ───────────────────────────────────────────────────────────────────
-
-private fun DrawScope.drawVolcanoFar(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    val topX    = l + w * 0.50f
-    val topY    = gY * 0.20f
-    val baseHalfW = w * 0.48f
-    val coneCol = pal.far1
-
-    // Volcano cone
-    val cone = Path().apply {
-        moveTo(topX, topY)
-        lineTo(topX + baseHalfW, gY)
-        lineTo(topX - baseHalfW, gY)
-        close()
-    }
-    drawPath(cone, coneCol)
-
-    // Crater rim
-    drawCircle(pal.far2.copy(alpha = 0.6f), radius = w * 0.08f, center = Offset(topX, topY + w * 0.04f))
-    drawCircle(Color(0xFFFF6040).copy(alpha = 0.7f), radius = w * 0.05f, center = Offset(topX, topY + w * 0.05f))
-
-    // Smoke puffs
-    for (i in 0..2) {
-        drawCircle(Color.White.copy(alpha = 0.25f - i * 0.06f),
-                   radius = w * (0.05f + i * 0.04f),
-                   center = Offset(topX + i * w * 0.03f, topY - h * (0.06f + i * 0.07f)))
-    }
-}
+// ── Near: Volcano ─────────────────────────────────────────────────────────────
 
 private fun DrawScope.drawVolcanoNear(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Rocks on the ground
-    listOf(0.08f to 0.8f, 0.30f to 1.0f, 0.55f to 0.7f, 0.78f to 0.9f).forEach { (rx, sc) ->
-        val rx2 = l + rx * w
-        val rr  = w * 0.04f * sc
-        drawCircle(pal.near1, radius = rr, center = Offset(rx2, gY + rr * 0.5f))
-        drawCircle(pal.near2, radius = rr * 0.5f, center = Offset(rx2 - rr * 0.3f, gY - rr * 0.2f))
+    val topX = l + w * 0.50f; val topY = gY * 0.28f; val bW = w * 0.46f
+    val cone = Path().apply { moveTo(topX, topY); lineTo(topX + bW, gY); lineTo(topX - bW, gY); close() }
+    drawPath(cone, pal.near1.copy(alpha = 0.85f))
+    drawCircle(Color(0xFFFF6040).copy(alpha = 0.65f), radius = w * 0.038f, center = Offset(topX, topY))
+    for (i in 0..2) drawCircle(Color.White.copy(alpha = 0.20f - i * 0.05f),
+        radius = w * (0.04f + i * 0.035f),
+        center = Offset(topX + i * w * 0.02f, topY - h * (0.06f + i * 0.06f)))
+    listOf(0.08f to 0.9f, 0.55f to 1.0f, 0.82f to 0.75f).forEach { (rx, sc) ->
+        val cx = l + rx * w; if (cx < 0f || cx > size.width + w) return@forEach
+        val rr = w * 0.030f * sc
+        drawCircle(pal.near2, radius = rr, center = Offset(cx, gY + rr * 0.4f))
     }
-    // Lava drip on the side
-    val lavaPath = Path().apply {
-        moveTo(l + w * 0.52f, gY - h * 0.05f)
-        cubicTo(l + w * 0.54f, gY - h * 0.03f, l + w * 0.53f, gY, l + w * 0.55f, gY + h * 0.02f)
-    }
-    drawPath(lavaPath, Color(0xFFFF5030).copy(alpha = 0.75f), style = Stroke(width = w * 0.015f))
 }
 
-// ── SPACE ────────────────────────────────────────────────────────────────────
-
-private fun DrawScope.drawSpaceFar(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Stars
-    for (i in 0..18) {
-        val sx = l + ((i * 137.508f) % w)   // golden-angle spread (deterministic)
-        val sy = h * ((i * 0.053f) % 0.68f)
-        if (sx < l || sx > l + w) continue
-        drawCircle(Color.White.copy(alpha = 0.55f + (i % 3) * 0.15f),
-                   radius = w * 0.006f + (i % 2) * w * 0.003f,
-                   center = Offset(sx, sy))
-    }
-    // Main planet
-    val px = l + w * 0.70f
-    val py = gY * 0.32f
-    val pr = h * 0.14f
-    drawCircle(pal.far1, radius = pr, center = Offset(px, py))
-    drawCircle(pal.far2.copy(alpha = 0.4f), radius = pr * 0.6f, center = Offset(px - pr * 0.15f, py - pr * 0.2f))
-    // Ring ellipse
-    drawOval(pal.far2.copy(alpha = 0.55f),
-             topLeft = Offset(px - pr * 1.6f, py - pr * 0.22f),
-             size    = Size(pr * 3.2f, pr * 0.44f),
-             style   = Stroke(width = w * 0.014f))
-    // Small moon
-    drawCircle(Color(0xFFE0D8F0), radius = h * 0.04f, center = Offset(l + w * 0.20f, gY * 0.22f))
-}
+// ── Near: Space ───────────────────────────────────────────────────────────────
 
 private fun DrawScope.drawSpaceNear(l: Float, w: Float, h: Float, gY: Float, pal: ScenePalette) {
-    // Craters on the ground
-    listOf(0.12f, 0.38f, 0.60f, 0.85f).forEach { rx ->
-        val cx = l + rx * w
-        val cr = w * 0.05f
-        drawCircle(pal.near1.copy(alpha = 0.6f), radius = cr, center = Offset(cx, gY + cr * 0.3f))
-        drawCircle(pal.near2.copy(alpha = 0.6f), radius = cr * 0.55f, center = Offset(cx + cr * 0.1f, gY + cr * 0.1f))
+    listOf(0.10f, 0.34f, 0.60f, 0.85f).forEach { rx ->
+        val cx = l + rx * w; if (cx < 0f || cx > size.width + w) return@forEach
+        val cr = w * 0.040f
+        drawCircle(pal.near1.copy(alpha = 0.7f), radius = cr, center = Offset(cx, gY + cr * 0.25f))
+        drawCircle(pal.near2.copy(alpha = 0.5f), radius = cr * 0.50f, center = Offset(cx + cr * 0.1f, gY))
     }
-    // Small asteroid
-    val ax = l + w * 0.25f
-    val ay = gY - h * 0.08f
-    val ap = Path().apply {
-        moveTo(ax,            ay - h * 0.03f)
-        lineTo(ax + w * 0.04f, ay)
-        lineTo(ax + w * 0.03f, ay + h * 0.03f)
-        lineTo(ax - w * 0.02f, ay + h * 0.025f)
-        lineTo(ax - w * 0.035f, ay - h * 0.01f)
-        close()
+    val ax = l + w * 0.28f
+    if (ax > 0f && ax < size.width + w * 0.1f) {
+        drawLine(pal.near2, Offset(ax, gY), Offset(ax, gY - h * 0.22f), strokeWidth = w * 0.008f)
+        drawLine(pal.near2, Offset(ax - w * 0.05f, gY - h * 0.14f), Offset(ax + w * 0.05f, gY - h * 0.14f),
+            strokeWidth = w * 0.008f)
+        drawCircle(Color(0xFF80FF80).copy(alpha = 0.8f), radius = w * 0.012f,
+            center = Offset(ax, gY - h * 0.22f))
     }
-    drawPath(ap, pal.near1)
 }
 
-// ── Walking body (no head — head is the DiceBear composable above) ─────────────────
+// ── Walking figure ────────────────────────────────────────────────────────────
 
-private fun DrawScope.drawWalkingBody(
-    personFracX: Float,
-    groundFracY: Float,
-    walkPhase:   Float,
-) {
+private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean) {
     val w = size.width
     val h = size.height
 
-    val pX      = w * personFracX       // person center X
-    val groundY = h * groundFracY       // ground line
+    val pX        = w * PERSON_X_FRAC
+    val groundY   = h * GROUND_FRAC
+    val hipY      = h * (GROUND_FRAC - LEG_FRAC)          // = 0.52h
+    val shoulderY = h * (GROUND_FRAC - LEG_FRAC - TORSO_FRAC)  // = 0.30h
 
-    // Segment lengths (fractions of canvas height)
-    val legLen    = h * 0.28f
-    val thighLen  = legLen * 0.52f
-    val shinLen   = legLen * 0.55f
-    val torsoH    = h * 0.22f
-    val torsoHalf = w * 0.065f          // half-width of torso
-    val armLen    = torsoH * 0.6f
+    val torsoW    = w * 0.058f
+    val segStroke = w * 0.042f
+    val thighLen  = h * 0.14f
+    val shinLen   = h * 0.14f
+    val uArmLen   = h * 0.08f
+    val fArmLen   = h * 0.075f
 
-    val hipY      = groundY - legLen + thighLen    // top of leg / bottom of torso
-    val shoulderY = hipY - torsoH
+    val swingA  = if (running) sin(walkPhase).toFloat()      else 0f  // left leg / right arm
+    val swingB  = -swingA                                              // right leg / left arm
+    val bob     = if (running) abs(sin(walkPhase * 2f)).toFloat() * h * 0.010f else 0f
+    val byOff   = -bob
 
-    // Walking phase values
-    val swingL =  sin(walkPhase)        * (h * 0.10f)   // left leg / right arm
-    val swingR = -sin(walkPhase)        * (h * 0.10f)   // right leg / left arm
-    val bob    =  abs(sin(walkPhase * 2f)) * (h * 0.012f)   // vertical body bob
+    // Is left foot forward?
+    val leftFront = swingA >= 0f
 
-    val bodyOffsetY = -bob   // bob lifts body slightly
+    // ── Precompute all 4 limb endpoints ──────────────────────────────────────
+    val lHipX = pX - torsoW * 0.35f; val rHipX = pX + torsoW * 0.35f
+    val lShX  = pX - torsoW * 0.90f; val rShX  = pX + torsoW * 0.90f
 
-    // ── Backpack ─────────────────────────────────────────────────────────────
-    drawRoundRect(
-        color       = Color(0xFF7888A0),
-        topLeft     = Offset(pX + torsoHalf * 0.25f, shoulderY + bodyOffsetY + torsoH * 0.08f),
-        size        = Size(torsoHalf * 1.10f, torsoH * 0.75f),
-        cornerRadius = CornerRadius(w * 0.018f),
-    )
+    // Left leg
+    val lKneeX = lHipX + swingA * h * 0.045f; val lKneeY = hipY + byOff + thighLen
+    val lFootX = lHipX + swingA * h * 0.090f; val lFootY = groundY
 
-    // ── Legs ─────────────────────────────────────────────────────────────────
-    // Each leg: hip → knee (thigh) → foot (shin)
-    for (side in 0..1) {
-        val swing = if (side == 0) swingL else swingR
-        val legX  = pX + (if (side == 0) -torsoHalf * 0.35f else torsoHalf * 0.35f)
+    // Right leg
+    val rKneeX = rHipX + swingB * h * 0.045f; val rKneeY = hipY + byOff + thighLen
+    val rFootX = rHipX + swingB * h * 0.090f; val rFootY = groundY
 
-        val kneeX = legX + swing * 0.5f
-        val kneeY = hipY + bodyOffsetY + thighLen
+    // Left arm (swings opposite to left leg → swingB)
+    val lElbowX = lShX + swingB * h * 0.035f; val lElbowY = shoulderY + byOff + uArmLen
+    val lHandX  = lShX + swingB * h * 0.068f; val lHandY  = lElbowY + fArmLen
 
-        val footX = legX + swing
-        val footY = groundY
+    // Right arm (swings opposite to right leg → swingA)
+    val rElbowX = rShX + swingA * h * 0.035f; val rElbowY = shoulderY + byOff + uArmLen
+    val rHandX  = rShX + swingA * h * 0.068f; val rHandY  = rElbowY + fArmLen
 
-        val segColor = if (side == 0) Color(0xFF8890B0) else Color(0xFF7880A0)
-        val segW     = w * 0.042f
+    val legFront = Color(0xFF6870A0); val legBack = Color(0xFF9098C0)
+    val armColor = Color(0xFFF0C8A0)
 
-        val legPath = Path().apply {
-            moveTo(legX, hipY + bodyOffsetY)
-            lineTo(kneeX, kneeY)
-            lineTo(footX, footY)
-        }
-        drawPath(legPath, segColor,
-                 style = Stroke(width = segW, cap = StrokeCap.Round, join = StrokeJoin.Round))
-
-        // Shoe
-        drawOval(
-            color   = Color(0xFFE8D8B8),
-            topLeft = Offset(footX - w * 0.038f, footY - h * 0.018f),
-            size    = Size(w * 0.075f, h * 0.032f),
-        )
+    fun DrawScope.seg(x0: Float, y0: Float, x1: Float, y1: Float,
+                       x2: Float, y2: Float, color: Color, sw: Float) {
+        val p = Path().apply { moveTo(x0, y0); lineTo(x1, y1); lineTo(x2, y2) }
+        drawPath(p, color, style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(color, radius = sw * 0.52f, center = Offset(x1, y1))
     }
 
-    // ── Torso ────────────────────────────────────────────────────────────────
-    drawRoundRect(
-        color       = Color(0xFFB0C8E8),
-        topLeft     = Offset(pX - torsoHalf, shoulderY + bodyOffsetY),
-        size        = Size(torsoHalf * 2f, torsoH),
-        cornerRadius = CornerRadius(w * 0.025f),
-    )
-    // Small smiley / badge on shirt
-    drawCircle(Color(0xFFFFD060).copy(alpha = 0.8f),
-               radius = w * 0.022f,
-               center = Offset(pX - torsoHalf * 0.1f, shoulderY + bodyOffsetY + torsoH * 0.40f))
+    // ── Draw order: back limbs → backpack → torso → badge → front limbs ──────
 
-    // ── Arms ──────────────────────────────────────────────────────────────────
-    for (side in 0..1) {
-        val armSwing = if (side == 0) swingR else swingL   // opposite to legs
-        val armX     = pX + (if (side == 0) -torsoHalf else torsoHalf)
-        val armEndX  = armX + armSwing * 0.55f
-        val armEndY  = shoulderY + bodyOffsetY + torsoH * 0.5f + armLen
-
-        drawLine(
-            color       = Color(0xFFF5D5B0),
-            start       = Offset(armX, shoulderY + bodyOffsetY + torsoH * 0.15f),
-            end         = Offset(armEndX, armEndY),
-            strokeWidth = w * 0.038f,
-            cap         = StrokeCap.Round,
-        )
+    if (leftFront) {
+        // back = right leg, left arm
+        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legBack, segStroke)
+        seg(lShX,  shoulderY + byOff, lElbowX, lElbowY, lHandX, lHandY,
+            armColor.copy(alpha = 0.55f), segStroke * 0.82f)
+    } else {
+        // back = left leg, right arm
+        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legBack, segStroke)
+        seg(rShX,  shoulderY + byOff, rElbowX, rElbowY, rHandX, rHandY,
+            armColor.copy(alpha = 0.55f), segStroke * 0.82f)
     }
+
+    // Backpack (behind torso visually)
+    drawRoundRect(Color(0xFF7888A0),
+        topLeft      = Offset(pX + torsoW * 0.28f, shoulderY + byOff + h * TORSO_FRAC * 0.08f),
+        size         = Size(torsoW * 1.10f, h * TORSO_FRAC * 0.75f),
+        cornerRadius = CornerRadius(w * 0.013f))
+
+    // Torso
+    drawRoundRect(Color(0xFFB0C8E8),
+        topLeft      = Offset(pX - torsoW, shoulderY + byOff),
+        size         = Size(torsoW * 2f, h * TORSO_FRAC),
+        cornerRadius = CornerRadius(w * 0.020f))
+
+    // Shirt badge
+    drawCircle(Color(0xFFFFD060).copy(alpha = 0.85f), radius = w * 0.018f,
+        center = Offset(pX - torsoW * 0.10f, shoulderY + byOff + h * TORSO_FRAC * 0.42f))
+
+    // Front limbs
+    if (leftFront) {
+        seg(lHipX, hipY + byOff, lKneeX, lKneeY, lFootX, lFootY, legFront, segStroke)
+        seg(rShX,  shoulderY + byOff, rElbowX, rElbowY, rHandX, rHandY, armColor, segStroke * 0.82f)
+    } else {
+        seg(rHipX, hipY + byOff, rKneeX, rKneeY, rFootX, rFootY, legFront, segStroke)
+        seg(lShX,  shoulderY + byOff, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
+    }
+
+    // Shadow
+    drawOval(Color.Black.copy(alpha = 0.12f),
+        topLeft = Offset(pX - w * 0.052f, groundY - h * 0.007f),
+        size    = Size(w * 0.104f, h * 0.016f))
 }

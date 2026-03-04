@@ -40,9 +40,10 @@ fun diceBearUrl(seed: String): String =
  */
 @Composable
 fun DiceBearAvatar(
-    seed:     String,
-    size:     Dp       = 72.dp,
-    modifier: Modifier = Modifier,
+    seed:                String,
+    size:                Dp       = 72.dp,
+    modifier:            Modifier = Modifier,
+    showLoadingBackground: Boolean = true,
 ) {
     SubcomposeAsyncImage(
         model              = diceBearUrl(seed),
@@ -52,11 +53,13 @@ fun DiceBearAvatar(
             .size(size)
             .clip(CircleShape),
         loading = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
+            if (showLoadingBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
         },
     )
 }
