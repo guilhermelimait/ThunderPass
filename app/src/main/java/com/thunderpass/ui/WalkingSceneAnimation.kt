@@ -112,6 +112,7 @@ fun WalkingSceneCard(
     avatarSeed:     String,
     serviceRunning: Boolean = true,
     cardHeight:     Dp      = 200.dp,
+    fillHeight:     Boolean = false,
 ) {
     val inf = rememberInfiniteTransition(label = "walk_scene")
     val textMeasurer = rememberTextMeasurer()
@@ -185,17 +186,20 @@ fun WalkingSceneCard(
     val showZzz = showBubble
 
     Card(
-        modifier  = Modifier.fillMaxWidth(),
+        modifier  = Modifier
+            .fillMaxWidth()
+            .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.wrapContentHeight()),
         shape     = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(cardHeight),
+                .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.height(cardHeight)),
         ) {
             val cardW      = maxWidth
-            val headDiamDp = cardHeight * (HEAD_R_FRAC * 2f)
+            val cardSizeH  = if (fillHeight) maxHeight else cardHeight
+            val headDiamDp = cardSizeH * (HEAD_R_FRAC * 2f)
             val headHalfDp = headDiamDp / 2f
             val personXDp  = cardW * PERSON_X_FRAC
             val armColor   = remember(avatarSeed) { skinToneForSeed(avatarSeed) }
@@ -224,7 +228,7 @@ fun WalkingSceneCard(
                         x = personXDp - headHalfDp,
                         // Push the DiceBear image down so the visible face
                         // sits flush against the neck (avatars have top padding)
-                        y = cardHeight * HEAD_TOP_FRAC + headDiamDp * 0.12f,
+                        y = cardSizeH * HEAD_TOP_FRAC + headDiamDp * 0.12f,
                     ),
             )
         }
@@ -565,39 +569,39 @@ private fun DrawScope.drawWalker(
     )
 
     // 8. Dream cloud bubble — shown 1 s after fully stopped (no border, white cloud)
+    //    Positioned clearly to the RIGHT of the character, well above and away from the head.
     if (showZzz && textMeasurer != null) {
         val zStyle   = TextStyle(fontSize = 12.sp, color = Color(0xFF222222))
         val measured = textMeasurer.measure("ZzZ", zStyle)
         val tw = measured.size.width.toFloat()
         val th = measured.size.height.toFloat()
 
-        // Cloud anchor: just above and to the right of the head
-        val cloudCX = pX + torsoW * 0.3f + tw * 0.5f
-        val cloudCY = neckTopY - h * 0.06f
-        val cr1 = tw * 0.48f   // main cloud radius
+        // Cloud anchor: clearly to the right of the character (right half of the card)
+        val cloudCX = pX + w * 0.26f          // x ≈ 51 % of card width — well right of head
+        val cloudCY = shoulderY - h * 0.10f   // above the shoulders
+        val cr1     = tw * 0.52f              // main cloud blob radius
 
-        // Draw cloud as overlapping white circles (no border)
         val cc = Color.White
-        // Main body circles
-        drawCircle(cc, radius = cr1,       center = Offset(cloudCX,          cloudCY))
-        drawCircle(cc, radius = cr1 * 0.8f, center = Offset(cloudCX + cr1 * 1.10f, cloudCY + cr1 * 0.15f))
-        drawCircle(cc, radius = cr1 * 0.75f, center = Offset(cloudCX - cr1 * 1.05f, cloudCY + cr1 * 0.20f))
-        drawCircle(cc, radius = cr1 * 0.6f, center = Offset(cloudCX + cr1 * 0.55f,  cloudCY - cr1 * 0.60f))
-        drawCircle(cc, radius = cr1 * 0.55f, center = Offset(cloudCX - cr1 * 0.45f, cloudCY - cr1 * 0.55f))
-        // Bottom fill to make cloud base flat
+        // Main body blobs
+        drawCircle(cc, radius = cr1,          center = Offset(cloudCX,              cloudCY))
+        drawCircle(cc, radius = cr1 * 0.82f,  center = Offset(cloudCX + cr1 * 1.12f, cloudCY + cr1 * 0.12f))
+        drawCircle(cc, radius = cr1 * 0.76f,  center = Offset(cloudCX - cr1 * 1.08f, cloudCY + cr1 * 0.18f))
+        drawCircle(cc, radius = cr1 * 0.62f,  center = Offset(cloudCX + cr1 * 0.52f, cloudCY - cr1 * 0.62f))
+        drawCircle(cc, radius = cr1 * 0.56f,  center = Offset(cloudCX - cr1 * 0.42f, cloudCY - cr1 * 0.58f))
+        // Flat base fill
         drawRect(cc,
-            topLeft = Offset(cloudCX - cr1 * 1.75f, cloudCY),
-            size    = Size(cr1 * 3.9f, cr1 * 1.05f))
-        // Dream trail: three small descending circles toward the head
+            topLeft = Offset(cloudCX - cr1 * 1.80f, cloudCY),
+            size    = Size(cr1 * 4.0f, cr1 * 1.08f))
+        // Dream trail: three circles arcing RIGHT from the head toward the cloud
         val t1R = cr1 * 0.28f
         val t2R = cr1 * 0.19f
-        val t3R = cr1 * 0.11f
-        drawCircle(cc, radius = t1R, center = Offset(pX + torsoW * 0.5f, neckTopY + h * 0.01f))
-        drawCircle(cc, radius = t2R, center = Offset(pX + torsoW * 0.55f, neckTopY - h * 0.015f))
-        drawCircle(cc, radius = t3R, center = Offset(pX + torsoW * 0.5f, neckTopY - h * 0.038f))
+        val t3R = cr1 * 0.12f
+        drawCircle(cc, radius = t1R, center = Offset(pX + torsoW * 2.0f, neckTopY - h * 0.008f))
+        drawCircle(cc, radius = t2R, center = Offset(pX + torsoW * 3.8f, neckTopY - h * 0.030f))
+        drawCircle(cc, radius = t3R, center = Offset(pX + w * 0.18f,     neckTopY - h * 0.058f))
         // ZzZ text centred in cloud
         drawText(textMeasurer, "ZzZ",
-            topLeft = Offset(cloudCX - tw / 2f, cloudCY - th / 2f + cr1 * 0.1f),
+            topLeft = Offset(cloudCX - tw / 2f, cloudCY - th / 2f + cr1 * 0.08f),
             style   = zStyle)
     }
 

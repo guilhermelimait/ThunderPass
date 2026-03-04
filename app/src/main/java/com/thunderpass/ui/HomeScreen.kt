@@ -206,22 +206,21 @@ fun HomeScreenContent(
                             onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
                         )
                     }
-                    JoulesInfoCard()
                 }
             }
         } else {
-            // ── Portrait layout (original) ───────────────────────────────────
+            // ── Portrait layout ───────────────────────────────────────────────
+            // No verticalScroll — animation expands to fill all available height.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp),
             ) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(16.dp))
 
-                // ── Greeting + avatar row
+                // ── Greeting + avatar row ──────────────────────────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     verticalAlignment     = Alignment.CenterVertically,
@@ -234,11 +233,6 @@ fun HomeScreenContent(
                             fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onBackground,
                         )
-                        Text(
-                            text  = if (serviceRunning) "Scanning nearby…" else "Tap to start scanning",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                     DiceBearAvatar(
                         seed     = installationId.ifEmpty { "default" },
@@ -249,20 +243,31 @@ fun HomeScreenContent(
                     )
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
 
-                ThunderPassToggleCard(
-                    active   = serviceRunning,
-                    onToggle = onToggleService,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                // ── Walking scene ──────────────────────────────────────────────
-                WalkingSceneCard(
-                    avatarSeed     = installationId.ifEmpty { "default" },
-                    serviceRunning = serviceRunning,
-                )
+                // ── Animation + toggle overlay — fills all remaining height ────
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    // Animated scene fills the box
+                    WalkingSceneCard(
+                        avatarSeed     = installationId.ifEmpty { "default" },
+                        serviceRunning = serviceRunning,
+                        fillHeight     = true,
+                    )
+                    // Toggle floats at the bottom of the animation, transparent bg
+                    ThunderPassToggleCard(
+                        active      = serviceRunning,
+                        onToggle    = onToggleService,
+                        transparent = true,
+                        modifier    = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                    )
+                }
 
                 Spacer(Modifier.height(12.dp))
 
@@ -273,11 +278,7 @@ fun HomeScreenContent(
                         encounter = lastEnc,
                         onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
                     )
-                    Spacer(Modifier.height(12.dp))
                 }
-
-                // ── Joules explanation ──────────────────────────────────────────
-                JoulesInfoCard()
 
                 Spacer(Modifier.height(16.dp))
             }
@@ -290,14 +291,24 @@ fun HomeScreenContent(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ThunderPassToggleCard(active: Boolean, onToggle: () -> Unit) {
+private fun ThunderPassToggleCard(
+    active:      Boolean,
+    onToggle:    () -> Unit,
+    transparent: Boolean  = false,
+    modifier:    Modifier = Modifier,
+) {
+    val containerColor = when {
+        transparent && active -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.88f)
+        transparent           -> MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
+        active                -> MaterialTheme.colorScheme.primaryContainer
+        else                  -> MaterialTheme.colorScheme.surfaceVariant
+    }
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors   = CardDefaults.cardColors(
-            containerColor = if (active)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
+        modifier  = modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (transparent) 0.dp else 2.dp,
         ),
     ) {
         Row(
@@ -354,10 +365,10 @@ internal fun JoulesInfoCard() {
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             )
             Text(
-                text  = "★ Meet a new Traveler via BLE — 100 J\n" +
-                         "★ Unlock a Badge — 50–200 J\n" +
-                         "★ RetroAchievements activity — up to 500 J\n" +
-                         "★ Streak bonuses for daily Sparks",
+                text  = "⚡ Meet a new Traveler via BLE — 100 J\n" +
+                         "⚡ Unlock a Badge — 50–200 J\n" +
+                         "⚡ RetroAchievements activity — up to 500 J\n" +
+                         "⚡ Streak bonuses for daily Sparks",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
