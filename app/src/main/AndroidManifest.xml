@@ -112,5 +112,20 @@
                 android:resource="@xml/encounter_widget_info" />
         </receiver>
 
+        <!--
+            ThunderPassWidget: Glance-based 2×1 toggle widget.
+            Shows service ON/OFF status with a tap-to-toggle button.
+        -->
+        <receiver
+            android:name=".widget.ThunderPassWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/thunderpass_widget_info" />
+        </receiver>
+
     </application>
 </manifest>
