@@ -19,8 +19,13 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.*
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,6 +113,7 @@ fun WalkingSceneCard(
     cardHeight:     Dp      = 200.dp,
 ) {
     val inf = rememberInfiniteTransition(label = "walk_scene")
+    val textMeasurer = rememberTextMeasurer()
 
     // Infinite animations always tick — never paused
     val scrollFracLive by inf.animateFloat(
@@ -132,9 +138,32 @@ fun WalkingSceneCard(
                     scrollFrac = s
                     walkPhase  = p
                 }
-                // when !running: scrollFrac/walkPhase hold the last live values → frozen pose
             }
     }
+
+    // Wind-down: when service stops, animate pose smoothly to rest (swing = 0)
+    val windDownAnim = remember { Animatable(0f) }
+    var windingDown  by remember { mutableStateOf(false) }
+    LaunchedEffect(serviceRunning) {
+        if (!serviceRunning) {
+            windingDown = true
+            windDownAnim.snapTo(walkPhase)           // start from frozen pose
+            windDownAnim.animateTo(
+                targetValue   = 0f,
+                animationSpec = tween(700, easing = FastOutSlowInEasing),
+            )
+            windingDown = false
+        }
+    }
+
+    // Effective phase: live when running, animated wind-down, then rest
+    val effectiveWalkPhase = when {
+        serviceRunning -> walkPhase
+        windingDown    -> windDownAnim.value
+        else           -> 0f
+    }
+    // Show ZzZ bubble only after fully stopped
+    val showZzz = !serviceRunning && !windingDown
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -161,7 +190,7 @@ fun WalkingSceneCard(
 
             // 2 ── Walking body (no head)
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawWalker(walkPhase, serviceRunning, armColor)
+                drawWalker(effectiveWalkPhase, serviceRunning, armColor, showZzz, textMeasurer)
             }
 
             // 3 ── DiceBear head — bobs with body, transparent background
@@ -389,7 +418,13 @@ private fun DrawScope.drawSpaceNear(l: Float, w: Float, h: Float, gY: Float, pal
 //   7. Front arm (always topmost)
 // Head is a Compose layer above Canvas.
 
-private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: Color) {
+private fun DrawScope.drawWalker(
+    walkPhase: Float,
+    running: Boolean,
+    armColor: Color,
+    showZzz: Boolean = false,
+    textMeasurer: TextMeasurer? = null,
+) {
     val w = size.width
     val h = size.height
 
@@ -413,9 +448,10 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
     val bodyHeight = h * TORSO_FRAC * 1.50f
 
     // Colors
-    val legColor   = Color(0xFF7878B0)   // pants + both legs
     val shirtColor = Color(0xFFB0C8E8)   // upper body
-    // Back arm: same skin tone, ~25% dimmer — noticeable but not very dark
+    val legColorFront = Color(0xFF7878B0)   // front (left) leg — normal
+    val legColorBack  = Color(0xFF4B4B80)   // back (right) leg — clearly darker
+    // Back arm: same skin tone, ~25% dimmer
     val armBackC   = Color(
         red   = armColor.red   * 0.78f,
         green = armColor.green * 0.78f,
@@ -433,8 +469,9 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
     val rKneeX = rHipX + swingB * h * 0.038f; val rKneeY = hipY + thighLen
     val rFootX = rHipX + swingB * h * 0.075f; val rFootY = groundY
 
-    // Neck bottom — arms attach just below where the neck ends
-    val neckBottomY = shoulderY - h * 0.042f + h * 0.048f   // = shoulderY + h*0.006f
+    // Neck bottom — arms attach visibly below the neck rect
+    val neckTopY    = shoulderY - h * 0.042f
+    val neckBottomY = neckTopY + h * 0.048f + h * 0.015f    // extra gap so arm is clearly below
 
     // Arm endpoints — origin at neck bottom
     val lElbowX = lShX + swingB * h * 0.028f; val lElbowY = neckBottomY + uArmLen
@@ -450,8 +487,8 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
         drawCircle(color, radius = sw * 0.50f, center = Offset(x1, y1))
     }
 
-    // 1. Right leg — always behind (same side as back arm)
-    seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColor, segStroke)
+    // 1. Right leg — always behind, darker shade
+    seg(rHipX, hipY, rKneeX, rKneeY, rFootX, rFootY, legColorBack, segStroke)
 
     // 2. Back arm — anchored at neck bottom, screen-right, always behind body
     seg(rShX, neckBottomY, rElbowX, rElbowY, rHandX, rHandY, armBackC, segStroke * 0.82f)
@@ -466,34 +503,77 @@ private fun DrawScope.drawWalker(walkPhase: Float, running: Boolean, armColor: C
     )
 
     // 4. Body — hard split: top half shirt colour, bottom half pants colour (no blend)
+    //    Top corners rounded, bottom corners square (shirt-to-pants join at waist)
     val bodyBrush = Brush.verticalGradient(
         colorStops = arrayOf(
             0.0f to shirtColor,
             0.5f to shirtColor,
-            0.5f to legColor,
-            1.0f to legColor,
+            0.5f to legColorFront,
+            1.0f to legColorFront,
         ),
         startY = bodyTopY,
         endY   = bodyTopY + bodyHeight,
     )
-    drawRoundRect(
-        brush        = bodyBrush,
-        topLeft      = Offset(pX - torsoW, bodyTopY),
-        size         = Size(torsoW * 2f, bodyHeight),
-        cornerRadius = CornerRadius(torsoW),
-    )
+    val bodyLeft  = pX - torsoW
+    val bodyRight = pX + torsoW
+    val bodyBot   = bodyTopY + bodyHeight
+    val cr        = torsoW              // only top corners get this radius
+    val bodyPath  = Path().apply {
+        moveTo(bodyLeft + cr, bodyTopY)
+        lineTo(bodyRight - cr, bodyTopY)
+        quadraticBezierTo(bodyRight, bodyTopY, bodyRight, bodyTopY + cr)
+        lineTo(bodyRight, bodyBot)      // bottom-right: square
+        lineTo(bodyLeft, bodyBot)       // bottom edge
+        lineTo(bodyLeft, bodyTopY + cr) // bottom-left: square
+        quadraticBezierTo(bodyLeft, bodyTopY, bodyLeft + cr, bodyTopY)
+        close()
+    }
+    drawPath(bodyPath, brush = bodyBrush)
 
     // 5. Left leg — always in front, drawn over body
-    seg(lHipX, hipY, lKneeX, lKneeY, lFootX, lFootY, legColor, segStroke)
+    seg(lHipX, hipY, lKneeX, lKneeY, lFootX, lFootY, legColorFront, segStroke)
 
     // 6. Neck — tall enough to cover any gap between head image and body top
     val neckW = torsoW * 0.65f
     drawRoundRect(
         color        = armColor,
-        topLeft      = Offset(pX - neckW / 2f, shoulderY - h * 0.042f),
+        topLeft      = Offset(pX - neckW / 2f, neckTopY),
         size         = Size(neckW, h * 0.048f),
         cornerRadius = CornerRadius(neckW / 2f),
     )
+
+    // 8. ZzZ sleep bubble — shown only when fully stopped
+    if (showZzz && textMeasurer != null) {
+        val zStyle   = TextStyle(fontSize = 13.sp, color = Color(0xFF888888))
+        val measured = textMeasurer.measure("ZzZ", zStyle)
+        val pad      = w * 0.018f
+        val bW       = measured.size.width  + pad * 2f
+        val bH       = measured.size.height + pad * 1.2f
+        val tailH    = h * 0.025f
+        val bLeft    = pX + torsoW * 0.4f
+        val bTop     = neckTopY - bH - tailH - h * 0.005f
+        // bubble background
+        drawRoundRect(Color.White,
+            topLeft      = Offset(bLeft, bTop),
+            size         = Size(bW, bH),
+            cornerRadius = CornerRadius(bH / 2f))
+        drawRoundRect(Color(0xFFCCCCCC),
+            topLeft      = Offset(bLeft, bTop),
+            size         = Size(bW, bH),
+            cornerRadius = CornerRadius(bH / 2f),
+            style        = Stroke(width = w * 0.004f))
+        // tail triangle pointing down-left toward head
+        val tailPath = Path().apply {
+            moveTo(bLeft + bW * 0.25f, bTop + bH)
+            lineTo(bLeft + bW * 0.10f, bTop + bH + tailH)
+            lineTo(bLeft + bW * 0.45f, bTop + bH)
+            close()
+        }
+        drawPath(tailPath, Color.White)
+        drawPath(tailPath, Color(0xFFCCCCCC), style = Stroke(width = w * 0.004f))
+        // text
+        drawText(textMeasurer, "ZzZ", topLeft = Offset(bLeft + pad, bTop + pad * 0.6f), style = zStyle)
+    }
 
     // 7. Front arm — anchored at neck bottom, always topmost
     seg(lShX, neckBottomY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
