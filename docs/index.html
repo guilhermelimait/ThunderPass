@@ -39,10 +39,30 @@
     .ghost-card .score{color:var(--yellow);font-size:.9rem}
     .share-link{word-break:break-all;color:var(--yellow);font-size:.8rem}
     .sync-time{color:var(--muted);font-size:.75rem;margin-top:6px}
+    .email-section{width:100%;max-width:480px;margin-bottom:36px;background:var(--surface);border-radius:var(--radius);padding:24px;border:1px solid #2a2a2a}
+    .email-section h2{font-size:1.1rem;font-weight:700;color:var(--yellow);margin-bottom:6px}
+    .email-section p{color:var(--muted);font-size:.85rem;margin-bottom:16px}
+    .email-row{display:flex;gap:8px}
+    .email-row input{flex:1;padding:12px 16px;border-radius:var(--radius);border:1px solid #333;background:var(--bg);color:var(--text);font-size:.95rem;outline:none}
+    .email-row input:focus{border-color:var(--yellow)}
+    .email-row button{padding:12px 20px;border-radius:var(--radius);border:none;background:var(--yellow);color:#000;font-weight:700;cursor:pointer;font-size:.95rem;white-space:nowrap}
+    .email-row button:disabled{opacity:.5;cursor:not-allowed}
+    #emailStatus{font-size:.85rem;margin-top:10px;min-height:1.2em}
+    #emailStatus.ok{color:#4caf50}
+    #emailStatus.err{color:#f44336}
   </style>
 </head>
 <body>
 <header><div class="bolt">&#9889;</div><h1>ThunderPass</h1><p>Look up a player profile by their Installation ID</p></header>
+<div class="email-section">
+  <h2>&#128274; Stay in the Loop</h2>
+  <p>Get notified about ThunderPass updates, new features, and early access.</p>
+  <div class="email-row">
+    <input id="emailInput" type="email" placeholder="your@email.com" />
+    <button id="emailBtn" onclick="subscribeEmail()">Notify me</button>
+  </div>
+  <div id="emailStatus"></div>
+</div>
 <div class="search-row">
   <input id="idInput" type="text" placeholder="Paste installation ID..." />
   <button onclick="lookup()">Look up</button>
@@ -78,6 +98,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   const id=new URLSearchParams(window.location.search).get('id');
   if(id){document.getElementById('idInput').value=id;lookup();}
   document.getElementById('idInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookup();});
+  document.getElementById('emailInput').addEventListener('keydown',e=>{if(e.key==='Enter')subscribeEmail();});
 });
 async function lookup(){
   const id=document.getElementById('idInput').value.trim();
@@ -113,6 +134,20 @@ function renderCard(p){
 function setStatus(m){document.getElementById('status').textContent=m;}
 function showCard(){document.getElementById('card').style.display='';}
 function hideCard(){document.getElementById('card').style.display='none';}
+async function subscribeEmail(){
+  const input=document.getElementById('emailInput');
+  const btn=document.getElementById('emailBtn');
+  const statusEl=document.getElementById('emailStatus');
+  const email=input.value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){statusEl.className='err';statusEl.textContent='Please enter a valid email address.';return;}
+  btn.disabled=true;statusEl.className='';statusEl.textContent='Submitting…';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/email_subscribers`,{method:'POST',headers:{'apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({email})});
+    if(res.ok){statusEl.className='ok';statusEl.textContent='✓ You\'re on the list! We\'ll keep you posted.';input.value='';btn.disabled=false;}
+    else if(res.status===409){statusEl.className='ok';statusEl.textContent='✓ You\'re already subscribed!';btn.disabled=false;}
+    else{console.error('Email subscribe failed:',res.status,await res.text());throw new Error('Something went wrong. Please try again later.');}
+  }catch(e){statusEl.className='err';statusEl.textContent='Error: '+e.message;btn.disabled=false;}
+}
 </script>
 </body>
 </html>
