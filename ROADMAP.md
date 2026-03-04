@@ -93,7 +93,7 @@ gold - badge 7 - name legendary
 [ ] Battery Optimization Bypass: Add a UI prompt to whitelist ThunderPass from Android's "Doze" mode.
 
 
-1- make another button on the first area, about is the name, on it, add the link to my kofi and make it clear that it was made with love, https://ko-fi.com/guilhermelimait/
+1- make another button on the first area, about is the name, on it, add the link to my kofi and make it clear that it was made with love, https://ko-fi.com/guilhermelimait/, add my avatar picture on it, show my bio on it, create an area for issues so users can go to github and assign a github issue.
 
 2- make all buttons like :
 passes: a thunder, since it is the idea of the project
@@ -107,9 +107,10 @@ about: a coffee mug
 
 4- i have two devices connected to the pc and both with bluetooth enabled but they did not encounter each other, please make sure that bluetooth is enabled at beggining and that we can manage it from the app, permissions requested if needed. Make also a Hardware Capability Check: - [ ] Add packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE) check. Add BluetoothAdapter.isMultipleAdvertisementSupported() check (Critical for AYN/Retroid background syncing). Battery Optimization Bypass: Add a UI prompt to whitelist ThunderPass from Android's "Doze" mode. if the thunderpass is working, please make me see the information of the user on the passes area and on the start screen
 
-
 5- make the categories area smaller, square shapes to see all of them if on landscape mode, and large if on portrait mode, same for the badges if im on each category seeing my badges. From categories view, remove the best idea, i didnt like it at all
 
 6- shop, make the dormant card on the left if on portrait mode with the explanation of how to collect points on the right. Please check if i have badges and add the points to it
 
 7- settings, keep the app always open if the thunderpass is active, if there is a new version on the app, show it on the updates area, so teh app can download and apply it OTA, add an option to disable the background music of the app. the song is on the root folder of the app and it is called thunderpass-bg.mp3, play it by default when the app opens, except if the user disabled it, then dont play during the app opening.
+
+8- on profile, remove this badges as they are now, show only my badges achieved on an a gallery that goes from left to right as squares and showing the ones ive achieved, if i have more than the space, make a gallery that goes beyond the right edge of the screen so user can slide through then make the more exotic ones first, the simple ones as last, remove the volt badge under the joules area, as it is a duplicated information, it doesnt help in anything, remove the legenda of the badges as well, as they will be the same as the ones ive achieved, the colors will be already presnted on it. instead of installation id, cant i share my userid based on the name of the user? except if private, add that information so i can hide my info if i pass by someone, it should show as private user once i pass by it.
