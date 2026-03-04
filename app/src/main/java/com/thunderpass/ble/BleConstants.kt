@@ -91,6 +91,6 @@ object BleConstants {
     /** Foreground service notification ID. */
     const val NOTIF_ID = 1001
 
-    /** Notification channel ID for encounter alerts. */
-    const val ENCOUNTER_CHANNEL_ID = "thunderpass_encounter"
+    /** Notification channel ID for encounter alerts. v2 = added LED light settings. */
+    const val ENCOUNTER_CHANNEL_ID = "thunderpass_encounter_v2"
 }

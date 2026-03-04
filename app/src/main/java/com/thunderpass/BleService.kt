@@ -394,7 +394,7 @@ class BleService : Service() {
                 setShowBadge(false)
             }
         )
-        // Encounter alert channel (heads-up)
+        // Encounter alert channel (heads-up) — v2: yellow LED blink
         nm.createNotificationChannel(
             NotificationChannel(
                 BleConstants.ENCOUNTER_CHANNEL_ID,
@@ -404,7 +404,7 @@ class BleService : Service() {
                 description = "Alerts when a new traveler is discovered nearby"
                 setShowBadge(true)
                 enableLights(true)
-                lightColor = android.graphics.Color.argb(255, 80, 200, 255) // electric blue
+                lightColor = android.graphics.Color.YELLOW
             }
         )
     }
@@ -424,6 +424,7 @@ class BleService : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
             .setAutoCancel(true)
+            .setLights(android.graphics.Color.YELLOW, 300, 200)
             .build()
         getSystemService(NotificationManager::class.java)
             .notify(BleConstants.NOTIF_ID + 1, notif)
@@ -449,6 +450,7 @@ class BleService : Service() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(tapIntent)
             .setAutoCancel(true)
+            .setLights(android.graphics.Color.YELLOW, 300, 200)
             .build()
         getSystemService(NotificationManager::class.java)
             .notify(BleConstants.NOTIF_ID + 1, notif)
