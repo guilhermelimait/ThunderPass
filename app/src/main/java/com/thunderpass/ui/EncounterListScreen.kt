@@ -27,10 +27,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EncounterListScreen(
-    onBack:              () -> Unit,
-    onNavigateToHome:    () -> Unit = onBack,
-    onNavigateToProfile: () -> Unit = {},
-    onNavigateToDetail:  (Long) -> Unit = {},
+    onNavigateToDetail: (Long) -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val encounters by vm.encounters.collectAsState()
@@ -39,37 +36,10 @@ fun EncounterListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Encounters") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = false,
-                    onClick  = onNavigateToHome,
-                    icon     = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                    label    = { Text("Home") },
-                )
-                NavigationBarItem(
-                    selected = true,
-                    onClick  = { /* already here */ },
-                    icon     = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Encounters") },
-                    label    = { Text("Encounters") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick  = onNavigateToProfile,
-                    icon     = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                    label    = { Text("Profile") },
-                )
-            }
         },
     ) { padding ->
         if (encounters.isEmpty()) {

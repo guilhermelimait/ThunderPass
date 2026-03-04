@@ -44,11 +44,7 @@ private val BLE_PERMISSIONS = arrayOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToEncounters: () -> Unit,
-    onNavigateToProfile: () -> Unit,
     onNavigateToDetail: (Long) -> Unit = {},
-    onNavigateToShop: () -> Unit = {},
-    onNavigateToStickerBook: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
     val context        = LocalContext.current
@@ -89,34 +85,6 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick  = { /* already on Home */ },
-                    icon     = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                    label    = { Text("Home") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick  = onNavigateToEncounters,
-                    icon     = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Encounters") },
-                    label    = { Text("Encounters") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick  = onNavigateToProfile,
-                    icon     = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                    label    = { Text("Profile") },
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick  = onNavigateToShop,
-                    icon     = { Icon(Icons.Filled.ShoppingCart, contentDescription = "Shop") },
-                    label    = { Text("Shop") },
-                )
-            }
-        }
     ) { innerPadding ->
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -170,52 +138,14 @@ fun HomeScreen(
                         DiceBearAvatar(
                             seed     = installationId.ifEmpty { "default" },
                             size     = 40.dp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { onNavigateToProfile() },
+                            modifier = Modifier.clip(CircleShape),
                         )
                     }
-                    // Pill toggle
-                    PillToggle(
-                        active       = serviceRunning,
-                        onActivate   = { vm.startService() },
-                        onDeactivate = { vm.stopService() },
+                    // ThunderPass ON/OFF toggle
+                    ThunderPassToggleCard(
+                        active   = serviceRunning,
+                        onToggle = { if (serviceRunning) vm.stopService() else vm.startService() },
                     )
-                    // Safe Zone
-                    FilterChip(
-                        selected = safeZoneActive,
-                        onClick  = { vm.setSafeZone(!safeZoneActive) },
-                        label    = {
-                            Text(
-                                if (safeZoneActive) "\uD83D\uDEE1\uFE0F Safe Zone — BLE paused"
-                                else "\uD83D\uDEE1\uFE0F Safe Zone"
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    // Battery mode
-                    Text(
-                        text  = "Battery Mode",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                            selected = scanMode == ScanMode.OFF,
-                            onClick  = { vm.setScanMode(ScanMode.OFF) },
-                        ) { Text("Off 🌙") }
-                        SegmentedButton(
-                            shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                            selected = scanMode == ScanMode.BALANCED,
-                            onClick  = { vm.setScanMode(ScanMode.BALANCED) },
-                        ) { Text("Balanced ⚡") }
-                        SegmentedButton(
-                            shape    = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                            selected = scanMode == ScanMode.AGGRESSIVE,
-                            onClick  = { vm.setScanMode(ScanMode.AGGRESSIVE) },
-                        ) { Text("Aggressive 🔥") }
-                    }
                 }
 
                 VerticalDivider(
@@ -237,18 +167,7 @@ fun HomeScreen(
                 ) {
                     // Stats
                     EnergyCard(joulesTotal = joulesTotal)
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
-                        StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
-                        StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
-                    }
-                    OutlinedButton(
-                        onClick  = onNavigateToStickerBook,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("🃴 Sticker Book · ${ownedStickers.size} collected") }
+                    JoulesInfoCard()
                     // Encounters
                     Text(
                         text       = "Recent Encounters",
@@ -334,32 +253,15 @@ fun HomeScreen(
                     DiceBearAvatar(
                         seed     = installationId.ifEmpty { "default" },
                         size     = 52.dp,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { onNavigateToProfile() },
+                        modifier = Modifier.clip(CircleShape),
                     )
                 }
 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(20.dp))
 
-                PillToggle(
-                    active       = serviceRunning,
-                    onActivate   = { vm.startService() },
-                    onDeactivate = { vm.stopService() },
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                FilterChip(
-                    selected = safeZoneActive,
-                    onClick  = { vm.setSafeZone(!safeZoneActive) },
-                    label    = {
-                        Text(
-                            if (safeZoneActive) "\uD83D\uDEE1\uFE0F Safe Zone — BLE paused"
-                            else "\uD83D\uDEE1\uFE0F Safe Zone"
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                ThunderPassToggleCard(
+                    active   = serviceRunning,
+                    onToggle = { if (serviceRunning) vm.stopService() else vm.startService() },
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -419,46 +321,7 @@ fun HomeScreen(
 
                 EnergyCard(joulesTotal = joulesTotal)
 
-                Spacer(Modifier.height(4.dp))
-
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StatCard(modifier = Modifier.weight(1f), label = "Total",     value = encounterCount.toString())
-                    StatCard(modifier = Modifier.weight(1f), label = "Today",     value = todayCount.toString())
-                    StatCard(modifier = Modifier.weight(1f), label = "Streak 🔥", value = if (encounterStreak > 0) "${encounterStreak}d" else "—")
-                }
-                OutlinedButton(
-                    onClick  = onNavigateToStickerBook,
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("🃴 Sticker Book · ${ownedStickers.size} collected") }
-
-                Spacer(Modifier.height(24.dp))
-
-                Text(
-                    text  = "Battery Mode",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        shape    = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        selected = scanMode == ScanMode.OFF,
-                        onClick  = { vm.setScanMode(ScanMode.OFF) },
-                    ) { Text("Off 🌙") }
-                    SegmentedButton(
-                        shape    = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                        selected = scanMode == ScanMode.BALANCED,
-                        onClick  = { vm.setScanMode(ScanMode.BALANCED) },
-                    ) { Text("Balanced ⚡") }
-                    SegmentedButton(
-                        shape    = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                        selected = scanMode == ScanMode.AGGRESSIVE,
-                        onClick  = { vm.setScanMode(ScanMode.AGGRESSIVE) },
-                    ) { Text("Aggressive 🔥") }
-                }
+                JoulesInfoCard()
 
                 Spacer(Modifier.height(16.dp))
             }
@@ -467,94 +330,80 @@ fun HomeScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pill toggle (Scanning / Idle)
+// ThunderPass ON/OFF toggle card
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PillToggle(
-    active: Boolean,
-    onActivate: () -> Unit,
-    onDeactivate: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+private fun ThunderPassToggleCard(active: Boolean, onToggle: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(
+            containerColor = if (active)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
     ) {
-        // "Scanning" segment
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(50))
-                .background(
-                    if (active) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant
-                )
-                .clickable { if (!active) onActivate() },
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier              = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(
-                text       = "⚡ Scanning",
-                fontWeight = FontWeight.SemiBold,
-                color      = if (active) MaterialTheme.colorScheme.onPrimaryContainer
-                             else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        // "Idle" segment
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(50))
-                .background(
-                    if (!active) MaterialTheme.colorScheme.secondaryContainer
-                    else MaterialTheme.colorScheme.surfaceVariant
+            Column {
+                Text(
+                    text       = "⚡ ThunderPass",
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color      = if (active)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                .clickable { if (active) onDeactivate() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text       = "Idle",
-                fontWeight = FontWeight.SemiBold,
-                color      = if (!active) MaterialTheme.colorScheme.onSecondaryContainer
-                             else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Text(
+                    text  = if (active) "Active — watching for Travelers" else "Tap to activate",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (active)
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                )
+            }
+            Switch(checked = active, onCheckedChange = { onToggle() })
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stat card
+// Joules info card
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StatCard(modifier: Modifier = Modifier, label: String, value: String) {
+private fun JoulesInfoCard() {
     Card(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         colors   = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
         ),
     ) {
         Column(
-            modifier            = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier            = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text       = value,
-                style      = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.onSurface,
+                text       = "HOW TO EARN JOULES",
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.primary,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             )
             Text(
-                text      = label,
-                style     = MaterialTheme.typography.labelMedium,
-                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+                text  = "★ Meet a new Traveler via BLE — 100 J\n" +
+                         "★ Unlock a Badge — 50–200 J\n" +
+                         "★ RetroAchievements activity — up to 500 J\n" +
+                         "★ Streak bonuses for daily Sparks",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

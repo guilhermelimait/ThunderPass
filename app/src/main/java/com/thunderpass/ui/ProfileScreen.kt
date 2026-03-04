@@ -22,10 +22,7 @@ import com.thunderpass.retro.RetroAuthManager
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onBack:              () -> Unit,
-    onNavigateToHome:    () -> Unit = onBack,
-    onNavigateToEncounters: () -> Unit = {},
-    firstRun:            Boolean      = false,
+    firstRun:            Boolean       = false,
     onComplete:          (() -> Unit)? = null,
     vm: ProfileViewModel = viewModel(),
 ) {
@@ -46,41 +43,10 @@ fun ProfileScreen(
         topBar = {
             TopAppBar(
                 title = { Text(if (firstRun) "Set Up Profile" else "My Profile") },
-                navigationIcon = {
-                    if (!firstRun) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 )
             )
-        },
-        bottomBar = {
-            if (!firstRun) {
-                NavigationBar {
-                    NavigationBarItem(
-                        selected = false,
-                        onClick  = onNavigateToHome,
-                        icon     = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-                        label    = { Text("Home") },
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick  = onNavigateToEncounters,
-                        icon     = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Encounters") },
-                        label    = { Text("Encounters") },
-                    )
-                    NavigationBarItem(
-                        selected = true,
-                        onClick  = { /* already here */ },
-                        icon     = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                        label    = { Text("Profile") },
-                    )
-                }
-            }
         },
     ) { padding ->
         Column(
