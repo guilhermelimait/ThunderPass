@@ -103,10 +103,10 @@
 - [x] Create badges/badges.csv — columns: id, category, name, description, how_to_achieve, tier, colour.
 
 ### 5.9 Shop
-- [ ] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
+- [x] Portrait layout: Joules balance card on the left, earn-points explanation on the right.
 - [x] On boot: recalculate Joules from encounter count (100 J per unique Spark) and award any missing points.
 - [x] Keep existing unlockable effects (CRT Scanlines, Pixelated Aura, Thunder Trail).
-- [ ] Joules explanation panel: what they are and how to earn them.
+- [x] Joules explanation panel: what they are and how to earn them.
 
 ### 5.10 Settings
 - [x] Move Safe Zones and Battery Mode here (under Advanced, collapsed by default).
@@ -131,6 +131,8 @@
 ---
 
 ## Milestone 6 — Platform (future)
-- [ ] Public "payload provider" API / SDK for other apps
 - [ ] Versioned protocol extensions
 - [ ] Power Surge Events: Location-based 2x Energy multipliers
+- [ ] keep an unique user recognized if devices are nearby, to avoid creating volts to users that are together
+= [ ] change the name of joules to volts and replace it everywhere on the app, documentation and site
+- [ ] 

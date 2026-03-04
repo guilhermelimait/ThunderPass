@@ -5,6 +5,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,10 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,7 +31,6 @@ fun ShopScreen(
     val joulesTotal    by vm.joulesTotal.collectAsState()
     val unlockedEffects by vm.unlockedEffects.collectAsState()
     val encounters      by vm.encounters.collectAsState()
-    val installationId  by vm.installationId.collectAsState()
     var confirmEffect  by remember { mutableStateOf<ShopItem?>(null) }
     var toastMessage   by remember { mutableStateOf<String?>(null) }
 
@@ -58,11 +60,20 @@ fun ShopScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Energy card (moved from Home) ────────────────────────────────
-            EnergyCard(joulesTotal = joulesTotal)
-
-            // ── How to earn Joules (moved from Home) ─────────────────────────
-            JoulesInfoCard()
+            // ── Portrait header: balance card (left) + explanation (right) ───
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment     = Alignment.Top,
+            ) {
+                JoulesBalanceCard(
+                    joulesTotal = joulesTotal,
+                    modifier    = Modifier.weight(0.42f),
+                )
+                JoulesExplanationCard(
+                    modifier = Modifier.weight(0.58f),
+                )
+            }
 
             // ── Recent encounters (moved from Home) ───────────────────────────
             if (encounters.isNotEmpty()) {
@@ -238,6 +249,96 @@ private fun ShopItemCard(
                     Text("Buy")
                 }
             }
+        }
+    }
+}
+
+// ── Compact Joules balance card (left column in portrait header) ─────────────
+@Composable
+private fun JoulesBalanceCard(
+    joulesTotal: Long,
+    modifier: Modifier = Modifier,
+) {
+    val level  = voltLevelFor(joulesTotal)
+    val accent = level.color
+
+    Card(
+        modifier = modifier,
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier            = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text     = "⚡",
+                fontSize = 36.sp,
+            )
+            Text(
+                text       = "%,d J".format(joulesTotal),
+                style      = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color      = accent,
+                textAlign  = TextAlign.Center,
+            )
+            Text(
+                text      = level.name,
+                style     = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+// ── Joules explanation card (right column in portrait header) ────────────────
+@Composable
+private fun JoulesExplanationCard(
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier            = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text       = "WHAT ARE JOULES?",
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.primary,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text  = "Joules are your ThunderPass energy — earned by exploring and meeting other players. Spend them here to unlock visual effects on your Spark Card.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text       = "HOW TO EARN",
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.primary,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text  = "\u26A1 New Traveler met \u2014 100 J\n" +
+                        "\u26A1 Badge unlocked \u2014 50\u2013200 J\n" +
+                        "\u26A1 RetroAchievements \u2014 up to 500 J\n" +
+                        "\u26A1 Daily Spark streaks",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
