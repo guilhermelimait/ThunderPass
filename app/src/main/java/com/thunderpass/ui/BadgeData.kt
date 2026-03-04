@@ -7,28 +7,24 @@ import androidx.compose.ui.graphics.Color
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── 7-tier rarity system ──────────────────────────────────────────────────────
-// Tier 0 → Locked (Gray)
-// Tier 1 → Common I   (Green)
-// Tier 2 → Common II  (Green, brighter)
-// Tier 3 → Uncommon I (Blue)
-// Tier 4 → Uncommon II(Blue, brighter)
-// Tier 5 → Rare       (Purple)
-// Tier 6 → Legendary  (Orange)
-// Tier 7 → Exotic     (Yellow/Gold)
-val TIER_LOCKED      = Color(0xFF616161)
-val TIER_COMMON_1    = Color(0xFF388E3C)
-val TIER_COMMON_2    = Color(0xFF66BB6A)
-val TIER_UNCOMMON_1  = Color(0xFF1565C0)
-val TIER_UNCOMMON_2  = Color(0xFF42A5F5)
-val TIER_RARE        = Color(0xFF7B1FA2)
-val TIER_LEGENDARY   = Color(0xFFE65100)
-val TIER_EXOTIC      = Color(0xFFFFD600)
+// Tier 0 → Locked      (Gray)
+// Tier 1 → Common      (Bright Green)  ─┬─ same color
+// Tier 2 → Common      (Bright Green)  ─┘
+// Tier 3 → Uncommon    (Bright Blue)   ─┬─ same color
+// Tier 4 → Uncommon    (Bright Blue)   ─┘
+// Tier 5 → Rare        (Bright Purple)
+// Tier 6 → Legendary   (Bright Orange)
+// Tier 7 → Exotic      (Bright Gold)
+val TIER_LOCKED    = Color(0xFF757575)
+val TIER_COMMON    = Color(0xFF4CAF50)   // vivid green
+val TIER_UNCOMMON  = Color(0xFF29B6F6)   // vivid sky-blue
+val TIER_RARE      = Color(0xFFCE93D8)   // vivid lavender-purple
+val TIER_LEGENDARY = Color(0xFFFF7043)   // vivid deep-orange
+val TIER_EXOTIC    = Color(0xFFFFEA00)   // vivid yellow-gold
 
 fun tierColor(tier: Int) = when (tier) {
-    1    -> TIER_COMMON_1
-    2    -> TIER_COMMON_2
-    3    -> TIER_UNCOMMON_1
-    4    -> TIER_UNCOMMON_2
+    1, 2 -> TIER_COMMON
+    3, 4 -> TIER_UNCOMMON
     5    -> TIER_RARE
     6    -> TIER_LEGENDARY
     7    -> TIER_EXOTIC
@@ -36,10 +32,8 @@ fun tierColor(tier: Int) = when (tier) {
 }
 
 fun tierLabel(tier: Int) = when (tier) {
-    1    -> "COMMON"
-    2    -> "COMMON II"
-    3    -> "UNCOMMON"
-    4    -> "UNCOMMON II"
+    1, 2 -> "COMMON"
+    3, 4 -> "UNCOMMON"
     5    -> "RARE"
     6    -> "LEGENDARY"
     7    -> "EXOTIC"

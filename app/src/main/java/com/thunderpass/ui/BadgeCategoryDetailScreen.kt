@@ -85,9 +85,9 @@ fun BadgeCategoryDetailScreen(
                 val legendItems = listOf(
                     0 to "Locked",
                     1 to "Common",
-                    2 to "Common II",
+                    2 to "Common",
                     3 to "Uncommon",
-                    4 to "Uncommon II",
+                    4 to "Uncommon",
                     5 to "Rare",
                     6 to "Legendary",
                     7 to "Exotic",
