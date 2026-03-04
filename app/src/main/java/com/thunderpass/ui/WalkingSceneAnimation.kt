@@ -445,7 +445,7 @@ private fun DrawScope.drawWalker(
 
     // Body: top at shoulderY = head bottom → seamlessly connected
     val bodyTopY   = shoulderY
-    val bodyHeight = h * TORSO_FRAC * 1.50f
+    val bodyHeight = h * TORSO_FRAC * 1.20f
 
     // Colors
     val shirtColor = Color(0xFFB0C8E8)   // upper body
@@ -577,4 +577,20 @@ private fun DrawScope.drawWalker(
 
     // 7. Front arm — anchored at neck bottom, always topmost
     seg(lShX, neckBottomY, lElbowX, lElbowY, lHandX, lHandY, armColor, segStroke * 0.82f)
+
+    // 8. Wrist device — small rounded smartwatch on the left (front) hand
+    val devW  = segStroke * 1.6f   // slightly wider than the arm stroke
+    val devH  = segStroke * 2.2f
+    val devTL = Offset(lHandX - devW / 2f, lHandY - devH / 2f)
+    val devSz = Size(devW, devH)
+    val devCR = CornerRadius(devW * 0.28f)
+    drawRoundRect(Color(0xFF2a2a2a), topLeft = devTL, size = devSz, cornerRadius = devCR)
+    // small screen highlight inside the device
+    val scrPad = devW * 0.15f
+    drawRoundRect(
+        Color(0xFF5BC8F5),
+        topLeft      = Offset(devTL.x + scrPad, devTL.y + scrPad),
+        size         = Size(devW - scrPad * 2f, devH - scrPad * 2f),
+        cornerRadius = CornerRadius(devW * 0.15f),
+    )
 }
