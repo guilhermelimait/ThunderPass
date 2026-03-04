@@ -33,6 +33,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thunderpass.ble.ScanMode
 import java.util.Calendar
+import androidx.compose.ui.tooling.preview.Preview
+import com.thunderpass.data.db.entity.Encounter
 
 private val BLE_PERMISSIONS = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
@@ -83,6 +85,32 @@ fun HomeScreen(
         encounters.count { it.encounter.seenAt >= todayStart }
     }
 
+    HomeScreenContent(
+        allGranted = allGranted,
+        displayName = displayName,
+        serviceRunning = serviceRunning,
+        installationId = installationId,
+        encounters = encounters,
+        joulesTotal = joulesTotal,
+        onToggleService = { if (serviceRunning) vm.stopService() else vm.startService() },
+        onNavigateToDetail = onNavigateToDetail,
+        onGrantPermissions = { permLauncher.launch(BLE_PERMISSIONS) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreenContent(
+    allGranted: Boolean,
+    displayName: String,
+    serviceRunning: Boolean,
+    installationId: String,
+    encounters: List<EncounterWithProfile>,
+    joulesTotal: Long,
+    onToggleService: () -> Unit,
+    onNavigateToDetail: (Long) -> Unit,
+    onGrantPermissions: () -> Unit
+) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
@@ -96,7 +124,7 @@ fun HomeScreen(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                PermissionPrompt { permLauncher.launch(BLE_PERMISSIONS) }
+                PermissionPrompt { onGrantPermissions() }
             }
         } else if (isLandscape) {
             // ── Landscape: two-panel layout ──────────────────────────────────
@@ -144,7 +172,7 @@ fun HomeScreen(
                     // ThunderPass ON/OFF toggle
                     ThunderPassToggleCard(
                         active   = serviceRunning,
-                        onToggle = { if (serviceRunning) vm.stopService() else vm.startService() },
+                        onToggle = onToggleService,
                     )
                 }
 
@@ -261,7 +289,7 @@ fun HomeScreen(
 
                 ThunderPassToggleCard(
                     active   = serviceRunning,
-                    onToggle = { if (serviceRunning) vm.stopService() else vm.startService() },
+                    onToggle = onToggleService,
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -433,5 +461,23 @@ private fun PermissionPrompt(onGrant: () -> Unit) {
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onGrant) { Text("Grant Permissions") }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    MaterialTheme {
+        HomeScreenContent(
+            allGranted = true,
+            displayName = "Gui",
+            serviceRunning = true,
+            installationId = "test-id",
+            encounters = emptyList(),
+            joulesTotal = 2500,
+            onToggleService = {},
+            onNavigateToDetail = {},
+            onGrantPermissions = {}
+        )
     }
 }
