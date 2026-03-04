@@ -3,7 +3,7 @@ package com.thunderpass.ui
 import androidx.compose.ui.graphics.Color
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tier helpers
+// Legacy tier helpers (kept for any remaining references)
 // ─────────────────────────────────────────────────────────────────────────────
 
 val TIER_LOCKED = Color(0xFF9E9E9E)
@@ -24,6 +24,45 @@ fun tierLabel(tier: Int) = when (tier) {
     3    -> "GOLD"
     else -> "LOCKED"
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rarity system — badge color based on its position in the category list
+//   index 0-1  → Common     → Blue
+//   index 2-3  → Uncommon   → Purple
+//   index 4-5  → Rare       → Orange
+//   index 6+   → Legendary  → Gold
+//   not achieved (tier==0)  → Dark Grey
+// ─────────────────────────────────────────────────────────────────────────────
+
+val RARITY_NOT_ACHIEVED = Color(0xFF4A4A4A)
+val RARITY_COMMON       = Color(0xFF2196F3)  // Blue
+val RARITY_UNCOMMON     = Color(0xFF9C27B0)  // Purple
+val RARITY_RARE         = Color(0xFFFF9800)  // Orange
+val RARITY_LEGENDARY    = Color(0xFFFFD700)  // Gold
+
+fun rarityColor(index: Int): Color = when {
+    index <= 1 -> RARITY_COMMON
+    index <= 3 -> RARITY_UNCOMMON
+    index <= 5 -> RARITY_RARE
+    else       -> RARITY_LEGENDARY
+}
+
+fun rarityLabel(index: Int): String = when {
+    index <= 1 -> "COMMON"
+    index <= 3 -> "UNCOMMON"
+    index <= 5 -> "RARE"
+    else       -> "LEGENDARY"
+}
+
+// Dark bg tinted to each rarity
+fun rarityDarkBg(index: Int): Color = when {
+    index <= 1 -> Color(0xFF001428)  // dark blue
+    index <= 3 -> Color(0xFF16001E)  // dark purple
+    index <= 5 -> Color(0xFF1E0A00)  // dark orange
+    else       -> Color(0xFF1E1600)  // dark gold
+}
+
+val RARITY_LOCKED_BG = Color(0xFF111111)
 
 // Dark interior fill for each category × tier combination
 // Gets richer (less dark) as tier increases, always category-tinted
