@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,12 +107,30 @@ fun BadgesScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // Category cards
-            BadgeCategory.entries.forEach { category ->
-                BadgeCategoryCard(
-                    category = category,
-                    onClick  = { onNavigateToCategory(category.name) },
-                )
+            // Category cards — 2-column grid in landscape, full-width in portrait
+            val configuration = LocalConfiguration.current
+            val isLandscape   = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            if (isLandscape) {
+                BadgeCategory.entries.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { cat ->
+                            BadgeCategoryCard(
+                                category = cat,
+                                onClick  = { onNavigateToCategory(cat.name) },
+                                modifier = Modifier.weight(1f),
+                                compact  = true,
+                            )
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            } else {
+                BadgeCategory.entries.forEach { category ->
+                    BadgeCategoryCard(
+                        category = category,
+                        onClick  = { onNavigateToCategory(category.name) },
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -126,6 +146,8 @@ fun BadgesScreen(
 private fun BadgeCategoryCard(
     category: BadgeCategory,
     onClick:  () -> Unit,
+    modifier: Modifier = Modifier,
+    compact:  Boolean  = false,
 ) {
     val badges  = badgesForCategory(category)
     val earned  = badges.count { it.tier > 0 }
@@ -133,9 +155,9 @@ private fun BadgeCategoryCard(
     val topTier = badges.maxOfOrNull { it.tier } ?: 0
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(110.dp)
+            .height(if (compact) 84.dp else 110.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .drawBehind {

@@ -95,12 +95,12 @@
 - [x] All edits saved to Supabase; Room is source-of-truth offline. (`avatarSeed` now synced.)
 
 ### 5.8 Badges
-- [ ] Replace star icon with a thunder bolt on every badge, make the thunder with a large edge on the same color as the background
+- [x] Replace star icon with a thunder bolt on every badge, make the thunder with a large edge on the same color as the background
 - [x] Tier colours: Dark grey=Not achieved, Blue=Common (1-2), Purple=Uncommon (3-4), Orange=Rare (5-6), Gold=Legendary (7).
-- [ ] Category grid: small squares in landscape, large cards in portrait.
+- [x] Category grid: small squares in landscape, large cards in portrait.
 - [x] Remove "Best" highlight from categories overview.
 - [x] Create badges/badges.csv — columns: id, category, name, description, how_to_achieve, tier, colour.
-- [ ] levels works this way: if level 1 (blue common) first line under the thunder is colored, rest is not, if level 2, first and secon lines below the thunder, if level 3 and 4, two lines under the thunder, if 5 and 6 , three lines, if 7 all lines colored. thunder should be bigger and over the lines showing a large besel.
+- [x] levels works this way: if level 1 (blue common) first line under the thunder is colored, rest is not, if level 2, first and secon lines below the thunder, if level 3 and 4, two lines under the thunder, if 5 and 6 , three lines, if 7 all lines colored. thunder should be bigger and over the lines showing a large besel.
 
 ### 5.9 Shop
 - [x] Portrait layout: Joules balance card on the left, earn-points explanation on the right.

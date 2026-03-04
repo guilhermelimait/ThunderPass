@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -127,9 +129,8 @@ fun BadgeCategoryDetailScreen(
 @Composable
 private fun BadgeListCard(badge: BadgeDef, index: Int) {
     val locked   = badge.tier == 0
-    val rarColor = if (locked) RARITY_NOT_ACHIEVED else rarityColor(index)
+    val rarColor  = if (locked) RARITY_NOT_ACHIEVED else rarityColor(index)
     val cardColor = if (locked) RARITY_LOCKED_CARD else rarityCardColor(index)
-    val darkBg   = if (locked) RARITY_LOCKED_BG else rarityDarkBg(index)
     val textAlpha = if (locked) 0.55f else 1f
 
     Box(
@@ -170,7 +171,7 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
             )
         }
 
-        // ── Shield in right circle ────────────────────────────────────────────
+        // ── Thunder badge icon in right circle ────────────────────────────────
         Box(
             modifier = Modifier
                 .size(115.dp)
@@ -178,11 +179,12 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                 .offset(x = (-12).dp),
             contentAlignment = Alignment.Center,
         ) {
-            ThunderShield(
-                tier          = badge.tier,
-                categoryColor = rarColor,
-                darkBg        = darkBg,
-                size          = 100.dp,
+            ThunderBadgeIcon(
+                tier        = badge.tier,
+                accentColor = rarColor,
+                cardColor   = cardColor,
+                locked      = locked,
+                size        = 100.dp,
             )
         }
 
@@ -264,6 +266,84 @@ private fun BadgeListCard(badge: BadgeDef, index: Int) {
                 }
             }
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ThunderBadgeIcon — large ⚡ bolt above 3 tier bars
+//   • Thick bezel stroke in card background color (bolt appears raised/beveled)
+//   • 3 rounded horizontal bars below the bolt:
+//       tier 0 → none lit   tier 1 → top bar   tier 2 → top+mid   tier 3 → all
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun ThunderBadgeIcon(
+    tier:        Int,
+    accentColor: Color,
+    cardColor:   Color,
+    locked:      Boolean,
+    size:        Dp    = 100.dp,
+) {
+    Canvas(modifier = Modifier.size(size)) {
+        val w          = this.size.width
+        val h          = this.size.height
+        val fillColor  = if (locked) Color(0xFF7A7A7A) else accentColor
+        val litColor   = if (locked) Color(0xFF5A5A5A) else accentColor
+        val unlitColor = Color(0xFF262626)
+        val barsLit    = tier.coerceIn(0, 3)
+
+        // ── 3 rounded bars — bottom ~36% of icon ──────────────────────────────
+        val barH      = h * 0.09f
+        val barGap    = h * 0.046f
+        val barW      = w * 0.80f
+        val barLeft   = (w - barW) / 2f
+        val bottomPad = h * 0.05f
+        val barsBot   = h - bottomPad
+        val barsTop   = barsBot - (barH * 3f + barGap * 2f)
+
+        // i=0 → topmost bar (immediately under bolt), i=2 → bottom bar
+        for (i in 0..2) {
+            val isLit = i < barsLit
+            val top   = barsTop + i * (barH + barGap)
+            drawRoundRect(
+                color        = if (isLit) litColor else unlitColor,
+                topLeft      = Offset(barLeft, top),
+                size         = Size(barW, barH),
+                cornerRadius = CornerRadius(barH / 2f),
+            )
+        }
+
+        // ── Lightning bolt — upper ~56% of icon ───────────────────────────────
+        val boltTop    = h * 0.02f
+        val boltBottom = barsTop - h * 0.06f
+        val span       = boltBottom - boltTop
+        val midY       = boltTop + span * 0.52f
+
+        val boltPath = Path().apply {
+            moveTo(w * 0.555f, boltTop)
+            lineTo(w * 0.660f, midY)
+            lineTo(w * 0.562f, midY)
+            lineTo(w * 0.665f, boltBottom)
+            lineTo(w * 0.418f, midY * 0.96f + boltBottom * 0.04f)
+            lineTo(w * 0.519f, midY)
+            lineTo(w * 0.395f, boltTop)
+            close()
+        }
+
+        // Thick bezel in card color — bolt appears to have a large edge blending into card bg
+        drawPath(
+            path  = boltPath,
+            color = cardColor,
+            style = Stroke(width = w * 0.14f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+        // Bolt fill
+        drawPath(boltPath, color = fillColor)
+        // Subtle dark outline for crispness
+        drawPath(
+            path  = boltPath,
+            color = Color.Black.copy(alpha = 0.18f),
+            style = Stroke(width = w * 0.028f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
     }
 }
 
