@@ -58,8 +58,8 @@ fun ProfileScreen(
         streak = streak,
         voltsTotal = voltsTotal,
         firstRun = firstRun,
-        onSave = { name, retroUser, retroKey, seed ->
-            vm.save(name, retroUser, avatarSeed = seed, raApiKey = retroKey)
+        onSave = { name, retroUser, retroKey, seed, greeting ->
+            vm.save(name, retroUser, avatarSeed = seed, raApiKey = retroKey, greeting = greeting)
             if (retroKey.isNotBlank()) {
                 RetroAuthManager.getInstance(context).saveCredentials(
                     apiKey  = retroKey,
@@ -82,7 +82,7 @@ fun ProfileScreenContent(
     streak: Int,
     voltsTotal: Long,
     firstRun: Boolean = false,
-    onSave: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
     onAvatarSeedChange: ((String) -> Unit)? = null,
     onComplete: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
@@ -90,6 +90,7 @@ fun ProfileScreenContent(
     var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
     val context            = LocalContext.current
     var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
+    var draftGreeting      by remember(profile.greeting)      { mutableStateOf(profile.greeting) }
     var draftRaApiKey      by remember(profile.raApiKey) {
         // Prefer the value persisted in Room DB; fall back to EncryptedSharedPreferences
         // so existing users don't lose their key after the DB schema upgrade.
@@ -279,6 +280,15 @@ fun ProfileScreenContent(
                 )
 
                 OutlinedTextField(
+                    value          = draftGreeting,
+                    onValueChange  = { draftGreeting = it; saved = false },
+                    label          = { Text("Personal phrase") },
+                    singleLine     = true,
+                    modifier       = Modifier.fillMaxWidth(),
+                    supportingText = { Text("Shared when you pass someone — make it memorable!") },
+                )
+
+                OutlinedTextField(
                     value          = draftRetroUsername,
                     onValueChange  = { draftRetroUsername = it; saved = false },
                     label          = { Text("\uD83C\uDFAE RetroAchievements Username") },
@@ -297,10 +307,43 @@ fun ProfileScreenContent(
                     supportingText       = { Text("From retroachievements.org/settings — kept on device") },
                 )
 
+                // Device type — auto-detected, read-only info card
+                if (profile.deviceType.isNotBlank()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        ),
+                    ) {
+                        Row(
+                            modifier          = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("🎮", style = MaterialTheme.typography.bodyMedium)
+                            Column {
+                                Text(
+                                    text  = "Device",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                                Text(
+                                    text       = profile.deviceType,
+                                    style      = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color      = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     onClick  = {
-                        onSave(draftName, draftRetroUsername, draftRaApiKey, avatarSeed)
+                        onSave(draftName, draftRetroUsername, draftRaApiKey, avatarSeed, draftGreeting)
                         saved = true
                         if (firstRun) onComplete?.invoke()
                     },

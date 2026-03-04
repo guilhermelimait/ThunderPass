@@ -206,42 +206,39 @@ fun HomeScreenContent(
                         RetroGallerySection(modifier = Modifier.fillMaxWidth())
                     }
 
-                    // Right panel: animation top, LastPassedBy below, 12dp padding
+                    // Right panel: toggle → animation → LastPassedBy
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        // Toggle above the animation (not overlaid on it)
+                        ThunderPassToggleCard(
+                            active      = serviceRunning,
+                            onToggle    = onToggleService,
+                            transparent = false,
+                        )
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(animLandscapeH)
-                                .padding(12.dp),
+                                .height(animLandscapeH),
                         ) {
                             WalkingSceneCard(
                                 avatarSeed     = avatarSeed.ifEmpty { "default" },
                                 serviceRunning = serviceRunning,
                                 fillHeight     = true,
                             )
-                            ThunderPassToggleCard(
-                                active      = serviceRunning,
-                                onToggle    = onToggleService,
-                                transparent = true,
-                                modifier    = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                            )
                         }
                         val lastEnc = encounters.firstOrNull()
                         if (lastEnc != null) {
-                            Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
-                                LastPassedByCard(
-                                    encounter = lastEnc,
-                                    onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
-                                )
-                            }
+                            LastPassedByCard(
+                                encounter = lastEnc,
+                                onClick   = { onNavigateToDetail(lastEnc.encounter.id) },
+                            )
                         }
                     }
                 }
@@ -334,10 +331,12 @@ fun HomeScreenContent(
                         Spacer(Modifier.height(10.dp))
                     }
 
-                    // ── 5. Navigation buttons grid ─────────────────────────────
-                    NavShortcuts(onNavigate = onNavigate)
-                    Spacer(Modifier.height(12.dp))
+                    // ── 5. RetroAchievements galleries (above nav buttons) ─────
                     RetroGallerySection(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+
+                    // ── 6. Navigation buttons grid ─────────────────────────────
+                    NavShortcuts(onNavigate = onNavigate)
                     Spacer(Modifier.height(16.dp))
                 }
             }
@@ -386,7 +385,7 @@ private fun ThunderPassToggleCard(
                     text       = "ThunderPass",
                     style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color      = Color.Black,
+                    color      = MaterialTheme.colorScheme.onSurface,
                 )
             }
             Switch(

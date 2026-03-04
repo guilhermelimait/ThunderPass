@@ -80,4 +80,13 @@ data class MyProfile(
      * you are present, not who you are.
      */
     val privacyMode: Boolean = false,
+
+    /**
+     * Detected device type string (e.g. "Retroid Pocket 4 Pro", "AYN Thor 2", "AYN Odin 2").
+     * Auto-populated on first launch from Build.MANUFACTURER + Build.MODEL.
+     * Shared with peers so the app can identify retro handhelds and (future) prevent
+     * nearby-duplicate Volt farming.
+     */
+    @ColumnInfo(name = "device_type")
+    val deviceType: String = "",
 )

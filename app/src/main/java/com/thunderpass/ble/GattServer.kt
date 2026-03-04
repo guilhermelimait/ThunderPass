@@ -229,16 +229,19 @@ class GattServer(
      * ```
      */
     private fun buildPayloadJson(profile: MyProfile): String {
-        // Privacy mode: hide identity — peers see only that a ThunderPass device is nearby.
+        // Privacy mode: hide identity (name, RA, device) — but share the avatar
+        // so the recipient can see a face, just not who it belongs to.
         val data = if (profile.privacyMode) {
             org.json.JSONObject().apply {
                 put("displayName", "Private User")
                 put("greeting", "")
                 put("avatar", org.json.JSONObject().apply {
-                    put("kind", "defaultBolt")
-                    put("color", "#888888")
+                    put("kind", profile.avatarKind)
+                    put("color", profile.avatarColor)
+                    if (profile.avatarSeed.isNotBlank()) put("seed", profile.avatarSeed)
                 })
                 put("private", true)
+                // retroUsername, ghostGame, userId, deviceType intentionally omitted
             }
         } else org.json.JSONObject().apply {
             put("displayName", profile.displayName)
@@ -261,6 +264,10 @@ class GattServer(
             // Only sent when the user is signed in; withheld in privacy mode.
             if (profile.supabaseUserId.isNotBlank()) {
                 put("userId", profile.supabaseUserId)
+            }
+            // Include detected device type (e.g. "AYN Thor 2", "Retroid Pocket 4 Pro")
+            if (profile.deviceType.isNotBlank()) {
+                put("deviceType", profile.deviceType)
             }
         }
         return org.json.JSONObject().apply {

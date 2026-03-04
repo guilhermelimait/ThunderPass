@@ -45,6 +45,35 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
                 profileDao.upsert(p.copy(displayName = deviceName))
             }
+            // Auto-detect + persist device type if not set yet
+            if (p.deviceType.isBlank()) {
+                profileDao.upsert(
+                    (profileDao.get() ?: p).copy(deviceType = detectDeviceType())
+                )
+            }
+        }
+    }
+
+    /**
+     * Returns a human-friendly device type string based on Build properties.
+     * E.g. "AYN Thor 2", "Retroid Pocket 4 Pro", or the raw model if unknown.
+     */
+    private fun detectDeviceType(): String {
+        val manufacturer = android.os.Build.MANUFACTURER.trim()
+        val model        = android.os.Build.MODEL.trim()
+        val brand        = android.os.Build.BRAND.trim()
+        // Normalise model string (replace underscores with spaces)
+        val modelNorm = model.replace('_', ' ')
+        return when {
+            manufacturer.equals("AYN", ignoreCase = true) ||
+            brand.equals("AYN", ignoreCase = true)        -> "AYN $modelNorm"
+            modelNorm.contains("Retroid", ignoreCase = true) ||
+            modelNorm.startsWith("RP", ignoreCase = true) -> modelNorm
+            brand.equals("Anbernic", ignoreCase = true) ||
+            manufacturer.equals("Anbernic", ignoreCase = true) -> "Anbernic $modelNorm"
+            brand.equals("Powkiddy", ignoreCase = true) ||
+            manufacturer.equals("Powkiddy", ignoreCase = true) -> "Powkiddy $modelNorm"
+            else -> "$manufacturer $modelNorm".trim()
         }
     }
 
@@ -52,12 +81,12 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      * Persist the user's edited profile locally, then push to Supabase in the background.
      * Preserves installationId and id from the existing row.
      */
-    // 5.1 — greeting removed from editable fields; preserved in DB unchanged.
     fun save(
         displayName:   String,
         retroUsername: String = "",
         avatarSeed:    String = "",
         raApiKey:      String = "",
+        greeting:      String = "",
     ) {
         viewModelScope.launch {
             val current = profileDao.get()
@@ -68,6 +97,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                     retroUsername = retroUsername.trim(),
                     avatarSeed    = avatarSeed.ifEmpty { current.avatarSeed },
                     raApiKey      = raApiKey.trim().ifEmpty { current.raApiKey },
+                    greeting      = greeting.trim().ifEmpty { current.greeting },
                     updatedAt     = System.currentTimeMillis() / 1000,
                 )
             )
@@ -131,10 +161,11 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             val result = com.thunderpass.retro.RetroRetrofitClient.fetchRetroMetadata(raUsername, auth)
             result.getOrNull()?.let { raProfile ->
                 com.thunderpass.retro.RetroProfileCache.save(
-                    context  = app,
-                    username = raUsername,
-                    points   = raProfile.totalPoints,
-                    games    = raProfile.recentlyPlayed ?: emptyList(),
+                    context              = app,
+                    username             = raUsername,
+                    points               = raProfile.totalPoints,
+                    games                = raProfile.recentlyPlayed ?: emptyList(),
+                    recentlyPlayedCount  = raProfile.recentlyPlayedCount,
                 )
             }
         }

@@ -15,14 +15,16 @@ private const val KEY_POINTS        = "points"
 private const val KEY_GAME_TITLES   = "game_titles"
 private const val KEY_GAME_CONSOLES = "game_consoles"
 private const val KEY_CACHED_AT     = "cached_at"
+private const val KEY_RECENT_COUNT  = "recent_count"
 private const val SEP               = "|||"
 
 data class RetroProfileCacheData(
-    val username:     String,
-    val totalPoints:  Long,
+    val username:           String,
+    val totalPoints:        Long,
     /** List of (title, consoleName) pairs for recent games. */
-    val recentGames:  List<Pair<String, String>>,
-    val cachedAt:     Long,
+    val recentGames:        List<Pair<String, String>>,
+    val recentlyPlayedCount: Int,
+    val cachedAt:           Long,
 )
 
 object RetroProfileCache {
@@ -32,17 +34,19 @@ object RetroProfileCache {
      * Call after a successful [RetroRetrofitClient.fetchRetroMetadata] for the local user.
      */
     fun save(
-        context:  Context,
-        username: String,
-        points:   Long,
-        games:    List<RecentGame>,
+        context:            Context,
+        username:           String,
+        points:             Long,
+        games:              List<RecentGame>,
+        recentlyPlayedCount: Int = games.size,
     ) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
             putString(KEY_USERNAME,      username)
-            putLong(KEY_POINTS,         points)
+            putLong(KEY_POINTS,          points)
             putString(KEY_GAME_TITLES,   games.joinToString(SEP) { it.title })
             putString(KEY_GAME_CONSOLES, games.joinToString(SEP) { it.consoleName })
-            putLong(KEY_CACHED_AT,      System.currentTimeMillis())
+            putInt(KEY_RECENT_COUNT,     recentlyPlayedCount)
+            putLong(KEY_CACHED_AT,       System.currentTimeMillis())
         }
     }
 
@@ -57,10 +61,11 @@ object RetroProfileCache {
         val consoles = p.getString(KEY_GAME_CONSOLES, "")
             ?.split(SEP)?.filter { it.isNotBlank() } ?: emptyList()
         return RetroProfileCacheData(
-            username    = username,
-            totalPoints = p.getLong(KEY_POINTS, 0L),
-            recentGames = titles.zip(consoles),
-            cachedAt    = p.getLong(KEY_CACHED_AT, 0L),
+            username             = username,
+            totalPoints          = p.getLong(KEY_POINTS, 0L),
+            recentGames          = titles.zip(consoles),
+            recentlyPlayedCount  = p.getInt(KEY_RECENT_COUNT, titles.size),
+            cachedAt             = p.getLong(KEY_CACHED_AT, 0L),
         )
     }
 
