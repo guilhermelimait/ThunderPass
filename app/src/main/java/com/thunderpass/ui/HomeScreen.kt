@@ -177,12 +177,12 @@ fun HomeScreenContent(
                                 androidx.compose.foundation.Image(
                                     painter            = painterResource(R.drawable.logo),
                                     contentDescription = "ThunderPass",
-                                    modifier           = Modifier.height(32.dp),
+                                    modifier           = Modifier.height(44.dp),
                                 )
                                 Column {
                                     Text(
-                                        text       = "Hi, $displayName",
-                                        style      = MaterialTheme.typography.titleMedium,
+                                        text       = displayName,
+                                        style      = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color      = MaterialTheme.colorScheme.onBackground,
                                     )
@@ -276,12 +276,12 @@ fun HomeScreenContent(
                             androidx.compose.foundation.Image(
                                 painter            = painterResource(R.drawable.logo),
                                 contentDescription = "ThunderPass",
-                                modifier           = Modifier.height(40.dp),
+                                modifier           = Modifier.height(56.dp),
                             )
                             Text(
-                                text       = "Hi, $displayName",
-                                style      = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
+                                text       = displayName,
+                                style      = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
                                 color      = MaterialTheme.colorScheme.onBackground,
                             )
                         }

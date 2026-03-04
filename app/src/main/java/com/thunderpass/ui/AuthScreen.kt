@@ -1,5 +1,6 @@
 package com.thunderpass.ui
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -10,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -36,7 +38,18 @@ fun AuthScreen(
     onSkip: () -> Unit = {},
     vm: AuthViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val state by vm.state.collectAsState()
+
+    // Detect Google Play Services — absent on most retro gaming handhelds
+    val hasGooglePlayServices = remember {
+        try {
+            context.packageManager.getApplicationInfo("com.google.android.gms", 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
 
     var googleLoading by remember { mutableStateOf(false) }
     var googleErrorMsg by remember { mutableStateOf<String?>(null) }
@@ -149,31 +162,49 @@ fun AuthScreen(
                     }
                     Spacer(Modifier.height(16.dp))
 
-                    // ── Google One-Tap ────────────────────────────────────────
-                    OutlinedButton(
-                        onClick  = {
-                            googleLoading = true
-                            googleErrorMsg = null
-                            googleSignInState.startFlow()
-                        },
-                        enabled  = !googleLoading,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (googleLoading) {
-                            CircularProgressIndicator(
-                                modifier  = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
+                    // ── Google One-Tap (only shown when GMS available) ────────
+                    if (hasGooglePlayServices) {
+                        OutlinedButton(
+                            onClick  = {
+                                googleLoading = true
+                                googleErrorMsg = null
+                                googleSignInState.startFlow()
+                            },
+                            enabled  = !googleLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (googleLoading) {
+                                CircularProgressIndicator(
+                                    modifier  = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text("Signing in…")
+                            } else {
+                                Image(
+                                    painter            = painterResource(R.drawable.ic_google),
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text("Continue with Google")
+                            }
+                        }
+                    } else {
+                        // GMS not available (retro gaming handheld) — use email OTP
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors   = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            ),
+                        ) {
+                            Text(
+                                text      = "Google sign-in is not available on this device. Use email sign-in above — it works without Google Play Services.",
+                                style     = MaterialTheme.typography.bodySmall,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier  = Modifier.padding(12.dp),
+                                textAlign = TextAlign.Center,
                             )
-                            Spacer(Modifier.width(10.dp))
-                            Text("Signing in…")
-                        } else {
-                            Image(
-                                painter            = painterResource(R.drawable.ic_google),
-                                contentDescription = null,
-                                modifier           = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(10.dp))
-                            Text("Continue with Google")
                         }
                     }
 
