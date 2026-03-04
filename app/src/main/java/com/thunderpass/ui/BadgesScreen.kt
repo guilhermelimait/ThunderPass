@@ -89,9 +89,8 @@ fun BadgesScreen(
                 }
                 ThunderShield(
                     tier          = topTier,
-                    tierColor     = tierColor(topTier),
+                    categoryColor = Color(0xFFFFB300),
                     darkBg        = Color(0xFF2D1E00),
-                    categoryColor = Color(0xFFFFD700),
                     size          = 44.dp,
                 )
             }
@@ -211,9 +210,8 @@ private fun BadgeCategoryCard(
                     Spacer(Modifier.height(2.dp))
                     ThunderShield(
                         tier          = topTier,
-                        tierColor     = tierColor(topTier),
-                        darkBg        = categoryDarkBg(category, topTier),
                         categoryColor = category.accentColor,
+                        darkBg        = categoryDarkBg(category, topTier),
                         size          = 28.dp,
                     )
                 }

@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -118,7 +117,7 @@ fun BadgeCategoryDetailScreen(
 @Composable
 private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
     val locked  = badge.tier == 0
-    val tColor  = tierColor(badge.tier)
+    val catColor = category.accentColor
     val darkBg  = categoryDarkBg(category, badge.tier)
 
     // Card background: dark category-tinted, slightly lighter for earned badges
@@ -153,7 +152,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                     .width(3.dp)
                     .fillMaxHeight()
                     .background(
-                        color = if (locked) Color(0xFF5D5D5D).copy(alpha = 0.4f) else tColor.copy(alpha = 0.8f),
+                        color = if (locked) Color(0xFF5D5D5D).copy(alpha = 0.4f) else catColor.copy(alpha = 0.8f),
                     )
                     .align(Alignment.CenterStart),
             )
@@ -167,9 +166,8 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                 // ── Shield ────────────────────────────────────────────────────
                 ThunderShield(
                     tier          = badge.tier,
-                    tierColor     = tColor,
+                    categoryColor = catColor,
                     darkBg        = darkBg,
-                    categoryColor = category.accentColor,
                     size          = 80.dp,
                 )
 
@@ -220,7 +218,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                             color = if (locked)
                                 Color.White.copy(alpha = 0.3f)
                             else
-                                tColor.copy(alpha = 0.9f),
+                                catColor.copy(alpha = 0.9f),
                         )
 
                         // Progress bar
@@ -233,11 +231,11 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                             color      = if (locked)
                                 Color(0xFF5D5D5D).copy(alpha = 0.5f)
                             else
-                                tColor.copy(alpha = 0.9f),
+                                catColor.copy(alpha = 0.9f),
                             trackColor = Color.White.copy(alpha = 0.08f),
                         )
 
-                        // Tier dots: 3 dots — filled = achieved, hollow = not yet
+                        // Tier dots: 3 dots — filled = category color, hollow = not yet
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             (1..3).forEach { t ->
                                 val achieved = badge.tier >= t
@@ -247,7 +245,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                                         .clip(CircleShape)
                                         .background(
                                             color = if (achieved)
-                                                tierColor(t).copy(alpha = 0.9f)
+                                                catColor.copy(alpha = 0.9f)
                                             else
                                                 Color.White.copy(alpha = 0.12f),
                                         ),
@@ -264,7 +262,7 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
                                     fontSize   = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                 ),
-                                color = tColor,
+                                color = catColor,
                             )
                         }
                     }
@@ -285,71 +283,58 @@ private fun BadgeListCard(badge: BadgeDef, category: BadgeCategory) {
 @Composable
 fun ThunderShield(
     tier:          Int,
-    tierColor:     Color,
-    darkBg:        Color,
     categoryColor: Color,
+    darkBg:        Color,
     size:          Dp = 80.dp,
 ) {
-    val density    = LocalDensity.current
-    // Canvas is taller than shield: 28% extra at top for the bolt
-    val boltFrac   = 0.28f
-    val canvasW    = size
-    val canvasH    = size * (1f + boltFrac)
-
-    Canvas(modifier = Modifier.size(width = canvasW, height = canvasH)) {
+    // Canvas is square — bolt lives INSIDE the shield
+    Canvas(modifier = Modifier.size(size)) {
         val w       = this.size.width
         val h       = this.size.height
-        val shieldTop = h * boltFrac          // shield body starts here
-        val shieldH   = h * (1f - boltFrac)  // shield body height
+        val pad     = w * 0.04f
+        val shieldTop = pad
+        val shieldH   = h - pad
         val stroke    = w * 0.055f
 
-        val tC = if (tier == 0) Color(0xFF5D5D5D).copy(alpha = 0.5f) else tierColor
+        val catC = if (tier == 0) Color(0xFF5D5D5D).copy(alpha = 0.5f) else categoryColor
 
-        // ── 1. Shield path (body starts at shieldTop) ─────────────────────────
+        // ── 1. Shield path ────────────────────────────────────────────────────
         val shieldPath = buildShieldPath(w, shieldTop, shieldH)
 
         // ── 2. Dark interior fill ─────────────────────────────────────────────
-        drawPath(
-            path  = shieldPath,
-            color = darkBg,
-        )
+        drawPath(path = shieldPath, color = darkBg)
 
-        // ── 3. Very subtle inner glow on non-locked badges ───────────────────
+        // ── 3. Radial glow on earned badges ──────────────────────────────────
         if (tier > 0) {
             drawPath(
                 path  = shieldPath,
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        tierColor.copy(alpha = 0.18f),
+                        categoryColor.copy(alpha = 0.20f),
                         Color.Transparent,
                     ),
-                    center = androidx.compose.ui.geometry.Offset(w * 0.5f, shieldTop + shieldH * 0.45f),
+                    center = Offset(w * 0.5f, shieldTop + shieldH * 0.45f),
                     radius = shieldH * 0.55f,
                 ),
             )
         }
 
-        // ── 4. Chevrons — strictly in lower 55% of shield ────────────────────
+        // ── 4. Chevrons — lower portion of shield ─────────────────────────────
         if (tier > 0) {
-            val chevStart  = shieldTop + shieldH * 0.44f
-            val chevSpacing = shieldH * 0.155f
-            val chevW      = stroke * 0.9f
-
+            val chevStart   = shieldTop + shieldH * 0.55f
+            val chevSpacing = shieldH * 0.14f
+            val chevW       = stroke * 0.9f
             repeat(tier) { i ->
                 val cy = chevStart + i * chevSpacing
                 val chevPath = Path().apply {
-                    moveTo(w * 0.20f, cy - shieldH * 0.055f)
-                    lineTo(w * 0.50f, cy + shieldH * 0.055f)
-                    lineTo(w * 0.80f, cy - shieldH * 0.055f)
+                    moveTo(w * 0.22f, cy - shieldH * 0.05f)
+                    lineTo(w * 0.50f, cy + shieldH * 0.05f)
+                    lineTo(w * 0.78f, cy - shieldH * 0.05f)
                 }
                 drawPath(
                     path  = chevPath,
-                    color = tierColor,
-                    style = Stroke(
-                        width = chevW,
-                        cap   = StrokeCap.Round,
-                        join  = StrokeJoin.Round,
-                    ),
+                    color = catC,
+                    style = Stroke(width = chevW, cap = StrokeCap.Round, join = StrokeJoin.Round),
                 )
             }
         }
@@ -357,28 +342,26 @@ fun ThunderShield(
         // ── 5. Shield border ──────────────────────────────────────────────────
         drawPath(
             path  = shieldPath,
-            color = tC,
+            color = catC,
             style = Stroke(width = stroke, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
 
-        // ── 6. Top bar (Bronze+) inside shield, below bolt entry ──────────────
+        // ── 6. Horizontal bar below bolt zone ─────────────────────────────────
         if (tier > 0) {
-            val barY = shieldTop + shieldH * 0.175f
-            val barPath = Path().apply {
-                moveTo(w * 0.28f, barY)
-                lineTo(w * 0.72f, barY)
-            }
+            val barY = shieldTop + shieldH * 0.36f
             drawPath(
-                path  = barPath,
-                color = tierColor,
-                style = Stroke(width = stroke * 0.6f, cap = StrokeCap.Round),
+                path  = Path().apply {
+                    moveTo(w * 0.28f, barY)
+                    lineTo(w * 0.72f, barY)
+                },
+                color = catC.copy(alpha = 0.7f),
+                style = Stroke(width = stroke * 0.5f, cap = StrokeCap.Round),
             )
         }
 
-        // ── 7. Lightning bolt ABOVE the shield ────────────────────────────────
-        // Bolt tip at y=0, base at shieldTop (sits on shield rim)
-        val boltColor = if (tier == 0) Color(0xFF9E9E9E).copy(alpha = 0.5f) else tierColor
-        drawBoltAboveShield(w = w, boltBottom = shieldTop, color = boltColor)
+        // ── 7. ⚡ Bolt centered INSIDE the shield (upper zone) ────────────────
+        val boltColor = if (tier == 0) Color(0xFF9E9E9E).copy(alpha = 0.45f) else categoryColor
+        drawBoltInShield(w = w, shieldTop = shieldTop, shieldH = shieldH, color = boltColor)
     }
 }
 
@@ -408,33 +391,35 @@ private fun buildShieldPath(w: Float, topY: Float, shieldH: Float): Path = Path(
     close()
 }
 
-// ── Helper: ⚡ lightning bolt rising ABOVE the shield ─────────────────────────
-// boltBottom = y coordinate where bolt base meets the shield top-center
+// ── Helper: ⚡ bolt drawn INSIDE the shield, upper-center zone ───────────────
+// Occupies roughly the top 35% of the shield interior
 
-private fun DrawScope.drawBoltAboveShield(w: Float, boltBottom: Float, color: Color) {
-    if (boltBottom <= 0f) return
+private fun DrawScope.drawBoltInShield(
+    w: Float,
+    shieldTop: Float,
+    shieldH: Float,
+    color: Color,
+) {
+    val boltTop    = shieldTop + shieldH * 0.04f
+    val boltBottom = shieldTop + shieldH * 0.36f
+    val midY       = (boltTop + boltBottom) * 0.5f
 
-    val midH = boltBottom * 0.48f
-
-    // Classic asymmetric lightning bolt shape, centered on w*0.50
+    // Asymmetric lightning bolt centered horizontally
     val boltPath = Path().apply {
-        moveTo(w * 0.555f, 0f)           // tip — slightly right of center
-        lineTo(w * 0.630f, midH)         // right slope down to mid
-        lineTo(w * 0.560f, midH)         // step inward (creates notch)
-        lineTo(w * 0.650f, boltBottom)   // bottom-right of bolt (rests on shield)
-        lineTo(w * 0.445f, midH * 1.05f) // sweep back left across center
-        lineTo(w * 0.520f, midH * 1.05f) // step inward (left notch)
-        lineTo(w * 0.400f, 0f)           // tip — back to upper left
+        moveTo(w * 0.560f, boltTop)      // top — slightly right of center
+        lineTo(w * 0.640f, midY)         // right slope to mid
+        lineTo(w * 0.560f, midY)         // step inward
+        lineTo(w * 0.640f, boltBottom)   // bottom-right tip
+        lineTo(w * 0.440f, midY * 0.98f + boltBottom * 0.02f) // sweep left
+        lineTo(w * 0.520f, midY)         // step inward (left notch)
+        lineTo(w * 0.400f, boltTop)      // top-left
         close()
     }
 
-    // Fill
     drawPath(boltPath, color = color)
-
-    // Thin crisp outline to define edges against dark bg
     drawPath(
         path  = boltPath,
-        color = color.copy(alpha = (color.alpha * 0.35f).coerceIn(0f, 1f)),
-        style = Stroke(width = w * 0.025f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        color = Color.Black.copy(alpha = 0.25f),
+        style = Stroke(width = w * 0.022f, cap = StrokeCap.Round, join = StrokeJoin.Round),
     )
 }
