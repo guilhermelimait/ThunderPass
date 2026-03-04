@@ -50,7 +50,15 @@ fun SettingsScreen(
 
     // ── Hardware (AYN Thor LED flash) ─────────────────────────────────────────
     var ledFlashEnabled  by remember { mutableStateOf(prefs.getBoolean("led_flash_enabled", true)) }
-    var canWriteSettings by remember { mutableStateOf(AndroidSettings.System.canWrite(context)) }
+    // WRITE_SECURE_SETTINGS is granted via ADB (not via the system settings UI):
+    //   adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS
+    var canWriteSettings by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.WRITE_SECURE_SETTINGS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
     // ── Permission state — re-checked on every recomposition ──────────────────
     var notifGranted by remember {
@@ -260,19 +268,21 @@ fun SettingsScreen(
                 onCheckedChange = { enabled ->
                     ledFlashEnabled = enabled
                     prefs.edit().putBoolean("led_flash_enabled", enabled).apply()
-                    if (enabled) canWriteSettings = AndroidSettings.System.canWrite(context)
+                    if (enabled) canWriteSettings = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.WRITE_SECURE_SETTINGS
+                    ) == PackageManager.PERMISSION_GRANTED
                 },
             )
             if (ledFlashEnabled && !canWriteSettings) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 SettingActionRow(
-                    label       = "Modify System Settings",
-                    subtitle    = "Required for LED control — tap to grant \"Modify system settings\" access",
-                    buttonLabel = "Grant",
+                    label       = "Permission required",
+                    subtitle    = "Run once via ADB: adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS",
+                    buttonLabel = "App Info",
                     onClick     = {
                         runCatching {
                             context.startActivity(
-                                Intent(AndroidSettings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                     data = Uri.parse("package:${context.packageName}")
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }

@@ -26,11 +26,17 @@
     <!-- VIBRATE required for "The Spark" haptic feedback on successful BLE exchange -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- WRITE_SETTINGS: lets us flash the AYN Thor joystick LEDs via Settings.System
-         (joystick_led_light_picker_color / joystick_light_enabled).
-         User must grant "Modify system settings" once in Special App Access. -->
+    <!-- WRITE_SETTINGS: original system-settings permission (kept for compat). -->
     <uses-permission
         android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- WRITE_SECURE_SETTINGS: needed to write joystick_led_light_picker_color and
+         joystick_light_enabled on OdinOS, which enforces them in the secure namespace.
+         Cannot be granted via UI — must be granted once via ADB:
+           adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
 
     <!-- Allows showing the battery optimisation whitelist request dialog -->

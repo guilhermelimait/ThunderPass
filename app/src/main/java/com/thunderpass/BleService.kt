@@ -434,37 +434,36 @@ class BleService : Service() {
 
     /**
      * Flashes the AYN Thor joystick LEDs yellow 3× then restores original colours.
-     * Operates via Settings.System keys specific to the Odin/Thor firmware:
+     * On OdinOS the vendor keys live in the SECURE namespace:
      *   joystick_led_light_picker_color  = "#AARRGGBB,#AARRGGBB"  (left, right)
      *   joystick_light_enabled           = "1,1" | "0,0"
-     * Requires the user to grant "Modify system settings" once.
+     * Requires WRITE_SECURE_SETTINGS, granted once via:
+     *   adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS
      * Silently no-ops on other devices or if permission not granted.
      */
     private fun flashThorLeds() {
         val settingsPrefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
         if (!settingsPrefs.getBoolean("led_flash_enabled", true)) return
-        if (!Settings.System.canWrite(this)) return
+        val hasPermission = checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) return
         val cr = contentResolver
-        val prevColor   = Settings.System.getString(cr, "joystick_led_light_picker_color") ?: return
-        val prevEnabled = Settings.System.getString(cr, "joystick_light_enabled") ?: "1,1"
+        val prevColor   = Settings.Secure.getString(cr, "joystick_led_light_picker_color") ?: return
+        val prevEnabled = Settings.Secure.getString(cr, "joystick_light_enabled") ?: "1,1"
         serviceScope.launch(Dispatchers.IO) {
             try {
-                Settings.System.putString(cr, "joystick_led_light_picker_color", "#ffffff00,#ffffff00")
+                Settings.Secure.putString(cr, "joystick_led_light_picker_color", "#ffffff00,#ffffff00")
                 repeat(3) {
-                    Settings.System.putString(cr, "joystick_light_enabled", "1,1")
+                    Settings.Secure.putString(cr, "joystick_light_enabled", "1,1")
                     delay(300)
-                    Settings.System.putString(cr, "joystick_light_enabled", "0,0")
+                    Settings.Secure.putString(cr, "joystick_light_enabled", "0,0")
                     delay(200)
                 }
             } catch (_: Exception) {
-                // OdinOS firmware can enforce these vendor keys as secure settings, which
-                // requires WRITE_SECURE_SETTINGS (signature-level). Our WRITE_SETTINGS
-                // permission only covers the system namespace — writes throw
-                // IllegalArgumentException. Fail silently; LED flash is best-effort.
+                // Fail silently — LED flash is best-effort.
             } finally {
-                // Use runCatching so a restore failure never bubbles up either.
-                runCatching { Settings.System.putString(cr, "joystick_led_light_picker_color", prevColor) }
-                runCatching { Settings.System.putString(cr, "joystick_light_enabled", prevEnabled) }
+                runCatching { Settings.Secure.putString(cr, "joystick_led_light_picker_color", prevColor) }
+                runCatching { Settings.Secure.putString(cr, "joystick_light_enabled", prevEnabled) }
             }
         }
     }

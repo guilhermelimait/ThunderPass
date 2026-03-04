@@ -25,7 +25,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleSupabaseDeepLink(intent)
         requestIgnoreBatteryOptimizationsIfNeeded()
-        requestWriteSettingsIfNeeded()
         setContent {
             ThunderPassNavGraph(onMusicChange = { enabled ->
                 if (enabled) startMusicIfEnabled() else { mediaPlayer?.pause() }
