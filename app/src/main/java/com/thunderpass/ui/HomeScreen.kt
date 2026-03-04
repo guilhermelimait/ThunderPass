@@ -13,11 +13,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,6 +99,7 @@ fun HomeScreen(
         joulesTotal = joulesTotal,
         onToggleService = { if (serviceRunning) vm.stopService() else vm.startService() },
         onNavigateToDetail = onNavigateToDetail,
+        onNavigate = onNavigate,
         onGrantPermissions = { permLauncher.launch(BLE_PERMISSIONS) }
     )
 }
@@ -110,6 +115,7 @@ fun HomeScreenContent(
     joulesTotal: Long,
     onToggleService: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
+    onNavigate: (String) -> Unit = {},
     onGrantPermissions: () -> Unit
 ) {
     Scaffold(
@@ -175,6 +181,7 @@ fun HomeScreenContent(
                         active   = serviceRunning,
                         onToggle = onToggleService,
                     )
+                    HomeNavGrid(onNavigate = onNavigate)
                 }
 
                 VerticalDivider(
@@ -293,6 +300,8 @@ fun HomeScreenContent(
                     onToggle = onToggleService,
                 )
 
+                Spacer(Modifier.height(12.dp))
+                HomeNavGrid(onNavigate = onNavigate)
                 Spacer(Modifier.height(16.dp))
 
                 Text(
@@ -354,6 +363,82 @@ fun HomeScreenContent(
 
                 Spacer(Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation grid — 5 destination tiles
+// ─────────────────────────────────────────────────────────────────────────────
+
+private data class NavTile(
+    val label: String,
+    val route: String,
+    val icon: ImageVector,
+    val gradientStart: Color,
+    val gradientEnd: Color,
+)
+
+private val NAV_TILES = listOf(
+    NavTile("Passes",   "encounters", Icons.AutoMirrored.Filled.List,  Color(0xFF1565C0), Color(0xFF0D47A1)),
+    NavTile("Profile",  "profile",    Icons.Filled.Person,             Color(0xFF6A1B9A), Color(0xFF4A148C)),
+    NavTile("Badges",   "badges",     Icons.Filled.Star,               Color(0xFFF57F17), Color(0xFFE65100)),
+    NavTile("Shop",     "shop",       Icons.Filled.ShoppingCart,       Color(0xFF00695C), Color(0xFF004D40)),
+    NavTile("Settings", "settings",   Icons.Filled.Settings,           Color(0xFF37474F), Color(0xFF263238)),
+)
+
+@Composable
+private fun HomeNavGrid(onNavigate: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // First row: 3 tiles
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NAV_TILES.take(3).forEach { tile ->
+                NavTileCard(tile = tile, modifier = Modifier.weight(1f), onClick = { onNavigate(tile.route) })
+            }
+        }
+        // Second row: 2 tiles (centred via weight)
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Spacer(Modifier.weight(0.5f))
+            NAV_TILES.drop(3).forEach { tile ->
+                NavTileCard(tile = tile, modifier = Modifier.weight(1f), onClick = { onNavigate(tile.route) })
+            }
+            Spacer(Modifier.weight(0.5f))
+        }
+    }
+}
+
+@Composable
+private fun NavTileCard(tile: NavTile, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.horizontalGradient(listOf(tile.gradientStart, tile.gradientEnd)))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector        = tile.icon,
+                contentDescription = tile.label,
+                tint               = Color.White,
+                modifier           = Modifier.size(24.dp),
+            )
+            Text(
+                text       = tile.label,
+                style      = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color      = Color.White,
+            )
         }
     }
 }
