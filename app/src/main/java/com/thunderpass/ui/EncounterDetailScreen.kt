@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -233,113 +234,140 @@ fun EncounterDetailScreen(
                     }
                 }
             } else {
-                // ── Portrait: original single-column layout ───────────────────
+                // ── Portrait: user card top + encounter chips right ───────────
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Spacer(Modifier.height(32.dp))
-
-                    DiceBearAvatar(
-                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                            ?: snapshot?.rotatingId
-                            ?: enc.rotatingId,
-                        size = 120.dp,
-                    )
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(
-                        text       = snapshot?.displayName ?: "Unknown Traveler",
-                        style      = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign  = TextAlign.Center,
-                        modifier   = Modifier.padding(horizontal = 32.dp),
-                    )
-
-                    if (!snapshot?.greeting.isNullOrBlank()) {
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            text      = "\u201C${snapshot!!.greeting}\u201D",
-                            style     = MaterialTheme.typography.bodyLarge,
-                            fontStyle = FontStyle.Italic,
-                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier  = Modifier.padding(horizontal = 40.dp),
-                        )
-                    }
-
-                    if (snapshot == null) {
-                        Spacer(Modifier.height(10.dp))
-                        SuggestionChip(
-                            onClick = {},
-                            label   = { Text("Profile exchange pending\u2026") },
-                        )
-                    }
-
-                    Spacer(Modifier.height(20.dp))
-                    val isFriend = enc.isFriend
-                    FilledTonalButton(
-                        onClick = { vm.toggleFriend(enc.id, isFriend) },
-                        colors  = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (isFriend)
-                                MaterialTheme.colorScheme.secondaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                        ),
+                    // Top row: rounded user block (left) + encounter chips + friend (right)
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        verticalAlignment     = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = null,
-                            modifier           = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (isFriend) "Remove Friend" else "Add Friend")
+                        // ── LEFT: rounded-rect block — avatar + name + greeting ───
+                        Box(
+                            modifier = Modifier
+                                .weight(0.52f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))
+                                .padding(12.dp),
+                        ) {
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                DiceBearAvatar(
+                                    seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                                        ?: snapshot?.rotatingId
+                                        ?: enc.rotatingId,
+                                    size = 60.dp,
+                                )
+                                Column {
+                                    Text(
+                                        text       = snapshot?.displayName ?: "Unknown Traveler",
+                                        style      = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines   = 1,
+                                        overflow   = TextOverflow.Ellipsis,
+                                    )
+                                    if (!snapshot?.greeting.isNullOrBlank()) {
+                                        Text(
+                                            text      = "\u201C${snapshot!!.greeting}\u201D",
+                                            style     = MaterialTheme.typography.bodySmall,
+                                            fontStyle = FontStyle.Italic,
+                                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines  = 2,
+                                            overflow  = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    if (snapshot == null) {
+                                        Text(
+                                            text  = "Profile exchange pending\u2026",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.outline,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── RIGHT: encounter chips + friend button ────────────────
+                        Column(
+                            modifier            = Modifier.weight(0.48f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            val dateStr = remember(enc.seenAt) {
+                                SimpleDateFormat("MMM d \u00B7 HH:mm", Locale.getDefault()).format(Date(enc.seenAt))
+                            }
+                            val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
+                            SuggestionChip(
+                                onClick  = {},
+                                label    = { Text(dateStr, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            SuggestionChip(
+                                onClick  = {},
+                                label    = { Text("$rssiDesc (${enc.rssi}\u00A0dBm)", style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            SuggestionChip(
+                                onClick  = {},
+                                label    = { Text(proximity, style = MaterialTheme.typography.labelSmall) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            val isFriend = enc.isFriend
+                            FilledTonalButton(
+                                onClick  = { vm.toggleFriend(enc.id, isFriend) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors   = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = if (isFriend)
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                ),
+                            ) {
+                                Icon(
+                                    imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text  = if (isFriend) "Remove Friend" else "Add Friend",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(Modifier.height(32.dp))
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-                    Spacer(Modifier.height(24.dp))
-
-                    Column(
-                        modifier            = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    // Stats row
+                    HorizontalDivider()
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        val dateStr = remember(enc.seenAt) {
-                            SimpleDateFormat(
-                                "EEEE, MMM d \u00B7 HH:mm",
-                                Locale.getDefault(),
-                            ).format(Date(enc.seenAt))
-                        }
-                        MetaCard(label = "Encountered on",    value = dateStr)
-
-                        val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
-                        MetaCard(label = "Signal strength",   value = "$rssiDesc  (${enc.rssi}\u00A0dBm)")
-                        MetaCard(label = "Estimated distance", value = proximity)
-
-                        if (snapshot != null) {
-                            MetaCard(label = "Protocol version", value = "v${snapshot.protocolVersion}")
-                        }
-                        if (snapshot?.ghostGame != null) {
-                            Spacer(Modifier.height(8.dp))
-                            HorizontalDivider()
-                            Spacer(Modifier.height(8.dp))
-                            GhostScoreCard(snapshot)
-                        }
-                        if (snapshot?.retroUsername != null) {
-                            Spacer(Modifier.height(8.dp))
-                            HorizontalDivider()
-                            Spacer(Modifier.height(8.dp))
-                            RetroSparkCard(snapshot)
-                        }
+                        TravelerStat(label = "Volts",  value = "\u2014")
+                        TravelerStat(label = "Badges", value = "\u2014")
+                        TravelerStat(label = "Passes", value = "\u2014")
+                        TravelerStat(label = "Streak", value = "\u2014")
                     }
 
-                    Spacer(Modifier.height(40.dp))
+                    // Ghost score
+                    if (snapshot?.ghostGame != null) {
+                        HorizontalDivider()
+                        GhostScoreCard(snapshot)
+                    }
+
+                    // RetroAchievements
+                    if (snapshot?.retroUsername != null) {
+                        HorizontalDivider()
+                        RetroSparkCard(snapshot)
+                    }
                 }
             }
         }
