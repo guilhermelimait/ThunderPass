@@ -52,6 +52,55 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
         }
+        // Pull profile from Supabase on startup — server is the source of truth.
+        // Silently skipped when offline or not signed in.
+        viewModelScope.launch { syncFromSupabase() }
+    }
+
+    /**
+     * Pull the authenticated user's profile from Supabase and merge it into
+     * the local Room DB. This makes the server the source of truth: if the
+     * user reinstalls the app (or gets a new device with the same account),
+     * their display name, greeting, avatar, volts, stickers etc. are restored
+     * automatically on first connection.
+     *
+     * Merge strategy:
+     * - Only applied when the server record's [updatedAt] is newer than the
+     *   local row, so a locally-edited profile is never silently overwritten.
+     * - Volts are always set to `max(local, server)` — they can only go up.
+     */
+    private suspend fun syncFromSupabase() {
+        val userId = runCatching {
+            SupabaseManager.client.auth.currentSessionOrNull()?.user?.id
+        }.getOrNull() ?: return
+
+        val records = runCatching {
+            SupabaseManager.client.from("profiles")
+                .select { filter { eq("id", userId) } }
+                .decodeList<ProfileRecord>()
+        }.getOrNull() ?: return
+
+        val remote = records.firstOrNull() ?: return
+        val local  = profileDao.get() ?: return
+
+        // Only overwrite local data if server record is strictly newer
+        if (remote.updatedAt <= local.updatedAt) return
+
+        profileDao.upsert(
+            local.copy(
+                displayName   = remote.displayName.ifBlank { local.displayName },
+                greeting      = remote.greeting.ifBlank { local.greeting },
+                avatarKind    = remote.avatarKind.ifBlank { local.avatarKind },
+                avatarColor   = remote.avatarColor.ifBlank { local.avatarColor },
+                avatarSeed    = remote.avatarSeed.ifBlank { local.avatarSeed },
+                retroUsername = remote.retroUsername.ifBlank { local.retroUsername },
+                ghostGame     = remote.ghostGame.ifBlank { local.ghostGame },
+                ghostScore    = if (remote.ghostScore > 0L) remote.ghostScore else local.ghostScore,
+                stickersJson  = remote.stickersJson.ifBlank { local.stickersJson },
+                voltsTotal    = maxOf(local.voltsTotal, remote.voltsTotal),
+                updatedAt     = remote.updatedAt,
+            )
+        )
     }
 
     /**
