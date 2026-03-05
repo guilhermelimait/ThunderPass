@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
@@ -220,9 +218,9 @@ fun diceBearUrl(seed: String, transparent: Boolean = false): String {
 }
 
 /**
- * Loads a DiceBear "big-smile" avatar for [seed].
- * For Sparky seeds, renders 100% offline from pre-bundled SVG component assets.
- * For legacy random seeds, fetches from the DiceBear HTTP API (Coil disk-caches it).
+ * Loads a DiceBear "big-smile" avatar for [seed] from the API (single composited request).
+ * The API handles all compositing server-side — using crossfade so the image transitions
+ * smoothly when the seed changes (e.g. slider moves in the editor).
  */
 @Composable
 fun DiceBearAvatar(
@@ -232,99 +230,31 @@ fun DiceBearAvatar(
     showLoadingBackground: Boolean  = true,
     transparent:           Boolean  = false,
 ) {
-    if (seed.startsWith("sparky|")) {
-        val opts = remember(seed) { parseSparkyOptions(seed) }
-        SparkyLocalAvatar(
-            opts     = opts,
-            size     = size,
-            modifier = modifier,
-        )
-    } else {
-        SubcomposeAsyncImage(
-            model              = diceBearUrl(seed, transparent),
-            contentDescription = "Avatar",
-            contentScale       = ContentScale.Fit,
-            modifier           = modifier
-                .size(size)
-                .clip(CircleShape),
-            loading = {
-                if (showLoadingBackground) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    )
-                }
-            },
-            error = {
-                if (showLoadingBackground) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    )
-                }
-            },
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Local (offline) Sparky avatar compositor
-// Combines pre-downloaded SVG layer assets from res/raw to render without network.
-// Layer order: bg circle → face/skin → hair → eyes → mouth
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Converts camelCase to snake_case for res/raw file name lookup. */
-private fun String.camelToSnake(): String =
-    replace(Regex("([A-Z])"), "_$1").lowercase().trimStart('_')
-
-/**
- * Composes a Sparky avatar from local SVG layer assets (res/raw/).
- * Each layer (face, hair, eyes, mouth) is a separate SVG downloaded from
- * the DiceBear API at build time and bundled with the app for offline use.
- */
-@Composable
-fun SparkyLocalAvatar(
-    opts:     SparkyOptions,
-    size:     Dp      = 72.dp,
-    modifier: Modifier = Modifier,
-) {
-    val ctx    = LocalContext.current
-    val bgHex  = SPARKY_BG_COLORS.getOrElse(opts.bg)          { SPARKY_BG_COLORS[0] }
-    val bgColor = remember(bgHex) {
-        Color(
-            red   = bgHex.substring(0, 2).toInt(16) / 255f,
-            green = bgHex.substring(2, 4).toInt(16) / 255f,
-            blue  = bgHex.substring(4, 6).toInt(16) / 255f,
-        )
-    }
-
-    val hairStyle  = SPARKY_HAIR_STYLES.getOrElse(opts.hair)          { SPARKY_HAIR_STYLES[0] }
-    val hairColor  = SPARKY_HAIR_COLORS_HEX.getOrElse(opts.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
-    val eyeStyle   = SPARKY_EYE_STYLES.getOrElse(opts.eyes)           { SPARKY_EYE_STYLES[1] }
-    val mouthStyle = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)        { SPARKY_MOUTH_STYLES[0] }
-    val skinHex    = SKIN_TONE_HEXES.getOrElse(opts.skin)             { SKIN_TONE_HEXES[0] }
-
-    // res/raw resource IDs resolved at runtime by name
-    fun rawId(name: String) = ctx.resources.getIdentifier(name, "raw", ctx.packageName)
-
-    val faceRaw  = remember(skinHex)               { rawId("sparky_face_${skinHex.lowercase()}") }
-    val hairRaw  = remember(hairStyle, hairColor)   { rawId("sparky_hair_${hairStyle.camelToSnake()}_${hairColor.lowercase()}") }
-    val eyesRaw  = remember(eyeStyle)              { rawId("sparky_eyes_${eyeStyle.camelToSnake()}") }
-    val mouthRaw = remember(mouthStyle)            { rawId("sparky_mouth_${mouthStyle.camelToSnake()}") }
-
-    Box(
-        modifier = modifier
+    SubcomposeAsyncImage(
+        model              = diceBearUrl(seed, transparent),
+        contentDescription = "Avatar",
+        contentScale       = ContentScale.Fit,
+        modifier           = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(bgColor),
-    ) {
-        // Each SVG layer fills the same 128×128 coordinate space so they align perfectly
-        if (faceRaw  != 0) SubcomposeAsyncImage(faceRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
-        if (hairRaw  != 0) SubcomposeAsyncImage(hairRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
-        if (eyesRaw  != 0) SubcomposeAsyncImage(eyesRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
-        if (mouthRaw != 0) SubcomposeAsyncImage(mouthRaw, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
-    }
+            .clip(CircleShape),
+        loading = {
+            if (showLoadingBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
+        },
+        error = {
+            if (showLoadingBackground) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
+        },
+    )
 }
 
