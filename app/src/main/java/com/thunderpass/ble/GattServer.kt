@@ -21,6 +21,16 @@ import com.thunderpass.data.db.entity.MyProfile
 private const val TAG = "ThunderPass/GattServer"
 
 /**
+ * Supplementary stats included in the BLE payload when the user is not in privacy mode.
+ * Sourced at exchange time from the local DB by [BleService].
+ */
+data class BleStats(
+    val passesCount: Int,
+    val badgesCount: Int,
+    val streakCount: Int,
+)
+
+/**
  * GATT server that accepts incoming profile-exchange requests.
  *
  * ### Flow (SPEC.md § GATT Handshake)
@@ -43,14 +53,14 @@ class GattServer(
     private val deviceMtu = ConcurrentHashMap<String, Int>()
 
     /** Call once from [BleService.onCreate] or before advertising starts. */
-    fun start(profileProvider: () -> MyProfile?) {
+    fun start(profileProvider: () -> MyProfile?, statsProvider: () -> BleStats? = { null }) {
         if (gattServer != null) {
             Log.w(TAG, "GATT server already running — ignoring duplicate start().")
             return
         }
         val btManager = context.getSystemService(BluetoothManager::class.java) ?: return
 
-        gattServer = btManager.openGattServer(context, buildCallback(profileProvider))
+        gattServer = btManager.openGattServer(context, buildCallback(profileProvider, statsProvider))
             ?.also { server ->
                 server.addService(buildService())
                 Log.i(TAG, "GATT server started.")
@@ -105,7 +115,7 @@ class GattServer(
 
     // ── Callback ──────────────────────────────────────────────────────────────
 
-    private fun buildCallback(profileProvider: () -> MyProfile?) =
+    private fun buildCallback(profileProvider: () -> MyProfile?, statsProvider: () -> BleStats?) =
         object : BluetoothGattServerCallback() {
 
             override fun onConnectionStateChange(
@@ -148,7 +158,7 @@ class GattServer(
                 // Build and send our profile as (possibly chunked) notifications
                 device?.let { dev ->
                     val mtu = deviceMtu[dev.address] ?: BleConstants.DEFAULT_MTU
-                    sendProfileNotification(dev, profileProvider(), mtu)
+                    sendProfileNotification(dev, profileProvider(), statsProvider(), mtu)
                 }
             }
 
@@ -182,7 +192,7 @@ class GattServer(
      * @param mtu  The negotiated ATT MTU for this device. Each notification payload must
      *             be ≤ (mtu - 3) bytes (3 bytes for the ATT op-code + handle overhead).
      */
-    private fun sendProfileNotification(device: BluetoothDevice, profile: MyProfile?, mtu: Int) {
+    private fun sendProfileNotification(device: BluetoothDevice, profile: MyProfile?, stats: BleStats?, mtu: Int) {
         if (profile == null) {
             Log.w(TAG, "No local profile; skipping GATT notification.")
             return
@@ -192,7 +202,7 @@ class GattServer(
             ?.getService(THUNDERPASS_SERVICE_UUID)
             ?.getCharacteristic(RESPONSE_CHAR_UUID) ?: return
 
-        val payload = buildPayloadJson(profile).toByteArray(Charsets.UTF_8)
+        val payload = buildPayloadJson(profile, stats).toByteArray(Charsets.UTF_8)
 
         // ATT notification overhead: 3 bytes (opcode 1 + handle 2).
         // Chunk header: 3 bytes (magic 1 + totalChunks 1 + chunkIndex 1).
@@ -228,7 +238,7 @@ class GattServer(
      * }
      * ```
      */
-    private fun buildPayloadJson(profile: MyProfile): String {
+    private fun buildPayloadJson(profile: MyProfile, stats: BleStats?): String {
         // Privacy mode: hide identity (name, RA, device) — but share the avatar
         // so the recipient can see a face, just not who it belongs to.
         val data = if (profile.privacyMode) {
@@ -268,6 +278,14 @@ class GattServer(
             // Include detected device type (e.g. "AYN Thor 2", "Retroid Pocket 4 Pro")
             if (profile.deviceType.isNotBlank()) {
                 put("deviceType", profile.deviceType)
+            }
+            // Include Volts + encounter stats so peers can display them
+            // (omitted entirely in privacy mode so these keys are never present)
+            put("volts", profile.voltsTotal)
+            if (stats != null) {
+                put("passes", stats.passesCount)
+                put("badges", stats.badgesCount)
+                put("streak", stats.streakCount)
             }
         }
         return org.json.JSONObject().apply {

@@ -158,10 +158,22 @@ fun EncounterDetailScreen(
                                 modifier              = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                             ) {
-                                TravelerStat(label = "Volts",  value = "—")
-                                TravelerStat(label = "Badges", value = "—")
-                                TravelerStat(label = "Passes", value = "—")
-                                TravelerStat(label = "Streak", value = "—")
+                                TravelerStat(
+                                    label = "Volts",
+                                    value = snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "\u2014",
+                                )
+                                TravelerStat(
+                                    label = "Badges",
+                                    value = snapshot?.peerBadgesCount?.toString() ?: "\u2014",
+                                )
+                                TravelerStat(
+                                    label = "Passes",
+                                    value = snapshot?.peerPassesCount?.toString() ?: "\u2014",
+                                )
+                                TravelerStat(
+                                    label = "Streak",
+                                    value = snapshot?.peerStreakCount?.let { "${it}d" } ?: "\u2014",
+                                )
                             }
 
                             Spacer(Modifier.height(4.dp))
@@ -234,7 +246,7 @@ fun EncounterDetailScreen(
                     }
                 }
             } else {
-                // ── Portrait: user card top + encounter chips right ───────────
+                // ── Portrait: full-width user card + chips + info below ────────
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -243,22 +255,26 @@ fun EncounterDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // Top row: rounded user block (left) + encounter chips + friend (right)
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        verticalAlignment     = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    // ── Full-width card: avatar+name+greeting (left) | encounter info (right) ──
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(16.dp),
+                        colors   = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     ) {
-                        // ── LEFT: rounded-rect block — avatar + name + greeting ───
-                        Box(
-                            modifier = Modifier
-                                .weight(0.52f)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))
+                        Row(
+                            modifier              = Modifier
+                                .fillMaxWidth()
                                 .padding(12.dp),
+                            verticalAlignment     = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            // ── LEFT: avatar + name + greeting ────────────────────
                             Row(
-                                verticalAlignment     = Alignment.CenterVertically,
+                                modifier             = Modifier.weight(0.52f),
+                                verticalAlignment    = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 DiceBearAvatar(
@@ -294,79 +310,95 @@ fun EncounterDetailScreen(
                                     }
                                 }
                             }
-                        }
 
-                        // ── RIGHT: encounter chips + friend button ────────────────
-                        Column(
-                            modifier            = Modifier.weight(0.48f),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            val dateStr = remember(enc.seenAt) {
-                                SimpleDateFormat("MMM d \u00B7 HH:mm", Locale.getDefault()).format(Date(enc.seenAt))
-                            }
-                            val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
-                            SuggestionChip(
-                                onClick  = {},
-                                label    = { Text(dateStr, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            SuggestionChip(
-                                onClick  = {},
-                                label    = { Text("$rssiDesc (${enc.rssi}\u00A0dBm)", style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            SuggestionChip(
-                                onClick  = {},
-                                label    = { Text(proximity, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            val isFriend = enc.isFriend
-                            FilledTonalButton(
-                                onClick  = { vm.toggleFriend(enc.id, isFriend) },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors   = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = if (isFriend)
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                ),
+                            // ── RIGHT: encounter chips in a flow row + friend button ──
+                            Column(
+                                modifier            = Modifier.weight(0.48f),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Icon(
-                                    imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = null,
-                                    modifier           = Modifier.size(16.dp),
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text  = if (isFriend) "Remove Friend" else "Add Friend",
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
+                                val dateStr = remember(enc.seenAt) {
+                                    SimpleDateFormat("MMM d \u00B7 HH:mm", Locale.getDefault())
+                                        .format(Date(enc.seenAt))
+                                }
+                                val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
+
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement   = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    SuggestionChip(
+                                        onClick = {},
+                                        label   = { Text(dateStr, style = MaterialTheme.typography.labelSmall) },
+                                    )
+                                    SuggestionChip(
+                                        onClick = {},
+                                        label   = { Text("${enc.rssi}\u00A0dBm \u00B7 $rssiDesc", style = MaterialTheme.typography.labelSmall) },
+                                    )
+                                    SuggestionChip(
+                                        onClick = {},
+                                        label   = { Text(proximity, style = MaterialTheme.typography.labelSmall) },
+                                    )
+                                }
+
+                                val isFriend = enc.isFriend
+                                FilledTonalButton(
+                                    onClick  = { vm.toggleFriend(enc.id, isFriend) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors   = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = if (isFriend)
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                        contentDescription = null,
+                                        modifier           = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text  = if (isFriend) "Remove Friend" else "Add Friend",
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // Stats row
+                    // RetroAchievements — shown right below the user card when available
+                    if (snapshot?.retroUsername != null) {
+                        RetroSparkCard(snapshot)
+                    }
+
+                    // Ghost score
+                    if (snapshot?.ghostGame != null) {
+                        GhostScoreCard(snapshot)
+                    }
+
+                    // Stats row — always shown; values hidden behind "—" when peer didn't share
                     HorizontalDivider()
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        TravelerStat(label = "Volts",  value = "\u2014")
-                        TravelerStat(label = "Badges", value = "\u2014")
-                        TravelerStat(label = "Passes", value = "\u2014")
-                        TravelerStat(label = "Streak", value = "\u2014")
-                    }
-
-                    // Ghost score
-                    if (snapshot?.ghostGame != null) {
-                        HorizontalDivider()
-                        GhostScoreCard(snapshot)
-                    }
-
-                    // RetroAchievements
-                    if (snapshot?.retroUsername != null) {
-                        HorizontalDivider()
-                        RetroSparkCard(snapshot)
+                        TravelerStat(
+                            label = "Volts",
+                            value = snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "\u2014",
+                        )
+                        TravelerStat(
+                            label = "Badges",
+                            value = snapshot?.peerBadgesCount?.toString() ?: "\u2014",
+                        )
+                        TravelerStat(
+                            label = "Passes",
+                            value = snapshot?.peerPassesCount?.toString() ?: "\u2014",
+                        )
+                        TravelerStat(
+                            label = "Streak",
+                            value = snapshot?.peerStreakCount?.let { "${it}d" } ?: "\u2014",
+                        )
                     }
                 }
             }

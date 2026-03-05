@@ -25,6 +25,7 @@ import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.thunderpass.ble.BleConstants
+import com.thunderpass.ble.BleStats
 import com.thunderpass.ble.EncounterDedup
 import com.thunderpass.ble.ScanMode
 import com.thunderpass.ble.GattClient
@@ -65,6 +66,26 @@ class BleService : Service() {
         const val PREF_SAFE_ZONE     = "safe_zone_active"
         const val PREF_SCAN_MODE     = "scan_mode"
         const val PREF_SERVICE_ACTIVE = "service_active"
+
+        /** Compute encounter streak in consecutive calendar days (local timezone). */
+        fun computeEncounterStreak(encounters: List<com.thunderpass.data.db.entity.Encounter>): Int {
+            if (encounters.isEmpty()) return 0
+            val cal = java.util.Calendar.getInstance()
+            fun dayStart(ms: Long): Long {
+                cal.timeInMillis = ms
+                cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                cal.set(java.util.Calendar.MINUTE, 0)
+                cal.set(java.util.Calendar.SECOND, 0)
+                cal.set(java.util.Calendar.MILLISECOND, 0)
+                return cal.timeInMillis
+            }
+            val seenDays  = encounters.map { dayStart(it.seenAt) }.toSet()
+            var checkDay  = dayStart(System.currentTimeMillis())
+            if (checkDay !in seenDays) checkDay -= 86_400_000L
+            var streak = 0
+            while (checkDay in seenDays) { streak++; checkDay -= 86_400_000L }
+            return streak
+        }
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -170,12 +191,28 @@ class BleService : Service() {
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                     .putBoolean(PREF_SERVICE_ACTIVE, true).apply()
                 startForeground(BleConstants.NOTIF_ID, buildNotification())
-                gattServer.start {
-                    // Provide the current profile synchronously (ok: DB on IO thread)
-                    runBlocking(Dispatchers.IO) {
-                        ThunderPassDatabase.getInstance(this@BleService).myProfileDao().get()
-                    }
-                }
+                gattServer.start(
+                    profileProvider = {
+                        // Provide the current profile synchronously (ok: DB on IO thread)
+                        runBlocking(Dispatchers.IO) {
+                            ThunderPassDatabase.getInstance(this@BleService).myProfileDao().get()
+                        }
+                    },
+                    statsProvider = {
+                        // Compute encounter stats to include in the BLE payload
+                        runBlocking(Dispatchers.IO) {
+                            val db           = ThunderPassDatabase.getInstance(this@BleService)
+                            val encounterDao = db.encounterDao()
+                            val passes       = encounterDao.countAll()
+                            val profile      = db.myProfileDao().get()
+                            val badges       = profile?.stickersJson
+                                ?.split(",")?.count { it.isNotBlank() } ?: 0
+                            val encounters   = encounterDao.getAll()
+                            val streak       = computeEncounterStreak(encounters)
+                            BleStats(passesCount = passes, badgesCount = badges, streakCount = streak)
+                        }
+                    },
+                )
                 if (!_safeZoneActive) {
                     startAdvertising()
                     startScanning()

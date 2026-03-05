@@ -42,6 +42,10 @@ interface EncounterDao {
     @Query("SELECT COUNT(*) FROM encounter")
     suspend fun countAll(): Int
 
+    /** Returns all encounters — used for streak computation in BLE payload. */
+    @Query("SELECT * FROM encounter ORDER BY seenAt DESC")
+    suspend fun getAll(): List<Encounter>
+
     /** Number of encounters since [sinceMs] epoch ms — for "today" widget cell. */
     @Query("SELECT COUNT(*) FROM encounter WHERE seenAt >= :sinceMs")
     suspend fun countSince(sinceMs: Long): Int

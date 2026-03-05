@@ -285,6 +285,12 @@ class GattClient(
             val ghostGame     = data.optString("ghostGame", "").takeIf { it.isNotBlank() }
             val ghostScore    = data.optLong("ghostScore", 0L).takeIf { it > 0L }
 
+            // Peer stats — null when peer is in privacy mode or running an older build
+            val peerVolts   = data.optLong("volts",   -1L).takeIf { it >= 0L }
+            val peerPasses  = data.optInt("passes",   -1).takeIf  { it >= 0 }
+            val peerBadges  = data.optInt("badges",   -1).takeIf  { it >= 0 }
+            val peerStreak  = data.optInt("streak",   -1).takeIf  { it >= 0 }
+
             // ── 24-hour identity dedup (local) ─────────────────────────────────────
             // Rotating IDs change every 30 min, so scan-level dedup alone can't
             // prevent the same user earning multiple Sparks in a day.
@@ -335,6 +341,10 @@ class GattClient(
                     ghostGame       = ghostGame,
                     ghostScore      = ghostScore,
                     peerUserId      = peerUserId,
+                    peerVoltsTotal  = peerVolts,
+                    peerPassesCount = peerPasses,
+                    peerBadgesCount = peerBadges,
+                    peerStreakCount  = peerStreak,
                 )
             )
 

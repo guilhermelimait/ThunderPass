@@ -85,4 +85,18 @@ data class PeerProfileSnapshot(
 
     /** SEP-joined list of console name strings matching [retroGameTitles]. */
     val retroGameConsoles: String? = null,
+
+    // ── Peer Stats (exchanged via BLE; null when peer is in privacy mode or older build) ─────
+
+    /** Peer's total Volts (energy). Null if peer did not share. */
+    val peerVoltsTotal: Long? = null,
+
+    /** Peer's total encounter count (Passes). Null if peer did not share. */
+    val peerPassesCount: Int? = null,
+
+    /** Peer's earned badge (sticker) count. Null if peer did not share. */
+    val peerBadgesCount: Int? = null,
+
+    /** Peer's current encounter streak in days. Null if peer did not share. */
+    val peerStreakCount: Int? = null,
 )
