@@ -173,7 +173,11 @@ private fun BadgeCategoryCard(
                         colors = listOf(category.accentColor, category.gradientEnd),
                     ),
                 )
-                val cx = size.width * 0.82f
+                // Align circle centre to the actual icon position:
+                // row end-padding (24.dp) + half of icon box width (32.dp / 24.dp compact)
+                val endPadPx   = 24.dp.toPx()
+                val iconHalfPx = (if (compact) 24.dp else 32.dp).toPx()
+                val cx = size.width - endPadPx - iconHalfPx
                 val cy = size.height * 0.5f
                 for (r in listOf(90f, 130f, 170f)) {
                     drawCircle(
