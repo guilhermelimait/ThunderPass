@@ -124,46 +124,41 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Full encounter list with resolved snapshots ─────────────────────────
     // Only confirmed encounters (peerSnapshotId != null) are surfaced — phantoms are excluded.
+    // Display-level dedup: one card per unique peerUserId, keeping the most-recent encounter row.
+    // isFriend is synthesised from the group: if ANY row for that identity is marked friend,
+    // the deduped entry carries isFriend = true — so Sparks and Friends are always consistent.
     val encounters: StateFlow<List<EncounterWithProfile>> =
-        MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
-            viewModelScope.launch {
-                encounterDao.observeConfirmed().collect { list ->
-                    val enriched = list.map { enc ->
-                        EncounterWithProfile(
-                            encounter = enc,
-                            snapshot  = enc.peerSnapshotId?.let { snapshotDao.getById(it) }
-                        )
-                    }
-                    // Display-level dedup: keep only the most-recent encounter per unique identity.
-                    // Safety-net for historical data that arrived before the BLE-layer effectiveId
-                    // fix. Entries without an identity key (null peerUserId) are never collapsed.
-                    val deduped = enriched
-                        .groupBy { it.snapshot?.peerUserId }
-                        .flatMap { (key, group) ->
-                            if (key != null) listOf(group.maxByOrNull { it.encounter.seenAt }!!)
-                            else group
+        encounterDao.observeConfirmed()
+            .map { list ->
+                val enriched = list.map { enc ->
+                    EncounterWithProfile(
+                        encounter = enc,
+                        snapshot  = enc.peerSnapshotId?.let { snapshotDao.getById(it) },
+                    )
+                }
+                enriched
+                    .groupBy { it.snapshot?.peerUserId }
+                    .flatMap { (key, group) ->
+                        if (key != null) {
+                            val latest    = group.maxByOrNull { it.encounter.seenAt }!!
+                            val anyFriend = group.any { it.encounter.isFriend }
+                            listOf(latest.copy(encounter = latest.encounter.copy(isFriend = anyFriend)))
+                        } else {
+                            // No stable identity (anonymous / privacy-mode peer) — show each row.
+                            group
                         }
-                        .sortedByDescending { it.encounter.seenAt }
-                    flow.value = deduped
-                }
-            }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    // ── Friends list (encounters marked isFriend = true) ──────────────────────
-    val friends: StateFlow<List<EncounterWithProfile>> =
-        MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
-            viewModelScope.launch {
-                encounterDao.observeFriends().collect { list ->
-                    val enriched = list.map { enc ->
-                        EncounterWithProfile(
-                            encounter = enc,
-                            snapshot  = enc.peerSnapshotId?.let { snapshotDao.getById(it) }
-                        )
                     }
-                    flow.value = enriched
-                }
+                    .sortedByDescending { it.encounter.seenAt }
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // ── Friends list — derived from the deduped encounters list ──────────────
+    // Filtering here guarantees zero duplicates: the same dedup that powers Sparks
+    // also powers Friends, so each identity appears at most once in both lists.
+    val friends: StateFlow<List<EncounterWithProfile>> =
+        encounters
+            .map { list -> list.filter { it.encounter.isFriend } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     // ── OTA update check ─────────────────────────────────────────────────────
     private val _availableUpdate = MutableStateFlow<String?>(null)
@@ -292,10 +287,23 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
     // ── Friends ────────────────────────────────────────────────────────────────
 
-    /** Toggle the friend mark on the given encounter. */
-    fun toggleFriend(encounterId: Long, currentlyFriend: Boolean) {
+    /**
+     * Toggle the friend mark on an encounter.
+     *
+     * When a stable [peerUserId] is provided the flag is applied to ALL encounter
+     * rows for that identity (via [EncounterDao.setFriendByUserId]), so historical
+     * rows never cause the same person to appear twice in the Friends list.
+     * Falls back to updating the single row when no identity key is available
+     * (anonymous / privacy-mode peers without a userId).
+     */
+    fun toggleFriend(encounterId: Long, currentlyFriend: Boolean, peerUserId: String? = null) {
         viewModelScope.launch {
-            encounterDao.setFriend(encounterId, !currentlyFriend)
+            val newState = !currentlyFriend
+            if (peerUserId != null) {
+                encounterDao.setFriendByUserId(peerUserId, newState)
+            } else {
+                encounterDao.setFriend(encounterId, newState)
+            }
         }
     }
 

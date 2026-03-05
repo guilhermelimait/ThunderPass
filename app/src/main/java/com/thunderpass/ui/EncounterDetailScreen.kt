@@ -204,7 +204,7 @@ fun EncounterDetailScreen(
                             }
                             // Friend toggle — top-right corner of the card
                             IconButton(
-                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend) },
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerUserId) },
                                 modifier = Modifier.align(Alignment.TopEnd),
                             ) {
                                 Icon(
@@ -444,7 +444,7 @@ fun EncounterDetailScreen(
                             }
                             // Friend toggle — top-right corner of the card
                             IconButton(
-                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend) },
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerUserId) },
                                 modifier = Modifier.align(Alignment.TopEnd),
                             ) {
                                 Icon(

@@ -113,6 +113,19 @@ interface EncounterDao {
     suspend fun getMostRecentEncounterIdForUser(userId: String): Long?
 
     /**
+     * Set the friend flag on ALL encounter rows linked to a peer with [peerUserId].
+     * Called on friend-toggle so every historical row for the same identity stays
+     * consistent — prevents the same person appearing in both Sparks and Friends.
+     */
+    @Query("""
+        UPDATE encounter SET isFriend = :isFriend
+        WHERE peerSnapshotId IN (
+            SELECT id FROM peer_profile_snapshot WHERE peerUserId = :peerUserId
+        )
+    """)
+    suspend fun setFriendByUserId(peerUserId: String, isFriend: Boolean)
+
+    /**
      * Count encounters whose [rotatingId] matches [mac] (i.e. same hardware address),
      * that have a successfully linked peer snapshot, and whose [seenAt] falls within
      * the [sinceMs] window.

@@ -89,8 +89,8 @@ fun EncounterListScreen(
                         ) {
                             items(encounters, key = { it.encounter.id }) { item ->
                                 EncounterCard(
-                                    item    = item,
-                                    onClick = { onNavigateToDetail(item.encounter.id) },
+                                    item     = item,
+                                    onClick  = { onNavigateToDetail(item.encounter.id) },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
@@ -151,8 +151,8 @@ fun EncounterListScreen(
                         ) {
                             items(friends, key = { it.encounter.id }) { item ->
                                 EncounterCard(
-                                    item    = item,
-                                    onClick = { onNavigateToDetail(item.encounter.id) },
+                                    item     = item,
+                                    onClick  = { onNavigateToDetail(item.encounter.id) },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
