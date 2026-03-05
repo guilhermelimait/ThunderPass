@@ -591,13 +591,14 @@ private fun NavSquareButton(
                         end    = Offset(size.width, size.height),
                     ),
                 )
-                // Decorative radial glow circles (badge card style)
+                // Decorative radial glow circles — radii proportional to button
+                // height so they look identical on every screen size / density.
                 val cx = size.width * 0.88f
                 val cy = size.height * 0.12f
-                for (r in listOf(28f, 50f, 72f)) {
+                for (ratio in listOf(0.65f, 0.90f, 1.15f)) {
                     drawCircle(
                         color  = Color.White.copy(alpha = 0.09f),
-                        radius = r,
+                        radius = size.height * ratio,
                         center = Offset(cx, cy),
                     )
                 }
