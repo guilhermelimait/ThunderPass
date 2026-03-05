@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thunderpass.ui.theme.SpaceCyan
 import com.thunderpass.ui.theme.VividPurple
@@ -56,11 +57,26 @@ fun SparkyEditorScreen(
     var skinIdx      by remember(initial) { mutableStateOf(initial.skin) }
     var bgIdx        by remember(initial) { mutableStateOf(initial.bg) }
 
+    // True once the user actually moves any slider
+    var hasModified by remember { mutableStateOf(false) }
+    // Also reset hasModified when profile seed reloads (so re-entering shows correct avatar)
+    LaunchedEffect(profile.avatarSeed) { hasModified = false }
+
     // Live preview seed rebuilt from current selections
     val previewSeed by remember {
         derivedStateOf {
             buildSparkySeed(SparkyOptions(hairIdx, hairColorIdx, eyesIdx, mouthIdx, skinIdx, bgIdx))
         }
+    }
+
+    // Show the user's current profile avatar until they touch a slider.
+    // For sparky seeds the sliders are already synced so previewSeed == profile seed.
+    // For legacy non-sparky seeds this lets the user see their actual current avatar first.
+    val displaySeed = when {
+        hasModified                            -> previewSeed
+        profile.avatarSeed.startsWith("sparky|") -> previewSeed   // sliders already match
+        profile.avatarSeed.isNotEmpty()        -> profile.avatarSeed
+        else                                   -> previewSeed
     }
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -104,7 +120,7 @@ fun SparkyEditorScreen(
                         .padding(16.dp),
                     contentAlignment  = Alignment.Center,
                 ) {
-                    SparkyAvatarCard(seed = previewSeed, modifier = Modifier.fillMaxSize())
+                    SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
                 }
 
                 // RIGHT — scrollable attribute sliders
@@ -123,12 +139,12 @@ fun SparkyEditorScreen(
                         mouthIdx     = mouthIdx,
                         skinIdx      = skinIdx,
                         bgIdx        = bgIdx,
-                        onHair       = { hairIdx = it },
-                        onHairColor  = { hairColorIdx = it },
-                        onEyes       = { eyesIdx = it },
-                        onMouth      = { mouthIdx = it },
-                        onSkin       = { skinIdx = it },
-                        onBg         = { bgIdx = it },
+                        onHair       = { hairIdx = it;      hasModified = true },
+                        onHairColor  = { hairColorIdx = it; hasModified = true },
+                        onEyes       = { eyesIdx = it;      hasModified = true },
+                        onMouth      = { mouthIdx = it;     hasModified = true },
+                        onSkin       = { skinIdx = it;      hasModified = true },
+                        onBg         = { bgIdx = it;        hasModified = true },
                     )
                     SaveCancelRow(
                         onSave   = {
@@ -160,7 +176,7 @@ fun SparkyEditorScreen(
                         .height(220.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SparkyAvatarCard(seed = previewSeed, modifier = Modifier.fillMaxSize())
+                    SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
                 }
 
                 SparkyAttributeSliders(
@@ -170,12 +186,12 @@ fun SparkyEditorScreen(
                     mouthIdx     = mouthIdx,
                     skinIdx      = skinIdx,
                     bgIdx        = bgIdx,
-                    onHair       = { hairIdx = it },
-                    onHairColor  = { hairColorIdx = it },
-                    onEyes       = { eyesIdx = it },
-                    onMouth      = { mouthIdx = it },
-                    onSkin       = { skinIdx = it },
-                    onBg         = { bgIdx = it },
+                    onHair       = { hairIdx = it;      hasModified = true },
+                    onHairColor  = { hairColorIdx = it; hasModified = true },
+                    onEyes       = { eyesIdx = it;      hasModified = true },
+                    onMouth      = { mouthIdx = it;     hasModified = true },
+                    onSkin       = { skinIdx = it;      hasModified = true },
+                    onBg         = { bgIdx = it;        hasModified = true },
                 )
 
                 SaveCancelRow(

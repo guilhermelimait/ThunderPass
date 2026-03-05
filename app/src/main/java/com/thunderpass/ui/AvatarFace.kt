@@ -172,15 +172,18 @@ fun diceBearUrl(seed: String, transparent: Boolean = false): String {
         val mouth     = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)    { SPARKY_MOUTH_STYLES[0] }
         val skin      = SKIN_TONE_HEXES.getOrElse(opts.skin)         { SKIN_TONE_HEXES[0] }
         val bg        = SPARKY_BG_COLORS.getOrElse(opts.bg)          { SPARKY_BG_COLORS[0] }
+        // Use plain parameter names (no [] array notation) — OkHttp percent-encodes []
+        // to %5B%5D which DiceBear's JS server doesn't map back to array params.
+        // Single-value params work identically without the brackets.
         return "https://api.dicebear.com/9.x/big-smile/svg" +
             "?seed=sparky-fixed" +
             "&radius=50" +
             "&size=128" +
-            "&hair[]=$hair" +
-            "&hairColor[]=$hairColor" +
-            "&eyes[]=$eyes" +
-            "&mouth[]=$mouth" +
-            "&skinColor=$skin" +
+            "&hair=$hair" +
+            "&hairColor=$hairColor" +
+            "&eyes=$eyes" +
+            "&mouth=$mouth" +
+            "&skinColor=${skin.lowercase()}" +
             if (transparent) "" else "&backgroundColor=$bg"
     }
 
