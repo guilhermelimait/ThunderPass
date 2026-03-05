@@ -49,12 +49,12 @@ fun SparkyEditorScreen(
         else SparkyOptions()
     }
 
-    var hairIdx      by remember { mutableStateOf(initial.hair) }
-    var hairColorIdx by remember { mutableStateOf(initial.hairColor) }
-    var eyesIdx      by remember { mutableStateOf(initial.eyes) }
-    var mouthIdx     by remember { mutableStateOf(initial.mouth) }
-    var skinIdx      by remember { mutableStateOf(initial.skin) }
-    var bgIdx        by remember { mutableStateOf(initial.bg) }
+    var hairIdx      by remember(initial) { mutableStateOf(initial.hair) }
+    var hairColorIdx by remember(initial) { mutableStateOf(initial.hairColor) }
+    var eyesIdx      by remember(initial) { mutableStateOf(initial.eyes) }
+    var mouthIdx     by remember(initial) { mutableStateOf(initial.mouth) }
+    var skinIdx      by remember(initial) { mutableStateOf(initial.skin) }
+    var bgIdx        by remember(initial) { mutableStateOf(initial.bg) }
 
     // Live preview seed rebuilt from current selections
     val previewSeed by remember {
