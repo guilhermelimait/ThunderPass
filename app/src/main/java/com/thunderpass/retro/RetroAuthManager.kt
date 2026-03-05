@@ -45,7 +45,10 @@ class RetroAuthManager private constructor(context: Context) {
         }
     }
 
-    /** Returns the stored API key, falling back to the BuildConfig compile-time value. */
+    /**
+     * Returns the API key — checks EncryptedSharedPrefs first, then falls back
+     * to the build-time [BuildConfig.RA_API_KEY] value.
+     */
     fun getApiKey(): String =
         prefs.getString(KEY_API_KEY, null)?.takeIf { it.isNotBlank() }
             ?: BuildConfig.RA_API_KEY
@@ -55,19 +58,19 @@ class RetroAuthManager private constructor(context: Context) {
         prefs.getString(KEY_API_USER, null)?.takeIf { it.isNotBlank() }
             ?: BuildConfig.RA_API_USER
 
-    /** Returns true if usable credentials are available (runtime or build-time). */
-    fun hasCredentials(): Boolean = getApiKey().isNotBlank() && getApiUser().isNotBlank()
+    /** Returns true if a usable RA username and API key are available (allows fetching). */
+    fun hasCredentials(): Boolean = getApiUser().isNotBlank() && getApiKey().isNotBlank()
 
     /**
      * Saves the user's RA credentials securely.
-     * Pass empty strings to clear and revert to BuildConfig values.
+     * [apiKey] is optional — omit or pass empty string to leave the existing key unchanged.
      */
-    fun saveCredentials(apiKey: String, apiUser: String) {
+    fun saveCredentials(apiUser: String, apiKey: String = "") {
         prefs.edit()
-            .putString(KEY_API_KEY, apiKey.trim())
             .putString(KEY_API_USER, apiUser.trim())
+            .also { if (apiKey.isNotBlank()) it.putString(KEY_API_KEY, apiKey.trim()) }
             .apply()
-        Log.i(TAG, "RA credentials updated (apiUser=${apiUser.trim().take(4)}…)")
+        Log.i(TAG, "RA credentials updated (apiUser=${apiUser.trim().take(4)}…, hasKey=${apiKey.isNotBlank()})")
     }
 
     companion object {

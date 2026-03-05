@@ -36,4 +36,8 @@ interface MyProfileDao {
      */
     @Query("UPDATE my_profile SET supabaseUserId = :userId WHERE id = 1")
     suspend fun updateSupabaseUserId(userId: String)
+
+    /** Persist the device's P-256 public key after Keystore key pair generation. */
+    @Query("UPDATE my_profile SET payload_public_key = :key WHERE id = 1")
+    suspend fun updatePayloadPublicKey(key: String)
 }

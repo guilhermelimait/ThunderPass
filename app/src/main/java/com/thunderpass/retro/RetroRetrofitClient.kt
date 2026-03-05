@@ -42,9 +42,9 @@ object RetroRetrofitClient {
         val apiKey  = auth.getApiKey()
         val apiUser = auth.getApiUser()
 
-        if (apiKey.isBlank() || apiUser.isBlank()) {
-            Log.d(TAG, "RA credentials not configured — skipping fetch for '$username'")
-            return Result.failure(IllegalStateException("RA credentials not set"))
+        if (apiUser.isBlank()) {
+            Log.d(TAG, "RA username not configured — skipping fetch for '$username'")
+            return Result.failure(IllegalStateException("RA username not set"))
         }
 
         return runCatching {
@@ -54,5 +54,26 @@ object RetroRetrofitClient {
         }.onFailure {
             Log.w(TAG, "RA fetch failed for '$username': ${it.message}")
         }
+    }
+
+    /**
+     * Fetches the total number of softcore achievements earned by [username].
+     * Makes a single call requesting up to 500 games (covers the vast majority of players).
+     * Returns 0 on error or if credentials are missing.
+     *
+     * The [UserCompletionProgress.results] entries each have [CompletionEntry.numAwarded]
+     * which counts achievements earned in softcore mode (includes hardcore-earned ones,
+     * matching the count displayed on the RA website).
+     */
+    suspend fun fetchSoftcoreAchievementCount(
+        username: String,
+        auth: RetroAuthManager,
+    ): Int {
+        val apiKey  = auth.getApiKey()
+        val apiUser = auth.getApiUser()
+        if (apiUser.isBlank()) return 0
+        return runCatching {
+            service.getUserCompletionProgress(apiUser = apiUser, apiKey = apiKey, user = username)
+        }.getOrNull()?.results?.sumOf { it.numAwarded } ?: 0
     }
 }

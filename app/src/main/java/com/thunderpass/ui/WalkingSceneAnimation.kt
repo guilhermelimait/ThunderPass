@@ -178,7 +178,7 @@ fun WalkingSceneCard(
             .fillMaxWidth()
             .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.wrapContentHeight()),
         shape     = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
     ) {
         BoxWithConstraints(
             modifier = Modifier

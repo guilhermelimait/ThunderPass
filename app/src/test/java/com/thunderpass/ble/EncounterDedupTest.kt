@@ -128,4 +128,19 @@ class FakeEncounterDao : EncounterDao {
         MutableStateFlow(rows.filter { it.isFriend })
 
     override suspend fun countFriends(): Int = rows.count { it.isFriend }
+
+    override suspend fun delete(id: Long) {
+        rows.removeIf { it.id == id }
+    }
+
+    override suspend fun getIdBySnapshotId(snapshotId: Long): Long? =
+        rows.firstOrNull { it.peerSnapshotId == snapshotId }?.id
+
+    override suspend fun updateSeenAt(id: Long, seenAt: Long) {
+        val idx = rows.indexOfFirst { it.id == id }
+        if (idx >= 0) rows[idx] = rows[idx].copy(seenAt = seenAt)
+    }
+
+    // FakeEncounterDao has no snapshot data, so this always returns null (safe for unit tests).
+    override suspend fun getMostRecentEncounterIdForUser(userId: String): Long? = null
 }

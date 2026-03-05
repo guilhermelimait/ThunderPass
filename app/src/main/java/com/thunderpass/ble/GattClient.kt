@@ -19,7 +19,8 @@ import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.retro.RetroRepository
-import com.thunderpass.supabase.ProfileRecord
+import com.thunderpass.security.PayloadSigner
+import com.thunderpass.supabase.PeerPublicKeyRecord
 import com.thunderpass.supabase.SupabaseManager
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.CoroutineScope
@@ -247,14 +248,14 @@ class GattClient(
                         .fold(byteArrayOf()) { acc, bytes -> acc + bytes }
                     chunkBuffers.remove(key)
                     Log.d(TAG, "All $totalChunks chunks received from $address (${full.size} bytes total)")
-                    scope.launch(Dispatchers.IO) { parseAndPersist(full.toString(Charsets.UTF_8), encounterId) }
+                    scope.launch(Dispatchers.IO) { parseAndPersist(full.toString(Charsets.UTF_8), encounterId, address) }
                     gatt.disconnect()
                 }
             } else {
                 // Legacy / non-chunked single notification (backward compat)
                 val raw = value.toString(Charsets.UTF_8)
                 Log.d(TAG, "Single-packet RESPONSE (${raw.length} chars) from $address")
-                scope.launch(Dispatchers.IO) { parseAndPersist(raw, encounterId) }
+                scope.launch(Dispatchers.IO) { parseAndPersist(raw, encounterId, address) }
                 gatt.disconnect()
             }
         }
@@ -265,14 +266,19 @@ class GattClient(
     /**
      * Parses the JSON payload per SPEC.md and stores a [PeerProfileSnapshot],
      * then links it to the [encounter] row.
+     *
+     * @param address  The BLE MAC address of the remote device (stable within an advertising
+     *                 session). Used as a fallback dedup key when the peer is in privacy mode
+     *                 and no stable [effectiveId] is available.
      */
-    private suspend fun parseAndPersist(raw: String, encounterId: Long) {
+    private suspend fun parseAndPersist(raw: String, encounterId: Long, address: String) {
         try {
             val json       = org.json.JSONObject(raw)
             val version    = json.optInt("v", 0)
             val rotatingId = json.optString("rotatingId", "")
             val peerUserId = json.optString("userId", "").takeIf { it.isNotBlank() }
             val ts         = json.optLong("ts", System.currentTimeMillis() / 1000)
+            val sig        = json.optString("sig", "").takeIf { it.isNotBlank() }
             val data       = json.optJSONObject("data") ?: org.json.JSONObject()
 
             val displayName   = data.optString("displayName", "Unknown")
@@ -291,38 +297,112 @@ class GattClient(
             val peerBadges  = data.optInt("badges",   -1).takeIf  { it >= 0 }
             val peerStreak  = data.optInt("streak",   -1).takeIf  { it >= 0 }
 
+            // Stable peer identifier for identity dedup.
+            // Prefer Supabase userId when available; fall back to installationId so that
+            // dedup works even when Supabase is offline or the peer has no session.
+            val peerInstId  = data.optString("instId", "").takeIf { it.isNotBlank() }
+            val effectiveId = peerUserId ?: peerInstId
+
             // ── 24-hour identity dedup (local) ─────────────────────────────────────
-            // Rotating IDs change every 30 min, so scan-level dedup alone can't
-            // prevent the same user earning multiple Sparks in a day.
-            // If the peer included their stable Supabase userId in the GATT payload,
-            // check whether we already sparked them within the past 24 hours.
-            if (peerUserId != null) {
+            // Rotating IDs change every 60 min, so scan-level dedup alone can't
+            // prevent the same user earning multiple Sparks within the hour.
+            // Use the stable effectiveId (Supabase userId OR installationId) to check
+            // whether we already sparked this person within the dedup window.
+            if (effectiveId != null) {
                 val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
-                if (snapshotDao.countByUserIdSince(peerUserId, cutoffMs) > 0) {
-                    Log.i(TAG, "User $peerUserId already encountered in 24h window — dropping encounter #$encounterId")
+                if (snapshotDao.countByUserIdSince(effectiveId, cutoffMs) > 0) {
+                    Log.i(TAG, "User $effectiveId already encountered within 24h window — refreshing profile data only")
+                    // Refresh the existing snapshot with the latest profile data so the
+                    // friend card always shows the peer's current name, avatar, and stats.
+                    // Volts are NOT re-awarded and the encounter's timestamp is NOT moved.
+                    val existingId = snapshotDao.latestIdByUserIdSince(effectiveId, cutoffMs)
+                    if (existingId != null) {
+                        snapshotDao.updateProfileData(
+                            id             = existingId,
+                            displayName    = displayName,
+                            greeting       = greeting,
+                            avatarKind     = avatarKind,
+                            avatarColor    = avatarColor,
+                            avatarSeed     = avatarSeed,
+                            retroUsername  = retroUsername,
+                            ghostGame      = ghostGame,
+                            ghostScore     = ghostScore,
+                            peerVoltsTotal = peerVolts,
+                            peerPassesCount= peerPasses,
+                            peerBadgesCount= peerBadges,
+                            peerStreakCount = peerStreak,
+                            rawJson        = raw,
+                        )
+                        // If retro username changed or fetch hasn't been done yet,
+                        // queue a background RA fetch on the refreshed snapshot.
+                        if (retroUsername != null) {
+                            scope.launch(Dispatchers.IO) {
+                                val ownUsername = profileDao.get()?.retroUsername?.takeIf { it.isNotBlank() }
+                                RetroRepository.fetchAndCache(
+                                    context      = context,
+                                    peerUsername = retroUsername,
+                                    snapshotId   = existingId,
+                                    snapshotDao  = snapshotDao,
+                                    auth         = retroAuth,
+                                    ownUsername  = ownUsername,
+                                )
+                            }
+                        }
+                        Log.i(TAG, "Profile refreshed for $effectiveId (snapshot=$existingId)")
+                    }
                     encounterDao.delete(encounterId)
                     return
                 }
 
-                // ── Online Supabase identity verify ────────────────────────────────
-                // Confirm the claimed userId actually exists in the `profiles` table.
-                // A missing row means the UUID was forged — reject the encounter.
-                // Network failure is treated leniently: proceed without verification
-                // so offline scenarios aren't penalised.
-                val verifyResult = runCatching {
-                    SupabaseManager.client.from("profiles")
-                        .select { filter { eq("id", peerUserId) } }
-                        .decodeList<ProfileRecord>()
-                }
-                if (verifyResult.isSuccess) {
-                    if (verifyResult.getOrNull()!!.isEmpty()) {
-                        Log.w(TAG, "Peer userId=$peerUserId not in Supabase — rejecting encounter #$encounterId")
-                        encounterDao.delete(encounterId)
-                        return
+                // ── Online Supabase identity verify + ownership proof ──────────────
+                // Only run when the peer explicitly claimed a Supabase userId.
+                // Peers identified only by installationId are accepted locally;
+                // installationId is not in Supabase so we can't verify it there.
+                if (peerUserId != null) {
+                    val verifyResult = runCatching {
+                        SupabaseManager.client.from("profiles")
+                            .select { filter { eq("id", peerUserId) } }
+                            .decodeList<PeerPublicKeyRecord>()
                     }
-                    Log.d(TAG, "Supabase userId verified: $peerUserId")
+                    if (verifyResult.isSuccess) {
+                        val peerRecord = verifyResult.getOrNull()!!.firstOrNull()
+                        if (peerRecord == null) {
+                            Log.w(TAG, "Peer userId=$peerUserId not in Supabase — rejecting encounter #$encounterId")
+                            encounterDao.delete(encounterId)
+                            return
+                        }
+                        Log.d(TAG, "Supabase userId verified: $peerUserId")
+
+                        // ── Payload signature verification ──────────────────────────
+                        val pubKey = peerRecord.publicKey
+                        if (sig != null && pubKey != null) {
+                            val msg = PayloadSigner.signedPayload(peerUserId, rotatingId, ts)
+                            if (!PayloadSigner.verify(msg, sig, pubKey)) {
+                                Log.w(TAG, "Payload signature mismatch for $peerUserId — rejecting encounter #$encounterId")
+                                encounterDao.delete(encounterId)
+                                return
+                            }
+                            Log.d(TAG, "Payload signature verified for $peerUserId ✓")
+                        } else if (sig != null) {
+                            Log.d(TAG, "No public key in Supabase for $peerUserId — skipping sig check")
+                        } else {
+                            Log.d(TAG, "No sig in payload for $peerUserId — legacy device, accepting")
+                        }
+                    } else {
+                        Log.d(TAG, "Supabase verify skipped (offline): ${verifyResult.exceptionOrNull()?.message}")
+                    }
                 } else {
-                    Log.d(TAG, "Supabase verify skipped (offline): ${verifyResult.exceptionOrNull()?.message}")
+                    Log.d(TAG, "Identity dedup by installationId=${peerInstId} — Supabase verify skipped")
+                }
+            } else {
+                // No stable identity available (peer is in privacy mode or running an old build).
+                // Fall back to MAC-address dedup so an anonymous device can't farm Volts
+                // once per rotating-ID window for the entire day.
+                val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
+                if (encounterDao.countLinkedByMacSince(address, cutoffMs) > 0) {
+                    Log.i(TAG, "Anonymous device $address already linked within 24h window — skipping duplicate")
+                    encounterDao.delete(encounterId)
+                    return
                 }
             }
 
@@ -340,7 +420,9 @@ class GattClient(
                     retroUsername   = retroUsername,
                     ghostGame       = ghostGame,
                     ghostScore      = ghostScore,
-                    peerUserId      = peerUserId,
+                    // Store effectiveId so future dedup checks work regardless of
+                    // whether Supabase issued a session by then.
+                    peerUserId      = effectiveId,
                     peerVoltsTotal  = peerVolts,
                     peerPassesCount = peerPasses,
                     peerBadgesCount = peerBadges,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,8 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.ui.theme.SpaceCyan
+import com.thunderpass.ui.theme.VividPurple
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Badges screen — category grid (tap a card to see its badges)
@@ -42,6 +48,8 @@ fun BadgesScreen(
     onBack: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
+    val earnedBadgeKeys by vm.earnedBadgeKeys.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,39 +76,118 @@ fun BadgesScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // Earned summary pill
-            val earned = ALL_BADGES.count { it.tier > 0 }
-            val total  = ALL_BADGES.size
-            val topTier = ALL_BADGES.maxOf { it.tier }
+            // ── In-development notice ─────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                ) {
+                    Text("🚧", fontSize = 20.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text       = "In Development",
+                            fontWeight = FontWeight.Bold,
+                            style      = MaterialTheme.typography.bodyMedium,
+                            color      = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Text(
+                            text  = "This section is coming soon. Stay tuned!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
+                        )
+                    }
+                }
+            }
 
-            Row(
+            // Collection banner — gradient card with decorative rotated squares
+            // earned/total use computeBadges so dynamically awarded badges are reflected.
+            val earned  = computeBadges(earnedBadgeKeys).count { it.tier > 0 }
+            val total   = ALL_BADGES.size
+
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .shadow(8.dp, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                colors = listOf(VividPurple, SpaceCyan),
+                                start  = Offset(0f, 0f),
+                                end    = Offset(size.width, size.height),
+                            ),
+                        )
+                        val base = size.width * 0.32f
+                        val positions = listOf(
+                            Triple(size.width * 0.92f,  size.width * 0.18f,  35f to base * 2.0f),
+                            Triple(size.width * 1.10f,  size.width * 0.68f,  20f to base * 1.55f),
+                            Triple(size.width * 0.50f,  size.width * 1.40f,  45f to base * 1.80f),
+                            Triple(size.width * -0.05f, size.width * 0.52f, -15f to base * 1.20f),
+                        )
+                        for ((cx, cy, rotAndSize) in positions) {
+                            val (deg, sqSz) = rotAndSize
+                            rotate(deg, Offset(cx, cy)) {
+                                drawRect(
+                                    color   = Color.White.copy(alpha = 0.09f),
+                                    topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                    size    = Size(sqSz, sqSz),
+                                )
+                            }
+                        }
+                    },
             ) {
-                Column {
-                    Text(
-                        text  = "Your Collection",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    )
-                    Text(
-                        text       = "$earned / $total badges earned",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text  = "YOUR COLLECTION",
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                            color = Color.White.copy(alpha = 0.75f),
+                        )
+                        Text(
+                            text       = "$earned / $total badges earned",
+                            style      = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color      = Color.White,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress   = { if (total > 0) earned.toFloat() / total else 0f },
+                            modifier   = Modifier
+                                .width(180.dp)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color      = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.25f),
+                        )
+                    }
+                    Box(
+                        modifier         = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Filled.EmojiEvents,
+                            contentDescription = null,
+                            tint               = Color.White,
+                            modifier           = Modifier.size(40.dp),
+                        )
+                    }
                 }
-                ThunderShield(
-                    tier          = topTier,
-                    categoryColor = Color(0xFFFFB300),
-                    darkBg        = Color(0xFF2D1E00),
-                    size          = 44.dp,
-                )
             }
 
             Spacer(Modifier.height(4.dp))
@@ -122,10 +209,11 @@ fun BadgesScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         row.forEach { cat ->
                             BadgeCategoryCard(
-                                category = cat,
-                                onClick  = { onNavigateToCategory(cat.name) },
-                                modifier = Modifier.weight(1f),
-                                compact  = true,
+                                category  = cat,
+                                onClick   = { onNavigateToCategory(cat.name) },
+                                modifier  = Modifier.weight(1f),
+                                compact   = true,
+                                earnedKeys = earnedBadgeKeys,
                             )
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -134,8 +222,9 @@ fun BadgesScreen(
             } else {
                 BadgeCategory.entries.forEach { category ->
                     BadgeCategoryCard(
-                        category = category,
-                        onClick  = { onNavigateToCategory(category.name) },
+                        category   = category,
+                        onClick    = { onNavigateToCategory(category.name) },
+                        earnedKeys = earnedBadgeKeys,
                     )
                 }
             }
@@ -151,12 +240,13 @@ fun BadgesScreen(
 
 @Composable
 private fun BadgeCategoryCard(
-    category: BadgeCategory,
-    onClick:  () -> Unit,
-    modifier: Modifier = Modifier,
-    compact:  Boolean  = false,
+    category:   BadgeCategory,
+    onClick:    () -> Unit,
+    modifier:   Modifier    = Modifier,
+    compact:    Boolean     = false,
+    earnedKeys: Set<String> = emptySet(),
 ) {
-    val badges  = badgesForCategory(category)
+    val badges  = badgesForCategory(category, earnedKeys)
     val earned  = badges.count { it.tier > 0 }
     val total   = badges.size
     val topTier = badges.maxOfOrNull { it.tier } ?: 0
@@ -165,6 +255,7 @@ private fun BadgeCategoryCard(
         modifier = modifier
             .fillMaxWidth()
             .height(if (compact) 84.dp else 110.dp)
+            .shadow(6.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .drawBehind {
@@ -206,7 +297,7 @@ private fun BadgeCategoryCard(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text       = if (earned > 0) "$earned of $total earned" else "$total badges",
+                    text       = "$earned of $total earned",
                     style      = MaterialTheme.typography.bodyMedium,
                     color      = Color.White.copy(alpha = 0.80f),
                     fontWeight = FontWeight.Medium,

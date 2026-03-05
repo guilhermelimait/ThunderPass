@@ -40,6 +40,24 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
                 )
             }
 
+            // Award "Alfa Tester" to every user who installs before v0.7 officially launches.
+            // Award "Beta Tester" to every user who installs before v0.8 officially launches.
+            // Runs here (after the profile row is guaranteed to exist) rather than in
+            // ProfileViewModel where a startup race could fire before the row is created.
+            com.thunderpass.data.BadgeManager.award(
+                this@ThunderPassApplication,
+                "alfa_tester",
+                "beta_tester",
+            )
+
+            // Award "Shared Quest" retroactively on every start if the user already has
+            // RetroAchievements data cached (meaning they previously linked their account
+            // and downloaded game data successfully).
+            val raCache = com.thunderpass.retro.RetroProfileCache.load(this@ThunderPassApplication)
+            if (raCache != null) {
+                com.thunderpass.data.BadgeManager.award(this@ThunderPassApplication, "shared_quest")
+            }
+
             // ── Volts recalculation ───────────────────────────────────────────
             // Each spark (completed GATT exchange) earns 100 V.  If the counter
             // fell behind due to a DB wipe, reinstall, or a future data-restore,

@@ -29,12 +29,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
+import com.thunderpass.ui.theme.SpaceCyan
+import com.thunderpass.ui.theme.VividPurple
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import android.content.res.Configuration
@@ -148,12 +155,10 @@ fun HomeScreenContent(
                     .fillMaxSize()
                     .padding(innerPadding),
             ) {
-                // Match portrait card aspect ratio: portrait_card = full_portrait_w × (full_portrait_h / 3)
-                // In landscape: maxHeight = portrait_w, maxWidth = portrait_h
-                // portrait aspect (w:h) = maxHeight / (maxWidth / 3) = 3*maxHeight/maxWidth
-                // landscape card_width = maxWidth/2 (right panel via weight)
-                // card_height = card_width / aspect = (maxWidth/2) / (3*maxHeight/maxWidth) = maxWidth²/(6·maxHeight)
-                val animLandscapeH = maxWidth * (maxWidth / maxHeight) / 6f
+                val density = LocalDensity.current
+                var bannerHeightPx by remember { mutableStateOf(0) }
+                var navHeightPx by remember { mutableStateOf(0) }
+                val animLandscapeH = maxWidth * (maxWidth / maxHeight) / 6f  // fallback
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Left panel
                     Column(
@@ -164,90 +169,143 @@ fun HomeScreenContent(
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        // Header row: avatar | name+status | volts+logo
-                        Row(
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier              = Modifier.fillMaxWidth(),
+                        // Header banner — gradient card with decorative squares
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onGloballyPositioned { bannerHeightPx = it.size.height }
+                                .shadow(8.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .drawBehind {
+                                    drawRect(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(VividPurple, SpaceCyan),
+                                            start  = Offset(0f, 0f),
+                                            end    = Offset(size.width, size.height),
+                                        ),
+                                    )
+                                    val base = size.width * 0.32f
+                                    val positions = listOf(
+                                        Triple(size.width * 0.92f,  size.width * 0.18f,  35f to base * 2.0f),
+                                        Triple(size.width * 1.10f,  size.width * 0.68f,  20f to base * 1.55f),
+                                        Triple(size.width * 0.50f,  size.width * 1.40f,  45f to base * 1.80f),
+                                        Triple(size.width * -0.05f, size.width * 0.52f, -15f to base * 1.20f),
+                                    )
+                                    for ((cx, cy, rotAndSize) in positions) {
+                                        val (deg, sqSz) = rotAndSize
+                                        rotate(deg, Offset(cx, cy)) {
+                                            drawRect(
+                                                color   = Color.White.copy(alpha = 0.09f),
+                                                topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                                size    = Size(sqSz, sqSz),
+                                            )
+                                        }
+                                    }
+                                },
                         ) {
-                            // Left: user avatar
-                            DiceBearAvatar(
-                                seed     = avatarSeed.ifEmpty { "default" },
-                                size     = 40.dp,
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable { onNavigate("profile") },
-                            )
-                            // Centre: name + scanning status
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text       = displayName,
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onBackground,
-                                    maxLines   = 1,
-                                    overflow   = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (serviceRunning)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            // Right: volt count — tap to open shop
                             Row(
                                 verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                modifier              = Modifier.clickable { onNavigate("shop") },
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier              = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
                             ) {
-                                Icon(
-                                    imageVector        = Icons.Filled.ElectricBolt,
-                                    contentDescription = "Volts",
-                                    tint               = Color(0xFFFFB300),
-                                    modifier           = Modifier.size(13.dp),
+                                // Left: user avatar
+                                DiceBearAvatar(
+                                    seed     = avatarSeed.ifEmpty { "default" },
+                                    size     = 40.dp,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable { onNavigate("profile") },
                                 )
-                                Text(
-                                    text       = voltsTotal.toString(),
-                                    style      = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onBackground,
-                                )
+                                // Centre: name + scanning status
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text       = displayName,
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = Color.White,
+                                        maxLines   = 1,
+                                        overflow   = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.80f),
+                                    )
+                                }
+                                // Right: volt count — tap to open shop
+                                Row(
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier              = Modifier.clickable { onNavigate("shop") },
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Filled.ElectricBolt,
+                                        contentDescription = "Volts",
+                                        tint               = Color(0xFFCC8F00),
+                                        modifier           = Modifier.size(13.dp),
+                                    )
+                                    Text(
+                                        text       = voltsTotal.toString(),
+                                        style      = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = Color.White,
+                                    )
+                                }
                             }
                         }
-                        NavShortcuts(onNavigate = onNavigate)
+                        Box(modifier = Modifier.onGloballyPositioned { navHeightPx = it.size.height }) {
+                            NavShortcuts(onNavigate = onNavigate)
+                        }
 
                         RetroGallerySection(modifier = Modifier.fillMaxWidth())
                     }
 
-                    // Right panel: toggle → animation → LastPassedBy
+                    // Amber gradient divider between panels
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight(0.85f)
+                            .width(3.dp)
+                            .align(Alignment.CenterVertically)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFCC8F00).copy(alpha = 0.2f),
+                                        Color(0xFFCC8F00),
+                                        Color(0xFFCC5500),
+                                        Color(0xFFCC8F00).copy(alpha = 0.2f),
+                                    )
+                                )
+                            )
+                    )
+
+                    // Right panel: toggle (above) → animation → LastPassedBy
                     Column(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
+                        ThunderPassToggleCard(
+                            active   = serviceRunning,
+                            onToggle = onToggleService,
+                            modifier = if (bannerHeightPx > 0)
+                                Modifier.height(with(density) { bannerHeightPx.toDp() })
+                            else Modifier,
+                        )
+                        val animH = if (navHeightPx > 0) with(density) { navHeightPx.toDp() } else animLandscapeH
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(animLandscapeH),
+                                .height(animH),
                         ) {
                             WalkingSceneCard(
                                 avatarSeed     = avatarSeed.ifEmpty { "default" },
                                 serviceRunning = serviceRunning,
                                 fillHeight     = true,
-                            )
-                            ThunderPassToggleCard(
-                                active      = serviceRunning,
-                                onToggle    = onToggleService,
-                                transparent = true,
-                                modifier    = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .padding(top = 4.dp, start = 4.dp, end = 4.dp),
                             )
                         }
                         val lastEnc = encounters.firstOrNull()
@@ -269,6 +327,8 @@ fun HomeScreenContent(
                     .padding(innerPadding)
                     .windowInsetsPadding(WindowInsets.statusBars),
             ) {
+                val density = LocalDensity.current
+                var bannerHeightPx by remember { mutableStateOf(0) }
                 val animHeight = maxHeight / 3
 
                 Column(
@@ -279,63 +339,107 @@ fun HomeScreenContent(
                 ) {
                     Spacer(Modifier.height(16.dp))
 
-                    // ── 1. Greeting row: avatar | name+status | volts+logo ──────
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    // ── 1. Greeting banner — gradient card with decorative squares ─
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onGloballyPositioned { bannerHeightPx = it.size.height }
+                            .shadow(8.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+                            .drawBehind {
+                                drawRect(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(VividPurple, SpaceCyan),
+                                        start  = Offset(0f, 0f),
+                                        end    = Offset(size.width, size.height),
+                                    ),
+                                )
+                                val base = size.width * 0.32f
+                                val positions = listOf(
+                                    Triple(size.width * 0.92f,  size.width * 0.18f,  35f to base * 2.0f),
+                                    Triple(size.width * 1.10f,  size.width * 0.68f,  20f to base * 1.55f),
+                                    Triple(size.width * 0.50f,  size.width * 1.40f,  45f to base * 1.80f),
+                                    Triple(size.width * -0.05f, size.width * 0.52f, -15f to base * 1.20f),
+                                )
+                                for ((cx, cy, rotAndSize) in positions) {
+                                    val (deg, sqSz) = rotAndSize
+                                    rotate(deg, Offset(cx, cy)) {
+                                        drawRect(
+                                            color   = Color.White.copy(alpha = 0.09f),
+                                            topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                            size    = Size(sqSz, sqSz),
+                                        )
+                                    }
+                                }
+                            },
                     ) {
-                        // Left: user avatar
-                        DiceBearAvatar(
-                            seed     = avatarSeed.ifEmpty { "default" },
-                            size     = 52.dp,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { onNavigate("profile") },
-                        )
-                        // Centre: name + scanning status
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text       = displayName,
-                                style      = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = MaterialTheme.colorScheme.onBackground,
-                                maxLines   = 1,
-                                overflow   = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (serviceRunning)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        // Right: volt count — tap to open shop
                         Row(
+                            modifier              = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
                             verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            modifier              = Modifier.clickable { onNavigate("shop") },
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(
-                                imageVector        = Icons.Filled.ElectricBolt,
-                                contentDescription = "Volts",
-                                tint               = Color(0xFFFFB300),
-                                modifier           = Modifier.size(14.dp),
+                            // Left: user avatar
+                            DiceBearAvatar(
+                                seed     = avatarSeed.ifEmpty { "default" },
+                                size     = 52.dp,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { onNavigate("profile") },
                             )
-                            Text(
-                                text       = voltsTotal.toString(),
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color      = MaterialTheme.colorScheme.onBackground,
-                            )
+                            // Centre: name + scanning status
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text       = displayName,
+                                    style      = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color      = Color.White,
+                                    maxLines   = 1,
+                                    overflow   = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.80f),
+                                )
+                            }
+                            // Right: volt count — tap to open shop
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier              = Modifier.clickable { onNavigate("shop") },
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Filled.ElectricBolt,
+                                    contentDescription = "Volts",
+                                    tint               = Color(0xFFCC8F00),
+                                    modifier           = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text       = voltsTotal.toString(),
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = Color.White,
+                                )
+                            }
                         }
                     }
 
                     Spacer(Modifier.height(10.dp))
 
-                    // ── 2+3. Animation with ThunderPass toggle overlaid at top ─
+                    // ── 2. ThunderPass toggle (above animation) ────────────────
+                    ThunderPassToggleCard(
+                        active   = serviceRunning,
+                        onToggle = onToggleService,
+                        modifier = if (bannerHeightPx > 0)
+                            Modifier.height(with(density) { bannerHeightPx.toDp() })
+                        else Modifier,
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // ── 3. Animation ───────────────────────────────────────────
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -345,14 +449,6 @@ fun HomeScreenContent(
                             avatarSeed     = avatarSeed.ifEmpty { "default" },
                             serviceRunning = serviceRunning,
                             fillHeight     = true,
-                        )
-                        ThunderPassToggleCard(
-                            active      = serviceRunning,
-                            onToggle    = onToggleService,
-                            transparent = true,
-                            modifier    = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 8.dp, start = 8.dp, end = 8.dp),
                         )
                     }
 
@@ -382,30 +478,57 @@ fun HomeScreenContent(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ThunderPass ON/OFF toggle card
+// ThunderPass ON/OFF toggle card — gradient + decorative squares (same as header)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ThunderPassToggleCard(
-    active:      Boolean,
-    onToggle:    () -> Unit,
-    transparent: Boolean  = false,
-    modifier:    Modifier = Modifier,
+    active:   Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val containerColor = if (transparent) MaterialTheme.colorScheme.surface.copy(alpha = 0.75f) else when {
-        active -> MaterialTheme.colorScheme.primaryContainer
-        else   -> MaterialTheme.colorScheme.surfaceVariant
-    }
-    Card(
-        modifier  = modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (transparent) 0.dp else 2.dp),
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .drawBehind {
+                if (active) {
+                    // Deep amber → golden yellow diagonal gradient (enabled)
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFBF3900), Color(0xFFCC8F00), Color(0xFFBE9200)),
+                            start  = Offset(0f, 0f),
+                            end    = Offset(size.width, size.height),
+                        ),
+                    )
+                    val base = size.width * 0.32f
+                    val positions = listOf(
+                        Triple(size.width * 0.92f,  size.width * 0.18f,  35f to base * 2.0f),
+                        Triple(size.width * 1.10f,  size.width * 0.68f,  20f to base * 1.55f),
+                        Triple(size.width * 0.50f,  size.width * 1.40f,  45f to base * 1.80f),
+                        Triple(size.width * -0.05f, size.width * 0.52f, -15f to base * 1.20f),
+                    )
+                    for ((cx, cy, rotAndSize) in positions) {
+                        val (deg, sqSz) = rotAndSize
+                        rotate(deg, Offset(cx, cy)) {
+                            drawRect(
+                                color   = Color.White.copy(alpha = 0.12f),
+                                topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                size    = Size(sqSz, sqSz),
+                            )
+                        }
+                    }
+                } else {
+                    // Solid black when disabled
+                    drawRect(color = Color(0xFF0D0D0D))
+                }
+            },
     ) {
         Row(
             modifier              = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -422,17 +545,19 @@ private fun ThunderPassToggleCard(
                     text       = "ThunderPass",
                     style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onSurface,
+                    color      = Color.White,
                 )
             }
             Switch(
                 checked         = active,
                 onCheckedChange = { onToggle() },
                 colors          = SwitchDefaults.colors(
-                    checkedTrackColor   = Color.Black,
-                    uncheckedTrackColor = Color(0xFF222222),
+                    checkedTrackColor   = Color.White.copy(alpha = 0.35f),
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.20f),
                     checkedThumbColor   = Color.White,
-                    uncheckedThumbColor = Color(0xFFAAAAAA),
+                    uncheckedThumbColor = Color.White.copy(alpha = 0.65f),
+                    checkedBorderColor  = Color.White.copy(alpha = 0.0f),
+                    uncheckedBorderColor = Color.White.copy(alpha = 0.0f),
                 ),
             )
         }
@@ -462,7 +587,7 @@ internal fun VoltsInfoCard() {
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             )
             Text(
-                text  = "⚡ Meet a new Traveler via BLE — 100 V\n" +
+                text  = "⚡ Meet a new SparkyUser via BLE — 100 V\n" +
                          "⚡ Unlock a Badge — 50–200 V\n" +
                          "⚡ RetroAchievements activity — up to 500 V\n" +
                          "⚡ Streak bonuses for daily Sparks",
@@ -480,7 +605,7 @@ internal fun VoltsInfoCard() {
 @Composable
 internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Unit) {
     val name = encounter.snapshot?.displayName
-        ?.takeIf { it.isNotBlank() } ?: "Unknown Traveler"
+        ?.takeIf { it.isNotBlank() } ?: "Unknown SparkyUser"
     val seed = encounter.snapshot?.rotatingId ?: encounter.encounter.rotatingId
     val ago  = relativeTimeString(encounter.encounter.seenAt)
 
@@ -491,6 +616,7 @@ internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Un
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
     ) {
         Row(
             modifier          = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -618,6 +744,7 @@ private fun NavSquareButton(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .shadow(6.dp, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .drawBehind {

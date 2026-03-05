@@ -1,8 +1,6 @@
 package com.thunderpass.ui
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -15,11 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thunderpass.ui.theme.SpaceCyan
@@ -58,20 +63,55 @@ fun SparkyEditorScreen(
     // True once the user actually moves any slider (stays false during initial sync).
     var hasModified by remember { mutableStateOf(false) }
 
-    // Sync sliders from the saved profile seed whenever it arrives or changes,
-    // BUT skip the sync while the user is actively editing so that mid-edit
-    // Room saves never clobber the current slider positions.
-    LaunchedEffect(profile.avatarSeed) {
-        if (!hasModified && profile.avatarSeed.isNotEmpty()) {
-            val opts = if (profile.avatarSeed.startsWith("sparky|"))
-                parseSparkyOptions(profile.avatarSeed)
-            else SparkyOptions()
-            hairIdx      = opts.hair
-            hairColorIdx = opts.hairColor
-            eyesIdx      = opts.eyes
-            mouthIdx     = opts.mouth
-            skinIdx      = opts.skin
-            bgIdx        = opts.bg
+    // Sync sliders from the profile seed whenever it changes.
+    // Using vm.profile.collect (instead of LaunchedEffect keyed on the seed string)
+    // guarantees the sync runs immediately on first subscription: StateFlow always
+    // emits its latest cached value synchronously, so sliders are populated even
+    // when the seed is already loaded by the time the screen opens.
+    // The !hasModified guard prevents mid-edit Room saves from clobbering the
+    // current slider positions.
+    LaunchedEffect(Unit) {
+        vm.profile.collect { p ->
+            if (!hasModified) {
+                when {
+                    p.avatarSeed.startsWith("sparky|") -> {
+                        // Saved sparky seed — decode and sync all sliders to match exactly.
+                        val opts = parseSparkyOptions(p.avatarSeed)
+                        hairIdx      = opts.hair
+                        hairColorIdx = opts.hairColor
+                        eyesIdx      = opts.eyes
+                        mouthIdx     = opts.mouth
+                        skinIdx      = opts.skin
+                        bgIdx        = opts.bg
+                    }
+                    p.avatarSeed.isNotEmpty() -> {
+                        // Legacy UUID seed: derive slider positions deterministically,
+                        // then immediately replace with a sparky seed so it's consistent
+                        // from this point forward.
+                        val opts = sparkyOptionsFromSeed(p.avatarSeed)
+                        hairIdx      = opts.hair
+                        hairColorIdx = opts.hairColor
+                        eyesIdx      = opts.eyes
+                        mouthIdx     = opts.mouth
+                        skinIdx      = opts.skin
+                        bgIdx        = opts.bg
+                        vm.saveAvatarSeed(buildSparkySeed(opts))
+                    }
+                    else -> {
+                        // Empty seed (very first open before ViewModel init fires):
+                        // generate a fresh random sparky seed and save it.
+                        val seed = randomSparkySeed()
+                        val opts = parseSparkyOptions(seed)
+                        hairIdx      = opts.hair
+                        hairColorIdx = opts.hairColor
+                        eyesIdx      = opts.eyes
+                        mouthIdx     = opts.mouth
+                        skinIdx      = opts.skin
+                        bgIdx        = opts.bg
+                        vm.saveAvatarSeed(seed)
+                    }
+                }
+            }
         }
     }
 
@@ -82,15 +122,11 @@ fun SparkyEditorScreen(
         }
     }
 
-    // Show the user's current profile avatar until they touch a slider.
-    // For sparky seeds the sliders are already synced so previewSeed == profile seed.
-    // For legacy non-sparky seeds this lets the user see their actual current avatar first.
-    val displaySeed = when {
-        hasModified                            -> previewSeed
-        profile.avatarSeed.startsWith("sparky|") -> previewSeed   // sliders already match
-        profile.avatarSeed.isNotEmpty()        -> profile.avatarSeed
-        else                                   -> previewSeed
-    }
+    // Preview shows the saved sparky avatar when the user hasn't modified anything yet.
+    // If the stored seed is not a sparky seed (e.g. a plain UUID from first install),
+    // we show previewSeed instead so the card always matches the sliders.
+    val displaySeed = if (hasModified || !profile.avatarSeed.startsWith("sparky|")) previewSeed
+                      else profile.avatarSeed
 
     // Auto-save: persist any change 400 ms after the user stops moving a slider
     LaunchedEffect(previewSeed) {
@@ -106,13 +142,7 @@ fun SparkyEditorScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text("✨", style = MaterialTheme.typography.titleLarge)
-                        Text("Edit Sparky", fontWeight = FontWeight.Bold)
-                    }
+                    Text("Edit Sparky", fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -143,6 +173,24 @@ fun SparkyEditorScreen(
                 ) {
                     SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
                 }
+
+                // Amber gradient vertical divider — same style as HomeScreen landscape split
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.85f)
+                        .width(3.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                    Color(0xFFFFB300),
+                                    Color(0xFFFF6F00),
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                )
+                            )
+                        )
+                )
 
                 // RIGHT — scrollable attribute sliders
                 Column(
@@ -193,6 +241,24 @@ fun SparkyEditorScreen(
                     SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
                 }
 
+                // Horizontal amber gradient separator — mirrors the landscape divider
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                    Color(0xFFFFB300),
+                                    Color(0xFFFF6F00),
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                )
+                            )
+                        )
+                )
+
                 SparkyAttributeSliders(
                     hairIdx      = hairIdx,
                     hairColorIdx = hairColorIdx,
@@ -220,34 +286,46 @@ fun SparkyEditorScreen(
 
 @Composable
 private fun SparkyAvatarCard(seed: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape    = RoundedCornerShape(24.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+    // Same geometric gradient banner used in the Badges header and Home user panel.
+    // Decorated with semi-transparent rotated squares for depth.
+    Box(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .drawBehind {
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(VividPurple, SpaceCyan),
+                        start  = Offset(0f, 0f),
+                        end    = Offset(size.width, size.height),
+                    ),
+                )
+                val base = size.width * 0.32f
+                val positions = listOf(
+                    Triple(size.width * 0.92f,  size.width * 0.18f,   35f to base * 2.0f),
+                    Triple(size.width * 1.10f,  size.width * 0.68f,   20f to base * 1.55f),
+                    Triple(size.width * 0.50f,  size.width * 1.40f,   45f to base * 1.80f),
+                    Triple(size.width * -0.05f, size.width * 0.52f,  -15f to base * 1.20f),
+                )
+                for ((cx, cy, rotAndSize) in positions) {
+                    val (deg, sqSz) = rotAndSize
+                    rotate(deg, Offset(cx, cy)) {
+                        drawRect(
+                            color   = Color.White.copy(alpha = 0.09f),
+                            topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                            size    = Size(sqSz, sqSz),
+                        )
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier         = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            // Soft gradient backdrop inside the card
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .align(Alignment.TopCenter)
-                    .background(Brush.verticalGradient(listOf(VividPurple.copy(alpha = 0.3f), SpaceCyan.copy(alpha = 0f)))),
-            )
-            DiceBearAvatar(
-                seed     = seed,
-                size     = 160.dp,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .border(4.dp, MaterialTheme.colorScheme.primaryContainer, CircleShape),
-            )
-        }
+        // Avatar circle: clipped but no visible border — transparent against the gradient.
+        DiceBearAvatar(
+            seed     = seed,
+            size     = 160.dp,
+            modifier = Modifier.clip(CircleShape),
+        )
     }
 }
 
@@ -320,12 +398,12 @@ private fun SparkySliderSection(
     onChange: (Int) -> Unit,
 ) {
     val maxIdx = labels.size - 1
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(12.dp),
-        colors   = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        ),
+    ElevatedCard(
+        modifier  = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(12.dp)),
+        shape     = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
     ) {
         Column(
             modifier = Modifier
@@ -361,15 +439,15 @@ private fun SparkySliderSection(
                 color = MaterialTheme.colorScheme.outline,
             )
 
-            // Discrete slider
+            // Discrete slider — amber/golden palette matching the landscape divider
             Slider(
                 value         = current.toFloat(),
                 onValueChange = { onChange(it.roundToInt().coerceIn(0, maxIdx)) },
                 valueRange    = 0f..maxIdx.toFloat(),
                 steps         = if (maxIdx > 1) maxIdx - 1 else 0,
                 colors        = SliderDefaults.colors(
-                    thumbColor        = MaterialTheme.colorScheme.primary,
-                    activeTrackColor  = MaterialTheme.colorScheme.primary,
+                    thumbColor         = Color(0xFFFFB300),
+                    activeTrackColor   = Color(0xFFFF6F00),
                     inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant,
                 ),
                 modifier = Modifier.fillMaxWidth(),

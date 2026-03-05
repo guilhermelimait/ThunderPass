@@ -65,12 +65,14 @@ object RetroRepository {
         val recentGames  = profile.recentlyPlayed ?: emptyList()
         val gameTitles   = recentGames.joinToString(RETRO_SEP) { it.title }
         val gameConsoles = recentGames.joinToString(RETRO_SEP) { it.consoleName }
+        val gameImages   = recentGames.joinToString(RETRO_SEP) { it.imageIcon ?: "" }
         snapshotDao.updateRetroStatsWithGames(
             id           = snapshotId,
             points       = profile.totalPoints,
             recentCount  = profile.recentlyPlayedCount,
             gameTitles   = gameTitles,
             gameConsoles = gameConsoles,
+            gameImages   = gameImages,
         )
 
         Log.i(TAG, "Cached RA stats for $peerUsername: ${profile.totalPoints} pts, ${profile.recentlyPlayedCount} recent games")

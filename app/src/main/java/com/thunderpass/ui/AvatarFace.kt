@@ -134,6 +134,42 @@ fun parseSparkyOptions(seed: String): SparkyOptions {
     )
 }
 
+/**
+ * Generates a fully random [SparkyOptions] and encodes it as a sparky seed string.
+ * Used by the dice button and first-install initialization so the avatar is always
+ * representable by sliders — no UUID-based DiceBear randomness that can't be decoded.
+ */
+fun randomSparkySeed(): String = buildSparkySeed(
+    SparkyOptions(
+        hair      = SPARKY_HAIR_STYLES.indices.random(),
+        hairColor = SPARKY_HAIR_COLORS_HEX.indices.random(),
+        eyes      = SPARKY_EYE_STYLES.indices.random(),
+        mouth     = SPARKY_MOUTH_STYLES.indices.random(),
+        skin      = SKIN_TONE_HEXES.indices.random(),
+        bg        = SPARKY_BG_COLORS.indices.random(),
+    )
+)
+
+/**
+ * Derives deterministic [SparkyOptions] from any arbitrary seed string (e.g. a UUID).
+ * Each attribute dimension is picked by hashing the seed with a unique multiplier,
+ * so the result is stable across re-opens and looks "random" without being the
+ * default (all-zero) fallback.
+ */
+fun sparkyOptionsFromSeed(seed: String): SparkyOptions {
+    val h = seed.fold(0L) { acc, c -> acc * 31L + c.code }
+    fun pick(size: Int, mix: Long): Int =
+        ((((h * mix) ushr 16) % size).toInt().let { if (it < 0) it + size else it })
+    return SparkyOptions(
+        hair      = pick(SPARKY_HAIR_STYLES.size,     1L),
+        hairColor = pick(SPARKY_HAIR_COLORS_HEX.size, 3L),
+        eyes      = pick(SPARKY_EYE_STYLES.size,      7L),
+        mouth     = pick(SPARKY_MOUTH_STYLES.size,    13L),
+        skin      = pick(SKIN_TONE_HEXES.size,        23L),
+        bg        = pick(SPARKY_BG_COLORS.size,       41L),
+    )
+}
+
 /** Encodes a [SparkyOptions] as a human-readable seed string using style names. */
 fun buildSparkySeed(o: SparkyOptions): String {
     val h  = SPARKY_HAIR_STYLES.getOrElse(o.hair)      { SPARKY_HAIR_STYLES[0] }

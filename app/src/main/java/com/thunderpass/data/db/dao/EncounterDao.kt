@@ -15,6 +15,17 @@ interface EncounterDao {
     @Query("SELECT * FROM encounter ORDER BY seenAt DESC")
     fun observeAll(): Flow<List<Encounter>>
 
+    /**
+     * Confirmed encounters only — those where a GATT profile exchange succeeded
+     * (peerSnapshotId IS NOT NULL). Phantoms/unknowns are excluded.
+     */
+    @Query("SELECT * FROM encounter WHERE peerSnapshotId IS NOT NULL ORDER BY seenAt DESC")
+    fun observeConfirmed(): Flow<List<Encounter>>
+
+    /** Count of confirmed encounters (GATT-verified), used for home screen badge. */
+    @Query("SELECT COUNT(*) FROM encounter WHERE peerSnapshotId IS NOT NULL")
+    fun observeConfirmedCount(): Flow<Int>
+
     /** Insert a raw encounter (before GATT exchange). Returns new row id. */
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(encounter: Encounter): Long
@@ -78,4 +89,39 @@ interface EncounterDao {
      */
     @Query("SELECT id FROM encounter WHERE peerSnapshotId = :snapshotId LIMIT 1")
     suspend fun getIdBySnapshotId(snapshotId: Long): Long?
+
+    /**
+     * Refresh the [seenAt] timestamp of an existing encounter row.
+     * Called when the same user passes by again within [BleConstants.USER_DEDUP_WINDOW_MS]
+     * so the gallery shows the most recent meeting time without creating a duplicate row.
+     */
+    @Query("UPDATE encounter SET seenAt = :seenAt WHERE id = :id")
+    suspend fun updateSeenAt(id: Long, seenAt: Long)
+
+    /**
+     * Find the most recent encounter whose linked peer snapshot belongs to [userId].
+     * Used together with [updateSeenAt] to refresh an existing pass instead of
+     * inserting a duplicate when the same user is re-encountered within the dedup window.
+     */
+    @Query("""
+        SELECT e.id FROM encounter e
+        INNER JOIN peer_profile_snapshot p ON e.peerSnapshotId = p.id
+        WHERE p.peerUserId = :userId
+        ORDER BY e.seenAt DESC
+        LIMIT 1
+    """)
+    suspend fun getMostRecentEncounterIdForUser(userId: String): Long?
+
+    /**
+     * Count encounters whose [rotatingId] matches [mac] (i.e. same hardware address),
+     * that have a successfully linked peer snapshot, and whose [seenAt] falls within
+     * the [sinceMs] window.
+     *
+     * Used as a fallback identity-dedup mechanism for privacy-mode peers where no
+     * stable [effectiveId] is available: we use the BLE MAC address recorded in
+     * the encounter row to prevent the same anonymous device from farming Volts
+     * once per hour for the whole day.
+     */
+    @Query("SELECT COUNT(*) FROM encounter WHERE rotatingId = :mac AND peerSnapshotId IS NOT NULL AND seenAt >= :sinceMs")
+    suspend fun countLinkedByMacSince(mac: String, sinceMs: Long): Int
 }

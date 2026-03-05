@@ -86,6 +86,9 @@ data class PeerProfileSnapshot(
     /** SEP-joined list of console name strings matching [retroGameTitles]. */
     val retroGameConsoles: String? = null,
 
+    /** SEP-joined list of image icon path suffixes matching [retroGameTitles]. Prepend https://media.retroachievements.org. */
+    val retroGameImages: String? = null,
+
     // ── Peer Stats (exchanged via BLE; null when peer is in privacy mode or older build) ─────
 
     /** Peer's total Volts (energy). Null if peer did not share. */

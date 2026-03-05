@@ -1,6 +1,7 @@
 package com.thunderpass.ui
 
 import android.content.res.Configuration
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,6 +14,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
@@ -40,7 +44,7 @@ fun EncounterListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Passes") },
+                title = { Text("Passes", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -94,9 +98,23 @@ fun EncounterListScreen(
                     }
                 }
 
-                VerticalDivider()
-
-                // Right — Friends
+                // Amber gradient divider
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.85f)
+                        .width(3.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                    Color(0xFFFFB300),
+                                    Color(0xFFFF6F00),
+                                    Color(0xFFFFB300).copy(alpha = 0.2f),
+                                )
+                            )
+                        )
+                )
                 Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                     Row(
                         modifier          = Modifier
@@ -269,7 +287,7 @@ private fun EmptyEncountersState() {
             color      = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text      = "Head outside and let ThunderPass\ndetect other Travelers nearby.",
+            text      = "Head outside and let ThunderPass\ndetect other SparkyUsers nearby.",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -290,8 +308,10 @@ private fun EncounterCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
     ) {
         Row(
             modifier          = Modifier.padding(16.dp),
@@ -308,7 +328,7 @@ private fun EncounterCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text       = snapshot?.displayName ?: "Unknown traveler",
+                    text       = snapshot?.displayName ?: "Unknown SparkyUser",
                     style      = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )

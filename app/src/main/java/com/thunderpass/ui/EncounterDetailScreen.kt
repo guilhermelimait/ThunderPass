@@ -4,27 +4,33 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thunderpass.ui.theme.SpaceCyan
+import com.thunderpass.ui.theme.VividPurple
+import com.thunderpass.ui.theme.DarkOrange
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -49,7 +55,7 @@ fun EncounterDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(item?.snapshot?.displayName ?: "Traveler") },
+                title = { Text(item?.snapshot?.displayName ?: "SparkyUser", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -77,328 +83,479 @@ fun EncounterDetailScreen(
             val enc      = item.encounter
             val snapshot = item.snapshot
 
+            // Live reactive snapshot — re-emits when RA data is updated in Room.
+            val peerSnapshotId = enc.peerSnapshotId ?: 0L
+            val liveSnapshot by vm.observeSnapshotById(peerSnapshotId).collectAsState(initial = snapshot)
+
+            // Auto-fetch peer RA data using the local user's API key when the peer
+            // shared their retroUsername but data was never retrieved (e.g. they had
+            // no key themselves during the BLE exchange).
+            LaunchedEffect(peerSnapshotId) {
+                val sn = snapshot
+                if (sn != null && !sn.retroUsername.isNullOrBlank() && !sn.retroFetchAttempted) {
+                    vm.refreshPeerRetro(peerSnapshotId, sn.retroUsername)
+                }
+            }
+
             if (isLandscape) {
-                // ── Landscape: profile card left | encounter info right ────────
+                // ── Landscape: left column (user card + stats + RA) | right column (chips + friend) ──
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(padding)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // ── Left panel: traveler profile card ─────────────────────
-                    Box(
-                        modifier = Modifier
-                            .weight(0.48f)
+                    // ── Left column: profile card + info cards ───────────────
+                    Column(
+                        modifier            = Modifier
+                            .weight(0.50f)
                             .fillMaxHeight()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.surface,
-                                    ),
-                                ),
-                            ),
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Column(
-                            modifier            = Modifier
-                                .fillMaxSize()
-                                .padding(20.dp)
-                                .verticalScroll(rememberScrollState()),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        // Rounded card — strong gradient + 4 decorative rotated squares (+ stats)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(8.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .drawBehind {
+                                    drawRect(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(VividPurple, SpaceCyan),
+                                            start  = Offset(0f, 0f),
+                                            end    = Offset(size.width, size.height),
+                                        ),
+                                    )
+                                    val base = size.width * 0.32f
+                                    val positions = listOf(
+                                        Triple(size.width * 0.92f,  size.width * 0.18f,  35f  to base * 2.0f),
+                                        Triple(size.width * 1.10f,  size.width * 0.68f,  20f  to base * 1.55f),
+                                        Triple(size.width * 0.50f,  size.width * 1.40f,  45f  to base * 1.80f),
+                                        Triple(size.width * -0.05f, size.width * 0.52f, -15f  to base * 1.20f),
+                                    )
+                                    for ((cx, cy, rotAndSize) in positions) {
+                                        val (deg, sqSz) = rotAndSize
+                                        rotate(deg, Offset(cx, cy)) {
+                                            drawRect(
+                                                color   = Color.White.copy(alpha = 0.09f),
+                                                topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                                size    = Size(sqSz, sqSz),
+                                            )
+                                        }
+                                    }
+                                },
                         ) {
-                            // Avatar — placeholder background circle (banner image TBD)
-                            Box(
-                                modifier         = Modifier
-                                    .size(100.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center,
+                            Column(
+                                modifier            = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                DiceBearAvatar(
-                                    seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                                        ?: snapshot?.rotatingId
-                                        ?: enc.rotatingId,
-                                    size = 100.dp,
-                                )
+                                Row(
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    DiceBearAvatar(
+                                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                                            ?: snapshot?.rotatingId
+                                            ?: enc.rotatingId,
+                                        size = 72.dp,
+                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(
+                                            text       = snapshot?.displayName ?: "Unknown SparkyUser",
+                                            style      = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color      = Color.White,
+                                            maxLines   = 1,
+                                            overflow   = TextOverflow.Ellipsis,
+                                        )
+                                        if (!snapshot?.greeting.isNullOrBlank()) {
+                                            Text(
+                                                text      = "\u201C${snapshot!!.greeting}\u201D",
+                                                style     = MaterialTheme.typography.bodySmall,
+                                                fontStyle = FontStyle.Italic,
+                                                color     = Color.White.copy(alpha = 0.80f),
+                                                maxLines  = 2,
+                                                overflow  = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        if (snapshot == null) {
+                                            Text(
+                                                text  = "Profile exchange pending\u2026",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.60f),
+                                            )
+                                        }
+                                    }
+                                }
+                                HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
+                                Row(
+                                    modifier              = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                ) {
+                                    TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                }
                             }
-
-                            // Name
-                            Text(
-                                text       = snapshot?.displayName ?: "Unknown Traveler",
-                                style      = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                textAlign  = TextAlign.Center,
-                            )
-
-                            // Greeting / message
-                            if (!snapshot?.greeting.isNullOrBlank()) {
-                                Text(
-                                    text      = "\u201C${snapshot!!.greeting}\u201D",
-                                    style     = MaterialTheme.typography.bodyMedium,
-                                    fontStyle = FontStyle.Italic,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-
-                            if (snapshot == null) {
-                                Text(
-                                    text  = "Profile exchange pending\u2026",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
-
-                            Spacer(Modifier.height(4.dp))
-                            HorizontalDivider(modifier = Modifier.fillMaxWidth(0.6f))
-                            Spacer(Modifier.height(4.dp))
-
-                            // Stat row: Volts · Badges · Passes · Streak
-                            Row(
-                                modifier              = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                            ) {
-                                TravelerStat(
-                                    label = "Volts",
-                                    value = snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "\u2014",
-                                )
-                                TravelerStat(
-                                    label = "Badges",
-                                    value = snapshot?.peerBadgesCount?.toString() ?: "\u2014",
-                                )
-                                TravelerStat(
-                                    label = "Passes",
-                                    value = snapshot?.peerPassesCount?.toString() ?: "\u2014",
-                                )
-                                TravelerStat(
-                                    label = "Streak",
-                                    value = snapshot?.peerStreakCount?.let { "${it}d" } ?: "\u2014",
-                                )
-                            }
-
-                            Spacer(Modifier.height(4.dp))
-
-                            // Add / Remove Friend button — inside the left card
-                            val isFriend = enc.isFriend
-                            FilledTonalButton(
-                                onClick = { vm.toggleFriend(enc.id, isFriend) },
-                                modifier = Modifier.fillMaxWidth(0.85f),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = if (isFriend)
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                ),
+                            // Friend toggle — top-right corner of the card
+                            IconButton(
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend) },
+                                modifier = Modifier.align(Alignment.TopEnd),
                             ) {
                                 Icon(
-                                    imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = null,
-                                    modifier           = Modifier.size(18.dp),
+                                    imageVector        = if (enc.isFriend) Icons.Filled.Star else Icons.Filled.Add,
+                                    contentDescription = if (enc.isFriend) "Remove Friend" else "Add Friend",
+                                    tint               = Color.White,
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (isFriend) "Remove Friend" else "Add Friend")
+                            }
+                        }
+
+                        // Info cards — Last Seen, Signal, Distance
+                        val dateStr = remember(enc.seenAt) {
+                            SimpleDateFormat("MMM\u00A0d\u00A0\u00B7\u00A0HH:mm", Locale.getDefault())
+                                .format(Date(enc.seenAt))
+                        }
+                        val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
+                        val ageDays = ((System.currentTimeMillis() - enc.seenAt) / 86_400_000L).toInt()
+                        val relativeDate = when {
+                            ageDays == 0 -> "Today"
+                            ageDays == 1 -> "Yesterday"
+                            ageDays < 7  -> "$ageDays days ago"
+                            else         -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(enc.seenAt))
+                        }
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ElevatedCard(
+                                modifier  = Modifier.weight(1f),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                    Text(
+                                        text  = "Last Seen",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text       = dateStr,
+                                        style      = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        text  = relativeDate,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                            }
+                            ElevatedCard(
+                                modifier  = Modifier.weight(1f),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                    Text(
+                                        text  = "Signal",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text       = "${enc.rssi} dBm",
+                                        style      = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        text  = rssiDesc,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                            }
+                            ElevatedCard(
+                                modifier  = Modifier.weight(1f),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                    Text(
+                                        text  = "Distance",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text       = proximity.substringAfter("  ").trim(),
+                                        style      = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Text(
+                                        text  = proximity.substringBefore("  ").trim(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
                             }
                         }
                     }
 
-                    VerticalDivider()
-
-                    // ── Right panel: encounter metadata ───────────────────────
-                    Column(
+                    // Amber gradient divider
+                    Box(
                         modifier = Modifier
-                            .weight(0.52f)
+                            .fillMaxHeight(0.85f)
+                            .width(3.dp)
+                            .align(Alignment.CenterVertically)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFFFB300).copy(alpha = 0.2f),
+                                        Color(0xFFFFB300),
+                                        Color(0xFFFF6F00),
+                                        Color(0xFFFFB300).copy(alpha = 0.2f),
+                                    )
+                                )
+                            )
+                    )
+
+                    // ── Right column: RetroAchievements ──────────────────────
+                    Column(
+                        modifier            = Modifier
+                            .weight(0.50f)
                             .fillMaxHeight()
-                            .verticalScroll(rememberScrollState())
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text(
-                            text  = "ENCOUNTER INFO",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 1.5.sp,
-                                fontWeight    = FontWeight.Bold,
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-
-                        val dateStr = remember(enc.seenAt) {
-                            SimpleDateFormat(
-                                "EEEE, MMM d \u00B7 HH:mm",
-                                Locale.getDefault(),
-                            ).format(Date(enc.seenAt))
-                        }
-                        MetaCard(label = "Encountered on",    value = dateStr)
-
-                        val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
-                        MetaCard(label = "Signal strength",   value = "$rssiDesc  (${enc.rssi}\u00A0dBm)")
-                        MetaCard(label = "Estimated distance", value = proximity)
-
                         // Ghost Score
                         if (snapshot?.ghostGame != null) {
-                            HorizontalDivider()
                             GhostScoreCard(snapshot)
                         }
-                        // RetroAchievements
-                        if (snapshot?.retroUsername != null) {
-                            HorizontalDivider()
-                            RetroSparkCard(snapshot)
+
+                        // RetroAchievements — use liveSnapshot to pick up RA data fetched after initial load
+                        if (liveSnapshot != null || snapshot != null) {
+                            RetroSparkCard(liveSnapshot ?: snapshot!!)
                         }
                     }
                 }
             } else {
-                // ── Portrait: full-width user card + chips + info below ────────
+                // ── Portrait: user card left | encounter info right ───────────
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    // ── Full-width card: avatar+name+greeting (left) | encounter info (right) ──
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(16.dp),
-                        colors   = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    // ── Top row: rounded user card (left) | chips + button (right) ──
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment     = Alignment.Top,
                     ) {
-                        Row(
-                            modifier              = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment     = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            // ── LEFT: avatar + name + greeting ────────────────────
-                            Row(
-                                modifier             = Modifier.weight(0.52f),
-                                verticalAlignment    = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                DiceBearAvatar(
-                                    seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                                        ?: snapshot?.rotatingId
-                                        ?: enc.rotatingId,
-                                    size = 60.dp,
-                                )
-                                Column {
-                                    Text(
-                                        text       = snapshot?.displayName ?: "Unknown Traveler",
-                                        style      = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines   = 1,
-                                        overflow   = TextOverflow.Ellipsis,
+                        // ── LEFT: Card — strong gradient + 4 decorative rotated squares (+ stats) ──
+                        Box(
+                            modifier = Modifier
+                                .weight(0.52f)
+                                .shadow(8.dp, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .drawBehind {
+                                    drawRect(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(VividPurple, SpaceCyan),
+                                            start  = Offset(0f, 0f),
+                                            end    = Offset(size.width, size.height),
+                                        ),
                                     )
-                                    if (!snapshot?.greeting.isNullOrBlank()) {
-                                        Text(
-                                            text      = "\u201C${snapshot!!.greeting}\u201D",
-                                            style     = MaterialTheme.typography.bodySmall,
-                                            fontStyle = FontStyle.Italic,
-                                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines  = 2,
-                                            overflow  = TextOverflow.Ellipsis,
-                                        )
+                                    val base = size.width * 0.32f
+                                    val positions = listOf(
+                                        Triple(size.width * 0.92f,  size.width * 0.18f,  35f  to base * 2.0f),
+                                        Triple(size.width * 1.10f,  size.width * 0.68f,  20f  to base * 1.55f),
+                                        Triple(size.width * 0.50f,  size.width * 1.40f,  45f  to base * 1.80f),
+                                        Triple(size.width * -0.05f, size.width * 0.52f, -15f  to base * 1.20f),
+                                    )
+                                    for ((cx, cy, rotAndSize) in positions) {
+                                        val (deg, sqSz) = rotAndSize
+                                        rotate(deg, Offset(cx, cy)) {
+                                            drawRect(
+                                                color   = Color.White.copy(alpha = 0.09f),
+                                                topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                                                size    = Size(sqSz, sqSz),
+                                            )
+                                        }
                                     }
-                                    if (snapshot == null) {
+                                },
+                        ) {
+                            Column(
+                                modifier            = Modifier
+                                    .fillMaxWidth()
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    DiceBearAvatar(
+                                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                                            ?: snapshot?.rotatingId
+                                            ?: enc.rotatingId,
+                                        size = 56.dp,
+                                    )
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(
-                                            text  = "Profile exchange pending\u2026",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline,
+                                            text       = snapshot?.displayName ?: "Unknown SparkyUser",
+                                            style      = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color      = Color.White,
+                                            maxLines   = 1,
+                                            overflow   = TextOverflow.Ellipsis,
                                         )
+                                        if (!snapshot?.greeting.isNullOrBlank()) {
+                                            Text(
+                                                text      = "\u201C${snapshot!!.greeting}\u201D",
+                                                style     = MaterialTheme.typography.bodySmall,
+                                                fontStyle = FontStyle.Italic,
+                                                color     = Color.White.copy(alpha = 0.80f),
+                                                maxLines  = 2,
+                                                overflow  = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        if (snapshot == null) {
+                                            Text(
+                                                text  = "Profile exchange pending\u2026",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White.copy(alpha = 0.60f),
+                                            )
+                                        }
                                     }
+                                }
+                                HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
+                                Row(
+                                    modifier              = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                ) {
+                                    TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
                                 }
                             }
-
-                            // ── RIGHT: encounter chips in a flow row + friend button ──
-                            Column(
-                                modifier            = Modifier.weight(0.48f),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            // Friend toggle — top-right corner of the card
+                            IconButton(
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend) },
+                                modifier = Modifier.align(Alignment.TopEnd),
                             ) {
-                                val dateStr = remember(enc.seenAt) {
-                                    SimpleDateFormat("MMM d \u00B7 HH:mm", Locale.getDefault())
-                                        .format(Date(enc.seenAt))
-                                }
-                                val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
+                                Icon(
+                                    imageVector        = if (enc.isFriend) Icons.Filled.Star else Icons.Filled.Add,
+                                    contentDescription = if (enc.isFriend) "Remove Friend" else "Add Friend",
+                                    tint               = Color.White,
+                                )
+                            }
+                        }
 
-                                @OptIn(ExperimentalLayoutApi::class)
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalArrangement   = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    SuggestionChip(
-                                        onClick = {},
-                                        label   = { Text(dateStr, style = MaterialTheme.typography.labelSmall) },
-                                    )
-                                    SuggestionChip(
-                                        onClick = {},
-                                        label   = { Text("${enc.rssi}\u00A0dBm \u00B7 $rssiDesc", style = MaterialTheme.typography.labelSmall) },
-                                    )
-                                    SuggestionChip(
-                                        onClick = {},
-                                        label   = { Text(proximity, style = MaterialTheme.typography.labelSmall) },
-                                    )
-                                }
+                        // ── RIGHT: all encounter chips on one scrollable line + friend button ──
+                        Column(
+                            modifier            = Modifier.weight(0.48f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            val dateStr = remember(enc.seenAt) {
+                                SimpleDateFormat("MMM\u00A0d\u00A0\u00B7\u00A0HH:mm", Locale.getDefault())
+                                    .format(Date(enc.seenAt))
+                            }
+                            val (proximity, rssiDesc) = rssiToProximity(enc.rssi)
 
-                                val isFriend = enc.isFriend
-                                FilledTonalButton(
-                                    onClick  = { vm.toggleFriend(enc.id, isFriend) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors   = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = if (isFriend)
-                                            MaterialTheme.colorScheme.secondaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.primaryContainer,
-                                    ),
+                            val ageDays = ((System.currentTimeMillis() - enc.seenAt) / 86_400_000L).toInt()
+                            val relativeDate = when {
+                                ageDays == 0 -> "Today"
+                                ageDays == 1 -> "Yesterday"
+                                ageDays < 7  -> "$ageDays days ago"
+                                else         -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(enc.seenAt))
+                            }
+                            // Info cards — side by side
+                            Row(
+                                modifier              = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                ElevatedCard(
+                                    modifier  = Modifier.weight(1f),
+                                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
                                 ) {
-                                    Icon(
-                                        imageVector        = if (isFriend) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                        contentDescription = null,
-                                        modifier           = Modifier.size(16.dp),
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        text  = if (isFriend) "Remove Friend" else "Add Friend",
-                                        style = MaterialTheme.typography.labelMedium,
-                                    )
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+                                        Text(
+                                            text  = "Last Seen",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text       = dateStr,
+                                            style      = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text  = relativeDate,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    }
+                                }
+                                ElevatedCard(
+                                    modifier  = Modifier.weight(1f),
+                                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+                                        Text(
+                                            text  = "Signal",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text       = "${enc.rssi} dBm",
+                                            style      = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text  = rssiDesc,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    }
+                                }
+                                ElevatedCard(
+                                    modifier  = Modifier.weight(1f),
+                                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp),
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
+                                        Text(
+                                            text  = "Distance",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text       = proximity.substringAfter("  ").trim(),
+                                            style      = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text  = proximity.substringBefore("  ").trim(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
 
-                    // RetroAchievements — shown right below the user card when available
-                    if (snapshot?.retroUsername != null) {
-                        RetroSparkCard(snapshot)
-                    }
-
-                    // Ghost score
+                    // ── Ghost score ───────────────────────────────────────────
                     if (snapshot?.ghostGame != null) {
                         GhostScoreCard(snapshot)
                     }
 
-                    // Stats row — always shown; values hidden behind "—" when peer didn't share
-                    HorizontalDivider()
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                    ) {
-                        TravelerStat(
-                            label = "Volts",
-                            value = snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "\u2014",
-                        )
-                        TravelerStat(
-                            label = "Badges",
-                            value = snapshot?.peerBadgesCount?.toString() ?: "\u2014",
-                        )
-                        TravelerStat(
-                            label = "Passes",
-                            value = snapshot?.peerPassesCount?.toString() ?: "\u2014",
-                        )
-                        TravelerStat(
-                            label = "Streak",
-                            value = snapshot?.peerStreakCount?.let { "${it}d" } ?: "\u2014",
-                        )
+                    // ── RA profile — full width below the stats ───────────────
+                    if (liveSnapshot != null || snapshot != null) {
+                        RetroSparkCard(liveSnapshot ?: snapshot!!)
                     }
                 }
             }
@@ -407,42 +564,24 @@ fun EncounterDetailScreen(
 }
 
 @Composable
-private fun TravelerStat(label: String, value: String) {
+private fun TravelerStat(
+    label:      String,
+    value:      String,
+    valueColor: Color = Color.Unspecified,
+    labelColor: Color = Color.Unspecified,
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text       = value,
             style      = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
+            color      = if (valueColor != Color.Unspecified) valueColor else MaterialTheme.colorScheme.onSurface,
         )
         Text(
             text  = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (labelColor != Color.Unspecified) labelColor else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun MetaCard(label: String, value: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-        }
     }
 }
 
@@ -451,8 +590,9 @@ private fun GhostScoreCard(snapshot: com.thunderpass.data.db.entity.PeerProfileS
     val game  = snapshot.ghostGame  ?: return
     val score = snapshot.ghostScore
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors   = CardDefaults.cardColors(
+        modifier  = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
         ),
     ) {

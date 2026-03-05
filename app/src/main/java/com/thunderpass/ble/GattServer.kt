@@ -17,6 +17,7 @@ import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
 import com.thunderpass.ble.BleConstants.THUNDERPASS_SERVICE_UUID
 import com.thunderpass.data.db.entity.MyProfile
+import com.thunderpass.security.PayloadSigner
 
 private const val TAG = "ThunderPass/GattServer"
 
@@ -275,6 +276,12 @@ class GattServer(
             if (profile.supabaseUserId.isNotBlank()) {
                 put("userId", profile.supabaseUserId)
             }
+            // Always include the stable installationId as a fallback dedup key.
+            // This ensures dedup works even when Supabase is offline / user has no session,
+            // so nearby devices don't accumulate duplicate Sparks every rotating-ID window.
+            if (profile.installationId.isNotBlank()) {
+                put("instId", profile.installationId)
+            }
             // Include detected device type (e.g. "AYN Thor 2", "Retroid Pocket 4 Pro")
             if (profile.deviceType.isNotBlank()) {
                 put("deviceType", profile.deviceType)
@@ -288,12 +295,23 @@ class GattServer(
                 put("streak", stats.streakCount)
             }
         }
+        val rotatingId = rotatingIdManager.currentRotatingId()
+        val ts         = System.currentTimeMillis() / 1000
         return org.json.JSONObject().apply {
             put("v", BleConstants.PROTOCOL_VERSION)
             put("type", "profile")
-            put("rotatingId", rotatingIdManager.currentRotatingId())
-            put("ts", System.currentTimeMillis() / 1000)
+            put("rotatingId", rotatingId)
+            put("ts", ts)
             put("data", data)
+            // Cryptographic proof of ownership: ECDSA-P256 + SHA-256 signature over
+            // "thunderpass:v1:{userId}:{rotatingId}:{ts300}" using the Android Keystore
+            // private key.  Peers verify this with the public key stored in Supabase,
+            // proving the payload came from the device that generated the key pair.
+            // Omitted in privacy mode (userId is also withheld there).
+            if (!profile.privacyMode && profile.supabaseUserId.isNotBlank()) {
+                val msg = PayloadSigner.signedPayload(profile.supabaseUserId, rotatingId, ts)
+                PayloadSigner.sign(msg)?.let { put("sig", it) }
+            }
         }.toString()
     }
 }

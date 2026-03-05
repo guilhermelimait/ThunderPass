@@ -4,12 +4,17 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.thunderpass.ble.RotatingIdManager
+import com.thunderpass.data.BadgeManager
 import com.thunderpass.data.db.ThunderPassDatabase
 import com.thunderpass.data.db.entity.MyProfile
+import com.thunderpass.security.PayloadSigner
 import com.thunderpass.supabase.ProfileRecord
+import com.thunderpass.supabase.PublicKeyPatch
 import com.thunderpass.supabase.SupabaseManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -32,12 +37,12 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         // 5.1 — Auto-seed displayName from device name on first launch.
-        // If the profile still has the hardcoded "Traveler" default (i.e. user
+        // If the profile still has the hardcoded "SparkyUser" default (i.e. user
         // has never customised it), replace it with the device's friendly name
         // so BLE payloads and all UI show a meaningful name immediately.
         viewModelScope.launch {
             val p = profileDao.get() ?: return@launch
-            val nameIsDefault = p.displayName.isBlank() || p.displayName == "Traveler"
+            val nameIsDefault = p.displayName.isBlank() || p.displayName == "SparkyUser"
             if (nameIsDefault) {
                 val deviceName = android.provider.Settings.Global.getString(
                     getApplication<Application>().contentResolver,
@@ -45,16 +50,57 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
                 profileDao.upsert(p.copy(displayName = deviceName))
             }
+            // Auto-init greeting from device name if still at factory default.
+            val p2 = profileDao.get() ?: p
+            val greetingIsDefault = p2.greeting.isBlank() || p2.greeting == "Hey, greetings from ThunderPass!"
+            if (greetingIsDefault) {
+                val greetingName = p2.deviceType.ifBlank {
+                    android.provider.Settings.Global.getString(
+                        getApplication<Application>().contentResolver,
+                        android.provider.Settings.Global.DEVICE_NAME,
+                    )?.takeIf { it.isNotBlank() } ?: android.os.Build.MODEL
+                }
+                profileDao.upsert(p2.copy(greeting = "Hey, greetings from $greetingName"))
+            }
             // Auto-detect + persist device type if not set yet
             if (p.deviceType.isBlank()) {
                 profileDao.upsert(
                     (profileDao.get() ?: p).copy(deviceType = detectDeviceType())
                 )
             }
+            // Auto-generate a sparky avatar seed on first install so the profile card
+            // and SparkyEditor sliders always agree. The fallback (empty → installationId)
+            // showed a DiceBear UUID avatar that sliders could never reproduce.
+            val p3 = profileDao.get() ?: p
+            if (p3.avatarSeed.isBlank()) {
+                profileDao.upsert(p3.copy(avatarSeed = randomSparkySeed()))
+            }
         }
-        // Pull profile from Supabase on startup — server is the source of truth.
-        // Silently skipped when offline or not signed in.
-        viewModelScope.launch { syncFromSupabase() }
+        // Ensure every device has a Supabase session (anonymous if never signed in),
+        // then pull the server profile and push back any local changes.
+        viewModelScope.launch {
+            ensureAnonymousSession()
+            syncFromSupabase()
+            syncToSupabase()
+        }
+    }
+
+    /**
+     * Signs in anonymously if no session exists yet.
+     * This gives every device a stable server-side UUID without requiring the
+     * user to register an account. The UUID is used for encounter verification
+     * and 24-hour identity deduplication across all users.
+     *
+     * The session is auto-refreshed every 30 days by the Supabase SDK.
+     * If the app is uninstalled or the device is factory-reset, the anonymous
+     * session is lost and a new UUID is assigned on next launch.
+     */
+    private suspend fun ensureAnonymousSession() {
+        runCatching {
+            if (SupabaseManager.client.auth.currentSessionOrNull() == null) {
+                SupabaseManager.client.auth.signInAnonymously()
+            }
+        }
     }
 
     /**
@@ -133,8 +179,8 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     fun save(
         displayName:   String,
         retroUsername: String = "",
-        avatarSeed:    String = "",
         raApiKey:      String = "",
+        avatarSeed:    String = "",
         greeting:      String = "",
     ) {
         viewModelScope.launch {
@@ -144,8 +190,8 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 current.copy(
                     displayName   = displayName.trim().ifEmpty { android.os.Build.MODEL },
                     retroUsername = retroUsername.trim(),
-                    avatarSeed    = avatarSeed.ifEmpty { current.avatarSeed },
                     raApiKey      = raApiKey.trim().ifEmpty { current.raApiKey },
+                    avatarSeed    = avatarSeed.ifEmpty { current.avatarSeed },
                     greeting      = greeting.trim().ifEmpty { current.greeting },
                     updatedAt     = System.currentTimeMillis() / 1000,
                 )
@@ -170,6 +216,15 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                 profileDao.updateSupabaseUserId(userId)
             }
 
+            // Ensure this device has a P-256 signing key pair in the Android Keystore
+            // and publish the public key to Supabase (profiles.public_key column).
+            // The public key allows peers to verify payload signatures without any
+            // server-side function — all verification happens client-side.
+            val pubKey = runCatching { PayloadSigner.ensureKeyPairAndGetPublicKey() }.getOrNull()
+            if (pubKey != null && p.payloadPublicKey != pubKey) {
+                profileDao.updatePayloadPublicKey(pubKey)
+            }
+
             runCatching {
                 SupabaseManager.client.from("profiles").upsert(
                     ProfileRecord(
@@ -190,6 +245,14 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 )
             }
+            // Publish the device public key via a targeted upsert that only touches
+            // `id` + `public_key`, leaving all other profile columns untouched.
+            if (pubKey != null) {
+                runCatching {
+                    SupabaseManager.client.from("profiles")
+                        .upsert(PublicKeyPatch(id = userId, publicKey = pubKey))
+                }
+            }
         }
     }
 
@@ -203,19 +266,27 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val app          = getApplication<android.app.Application>()
             val auth         = com.thunderpass.retro.RetroAuthManager.getInstance(app)
-            if (!auth.hasCredentials()) return@launch
             val p            = profileDao.get() ?: return@launch
             val raUsername   = p.retroUsername.trim()
             if (raUsername.isBlank()) return@launch
-            val result = com.thunderpass.retro.RetroRetrofitClient.fetchRetroMetadata(raUsername, auth)
+            // Fetch summary + softcore achievement count in parallel
+            val (result, softcoreAchievements) = coroutineScope {
+                val summaryDeferred      = async { com.thunderpass.retro.RetroRetrofitClient.fetchRetroMetadata(raUsername, auth) }
+                val achievementsDeferred = async { com.thunderpass.retro.RetroRetrofitClient.fetchSoftcoreAchievementCount(raUsername, auth) }
+                summaryDeferred.await() to achievementsDeferred.await()
+            }
             result.getOrNull()?.let { raProfile ->
                 com.thunderpass.retro.RetroProfileCache.save(
-                    context              = app,
-                    username             = raUsername,
-                    points               = raProfile.totalPoints,
-                    games                = raProfile.recentlyPlayed ?: emptyList(),
-                    recentlyPlayedCount  = raProfile.recentlyPlayedCount,
+                    context                    = app,
+                    username                   = raUsername,
+                    points                     = raProfile.totalPoints,
+                    softcorePoints             = raProfile.totalSoftcorePoints,
+                    softcoreAchievementsEarned = softcoreAchievements,
+                    games                      = raProfile.recentlyPlayed ?: emptyList(),
+                    recentlyPlayedCount        = raProfile.recentlyPlayedCount,
                 )
+                // Grant "Shared Quest" badge: user has linked RA and loaded game data.
+                BadgeManager.award(app, "shared_quest")
             }
         }
     }
@@ -225,23 +296,31 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
      * the user to press "Save Profile".  The change propagates to the Home screen's
      * walking animation and the nav-bar avatar icon through [HomeViewModel.avatarSeed],
      * which observes the same DB flow.
+     *
+     * Also bumps [MyProfile.updatedAt] and pushes to Supabase so that the cloud
+     * record always reflects the latest avatar — otherwise a DB reset or a second
+     * device would restore the stale avatar from Supabase on the next login.
      */
     fun saveAvatarSeed(seed: String) {
         viewModelScope.launch {
             val current = profileDao.get() ?: return@launch
             if (current.avatarSeed == seed) return@launch
-            profileDao.upsert(current.copy(avatarSeed = seed))
+            profileDao.upsert(current.copy(
+                avatarSeed = seed,
+                updatedAt  = System.currentTimeMillis() / 1000,
+            ))
+            syncToSupabase()
         }
     }
 
     /**
      * Returns true if this is a first-run (profile is null or still has all defaults).
-     * "Traveler" is the entity default — treat it the same as a blank name so new
+     * "SparkyUser" is the entity default — treat it the same as a blank name so new
      * users are always routed through onboarding to set their actual name.
      */
     suspend fun isFirstRun(): Boolean {
         val profile = profileDao.get() ?: return true
-        val nameIsDefault = profile.displayName.isBlank() || profile.displayName == "Traveler"
+        val nameIsDefault = profile.displayName.isBlank() || profile.displayName == "SparkyUser"
         return nameIsDefault && profile.greeting == "Hey, greetings from ThunderPass!"
     }
 }

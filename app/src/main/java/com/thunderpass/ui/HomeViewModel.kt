@@ -10,7 +10,10 @@ import com.thunderpass.ble.ScanMode
 import com.thunderpass.data.db.ThunderPassDatabase
 import com.thunderpass.data.db.entity.Encounter
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
+import com.thunderpass.retro.RetroAuthManager
+import com.thunderpass.retro.RetroRepository
 import com.thunderpass.supabase.OtaChecker
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -50,10 +53,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val displayName: StateFlow<String> = profileDao.observe()
         .filterNotNull()
         .map { p ->
-            // Treat the never-customised default ("Traveler") as blank so the
+            // Treat the never-customised default ("SparkyUser") as blank so the
             // device name is used until the user actually saves their own name.
             val saved = p.displayName
-            if (saved.isBlank() || saved == "Traveler") {
+            if (saved.isBlank() || saved == "SparkyUser") {
                 android.provider.Settings.Global.getString(
                     getApplication<Application>().contentResolver,
                     android.provider.Settings.Global.DEVICE_NAME
@@ -84,11 +87,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val scanMode: StateFlow<ScanMode> = _scanMode
 
     // ── Encounter count for the badge on the home screen ─────────────────────
-    val encounterCount: StateFlow<Int> = encounterDao.observeCount()
+    // Only confirmed encounters (GATT profile exchange succeeded) count toward the badge.
+    val encounterCount: StateFlow<Int> = encounterDao.observeConfirmedCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     // ── Encounter streak ─────────────────────────────────────────────────────
-    val encounterStreak: StateFlow<Int> = encounterDao.observeAll()
+    // Streak is computed only from confirmed encounters to avoid phantom BLE hits.
+    val encounterStreak: StateFlow<Int> = encounterDao.observeConfirmed()
         .map { list -> computeStreak(list) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
@@ -104,6 +109,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.stickersJson.split(",").filter { k -> k.isNotBlank() }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    // ── Earned Badges ─────────────────────────────────────────────────────────
+    /** Set of badge keys (from BadgeDef.key) the user has been dynamically awarded. */
+    val earnedBadgeKeys: StateFlow<Set<String>> = profileDao.observe()
+        .filterNotNull()
+        .map { it.badgesJson.split(",").filter { k -> k.isNotBlank() }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     // ── Privacy mode (from Room MyProfile) ─────────────────────────────────
     val privacyMode: StateFlow<Boolean> = profileDao.observe()
         .filterNotNull()
@@ -111,17 +123,28 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     // ── Full encounter list with resolved snapshots ─────────────────────────
+    // Only confirmed encounters (peerSnapshotId != null) are surfaced — phantoms are excluded.
     val encounters: StateFlow<List<EncounterWithProfile>> =
         MutableStateFlow(emptyList<EncounterWithProfile>()).also { flow ->
             viewModelScope.launch {
-                encounterDao.observeAll().collect { list ->
+                encounterDao.observeConfirmed().collect { list ->
                     val enriched = list.map { enc ->
                         EncounterWithProfile(
                             encounter = enc,
                             snapshot  = enc.peerSnapshotId?.let { snapshotDao.getById(it) }
                         )
                     }
-                    flow.value = enriched
+                    // Display-level dedup: keep only the most-recent encounter per unique identity.
+                    // Safety-net for historical data that arrived before the BLE-layer effectiveId
+                    // fix. Entries without an identity key (null peerUserId) are never collapsed.
+                    val deduped = enriched
+                        .groupBy { it.snapshot?.peerUserId }
+                        .flatMap { (key, group) ->
+                            if (key != null) listOf(group.maxByOrNull { it.encounter.seenAt }!!)
+                            else group
+                        }
+                        .sortedByDescending { it.encounter.seenAt }
+                    flow.value = deduped
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -273,6 +296,32 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleFriend(encounterId: Long, currentlyFriend: Boolean) {
         viewModelScope.launch {
             encounterDao.setFriend(encounterId, !currentlyFriend)
+        }
+    }
+
+    // ── RetroAchievements — live peer snapshot + on-demand fetch ─────────────
+
+    /** Live observable for a single peer snapshot. Emits whenever Room updates the row
+     *  (e.g. after a background RA fetch), allowing EncounterDetailScreen to recompose. */
+    fun observeSnapshotById(snapshotId: Long): Flow<PeerProfileSnapshot?> =
+        snapshotDao.observeById(snapshotId)
+
+    /**
+     * Fetch the peer's RA data using the local user's API credentials.
+     * Called when the encounter detail screen is opened and the peer has a
+     * retroUsername but their RA data was never successfully retrieved.
+     */
+    fun refreshPeerRetro(snapshotId: Long, peerRetroUsername: String) {
+        viewModelScope.launch {
+            val auth = RetroAuthManager.getInstance(getApplication())
+            if (!auth.hasCredentials()) return@launch
+            RetroRepository.fetchAndCache(
+                context      = getApplication(),
+                peerUsername = peerRetroUsername,
+                snapshotId   = snapshotId,
+                snapshotDao  = snapshotDao,
+                auth         = auth,
+            )
         }
     }
 

@@ -1,121 +1,151 @@
 package com.thunderpass.ui
 
-import android.content.Context
-import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.data.db.entity.MyProfile
 import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.ui.theme.SpaceCyan
 import com.thunderpass.ui.theme.VividPurple
-import java.util.UUID
-import androidx.compose.ui.tooling.preview.Preview
-import com.thunderpass.data.db.entity.MyProfile
-import com.thunderpass.supabase.SupabaseManager
-import io.github.jan.supabase.auth.auth
+
+// ── Entry point ───────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    firstRun:            Boolean       = false,
-    onComplete:          (() -> Unit)? = null,
-    onBack:              (() -> Unit)? = null,
-    onEditSparky:        (() -> Unit)? = null,
-    vm:                  ProfileViewModel = viewModel(),
-    homeVm:              HomeViewModel    = viewModel(),
+    firstRun:     Boolean           = false,
+    onComplete:   (() -> Unit)?     = null,
+    onBack:       (() -> Unit)?     = null,
+    onEditSparky: (() -> Unit)?     = null,
+    vm:           ProfileViewModel  = viewModel(),
+    homeVm:       HomeViewModel     = viewModel(),
 ) {
-    val profile by vm.profile.collectAsState()
+    val profile        by vm.profile.collectAsState()
     val encounterCount by homeVm.encounterCount.collectAsState()
     val streak         by homeVm.encounterStreak.collectAsState()
     val voltsTotal     by homeVm.voltsTotal.collectAsState()
     val context        = LocalContext.current
 
     ProfileScreenContent(
-        profile = profile,
+        profile        = profile,
         encounterCount = encounterCount,
-        streak = streak,
-        voltsTotal = voltsTotal,
-        firstRun = firstRun,
-        onSave = { name, retroUser, retroKey, seed, greeting ->
-            vm.save(name, retroUser, avatarSeed = seed, raApiKey = retroKey, greeting = greeting)
-            if (retroKey.isNotBlank()) {
-                RetroAuthManager.getInstance(context).saveCredentials(
-                    apiKey  = retroKey,
-                    apiUser = retroUser,
-                )
-            }
+        streak         = streak,
+        voltsTotal     = voltsTotal,
+        firstRun       = firstRun,
+        onSave         = { name, retroUser, seed, greeting, raApiKey ->
+            vm.save(name, retroUser, raApiKey = raApiKey, avatarSeed = seed, greeting = greeting)
+            RetroAuthManager.getInstance(context)
+                .saveCredentials(apiUser = retroUser, apiKey = raApiKey)
             vm.fetchAndCacheOwnRetroProfile()
         },
         onAvatarSeedChange = { vm.saveAvatarSeed(it) },
-        onEditSparky = onEditSparky,
-        onComplete = onComplete,
-        onBack = onBack,
+        onEditSparky       = onEditSparky,
+        onComplete         = onComplete,
+        onBack             = onBack,
     )
 }
+
+// ── Content ───────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreenContent(
-    profile: MyProfile,
+    profile:        MyProfile,
     encounterCount: Int,
-    streak: Int,
-    voltsTotal: Long,
-    firstRun: Boolean = false,
-    onSave: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
-    onAvatarSeedChange: ((String) -> Unit)? = null,
-    onEditSparky: (() -> Unit)? = null,
-    onComplete: (() -> Unit)? = null,
-    onBack: (() -> Unit)? = null,
+    streak:         Int,
+    voltsTotal:     Long,
+    firstRun:       Boolean                                         = false,
+    onSave:         (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> },
+    onAvatarSeedChange: ((String) -> Unit)?                    = null,
+    onEditSparky:   (() -> Unit)?                              = null,
+    onComplete:     (() -> Unit)?                              = null,
+    onBack:         (() -> Unit)?                              = null,
 ) {
-    var draftName          by remember(profile.displayName)   { mutableStateOf(profile.displayName) }
-    val context            = LocalContext.current
-    var draftRetroUsername by remember(profile.retroUsername) { mutableStateOf(profile.retroUsername) }
-    var draftGreeting      by remember(profile.greeting)      { mutableStateOf(profile.greeting) }
-    var draftRaApiKey      by remember(profile.raApiKey) {
-        // Prefer the value persisted in Room DB; fall back to EncryptedSharedPreferences
-        // so existing users don't lose their key after the DB schema upgrade.
-        val fromDb  = profile.raApiKey.trim()
-        val fromEnc = RetroAuthManager.getInstance(context).getApiKey() ?: ""
-        mutableStateOf(fromDb.ifEmpty { fromEnc })
-    }
-    var saved by remember { mutableStateOf(false) }
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    var avatarSeed by remember(profile.avatarSeed.ifEmpty { profile.installationId }) {
+    var hasModified        by remember { mutableStateOf(false) }
+    var draftName          by remember { mutableStateOf(profile.displayName) }
+    var draftGreeting      by remember { mutableStateOf(profile.greeting) }
+    var draftRetroUsername by remember { mutableStateOf(profile.retroUsername) }
+    var draftRaApiKey      by remember { mutableStateOf(profile.raApiKey) }
+    var avatarSeed         by remember {
         mutableStateOf(profile.avatarSeed.ifEmpty { profile.installationId })
+    }
+
+    // Sync drafts from DB once on first meaningful emission, but stop once edited.
+    LaunchedEffect(profile) {
+        if (!hasModified) {
+            draftName          = profile.displayName
+            draftGreeting      = profile.greeting
+            draftRetroUsername = profile.retroUsername
+            draftRaApiKey      = profile.raApiKey
+            avatarSeed         = profile.avatarSeed.ifEmpty { profile.installationId }
+        }
+    }
+
+    // Auto-save with 600 ms debounce; LaunchedEffect cancels prior coroutine on key change.
+    LaunchedEffect(draftName, draftGreeting, draftRetroUsername, draftRaApiKey, avatarSeed) {
+        if (hasModified) {
+            kotlinx.coroutines.delay(600)
+            onSave(draftName, draftRetroUsername, avatarSeed, draftGreeting, draftRaApiKey)
+        }
+    }
+
+    val badgeCount = remember { ALL_BADGES.count { it.tier > 0 } }
+
+    fun randomizeAvatar() {
+        // Build a random sparky|... seed directly so the profile card and the
+        // SparkyEditor sliders always show the exact same avatar — no UUID randomness
+        // that DiceBear resolves differently from what sliders can represent.
+        val seed = randomSparkySeed()
+        avatarSeed = seed
+        onAvatarSeedChange?.invoke(seed)
+        hasModified = true
+    }
+
+    fun saveNow() {
+        onSave(draftName, draftRetroUsername, avatarSeed, draftGreeting, draftRaApiKey)
+    }
+
+    // Shared greeting handler: strip injection-prone chars but allow spaces; cap at 60.
+    val onGreetingChange: (String) -> Unit = { v ->
+        val safe = v.replace(Regex("""[<>'";&|\\/*]"""), "")
+        if (safe.length <= 60) { draftGreeting = safe; hasModified = true }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (firstRun) "Set Up Profile" else "My Profile") },
+                title = {
+                    Text(if (firstRun) "Set Up Profile" else "My Profile", fontWeight = FontWeight.Bold)
+                },
                 navigationIcon = {
                     if (!firstRun && onBack != null) {
                         IconButton(onClick = onBack) {
@@ -123,366 +153,118 @@ fun ProfileScreenContent(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
             )
         },
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (firstRun) {
-                Card(
-                    colors   = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                ) {
-                    Text(
-                        text     = "Welcome to ThunderPass! \uD83D\uDC4B\nSet up your profile to get started.",
-                        style    = MaterialTheme.typography.bodyMedium,
-                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(16.dp),
-                    )
-                }
-            }
-
-            // ── Hero: gradient banner + overlapping avatar + randomize ──────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-            ) {
-                // Gradient banner
-                Box(
+        if (isLandscape) {
+            Row(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // ── Left panel: card + form ────────────────────────────────
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .background(Brush.linearGradient(listOf(VividPurple, SpaceCyan))),
-                )
-                // Large avatar centered, overlapping the banner bottom
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .align(Alignment.BottomCenter)
-                        .clip(CircleShape)
-                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape),
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    DiceBearAvatar(
-                        seed = avatarSeed.ifEmpty { profile.installationId },
-                        size = 100.dp,
+                    ProfileUserCard(
+                        profile        = profile,
+                        avatarSeed     = avatarSeed,
+                        encounterCount = encounterCount,
+                        streak         = streak,
+                        voltsTotal     = voltsTotal,
+                        badgeCount     = badgeCount,
+                        onRandomize    = ::randomizeAvatar,
+                        onEditSparky   = onEditSparky,
                     )
-                }
-                // Shuffle / randomize avatar button (top-right corner of banner)
-                IconButton(
-                    onClick = {
-                        val newSeed = UUID.randomUUID().toString()
-                        avatarSeed = newSeed
-                        onAvatarSeedChange?.invoke(newSeed)
-                        saved = false
-                    },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                ) {
-                    Icon(
-                        imageVector        = Icons.Filled.Refresh,
-                        contentDescription = "Randomize avatar",
-                        tint               = Color.White,
+                    ProfileFormSection(
+                        draftName             = draftName,
+                        draftGreeting         = draftGreeting,
+                        draftRetroUsername    = draftRetroUsername,
+                        draftRaApiKey         = draftRaApiKey,
+                        onNameChange          = { draftName = it; hasModified = true },
+                        onGreetingChange      = onGreetingChange,
+                        onRetroUsernameChange = { draftRetroUsername = it.trimEnd(); hasModified = true },
+                        onRaApiKeyChange      = { draftRaApiKey = it; hasModified = true },
                     )
-                }
-                // Edit Sparky button (top-left corner of banner)
-                if (onEditSparky != null) {
-                    IconButton(
-                        onClick  = onEditSparky,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp),
-                    ) {
-                        Icon(
-                            imageVector        = Icons.Filled.Casino,
-                            contentDescription = "Edit Sparky",
-                            tint               = Color.White,
-                        )
+                    if (firstRun) {
+                        Button(
+                            onClick  = { saveNow(); onComplete?.invoke() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Start exploring! 🚀") }
                     }
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // Amber divider
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight(0.85f)
+                        .width(3.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFFFFB300).copy(alpha = 0.15f),
+                                    Color(0xFFFFB300),
+                                    Color(0xFFFF6F00),
+                                    Color(0xFFFFB300).copy(alpha = 0.15f),
+                                )
+                            )
+                        ),
+                )
+
+                // ── Right panel: RA gallery ────────────────────────────────
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RetroGallerySection(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
                 }
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            Spacer(Modifier.height(4.dp))
-            Row(
-                modifier              = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                ProfileStatChip(icon = "⚡", value = voltsTotal.toString(),    label = "Volts")
-                ProfileStatChip(icon = "🤝", value = encounterCount.toString(), label = "Passes")
-                ProfileStatChip(icon = "🔥", value = streak.toString(),         label = "Streak")
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            GamePlayStatsCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            )
-
-            Spacer(Modifier.height(8.dp))
-
+        } else {
+            // ── Portrait: single scrollable column ────────────────────────
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                // ── Badges — horizontal gallery, achieved only, highest tier first ─
-                val achievedBadges = remember(Unit) {
-                    ALL_BADGES.filter { it.tier > 0 }.sortedByDescending { it.tier }
-                }
-                if (achievedBadges.isNotEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text       = "BADGES",
-                            style      = MaterialTheme.typography.labelSmall,
-                            color      = MaterialTheme.colorScheme.outline,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding        = PaddingValues(horizontal = 4.dp),
-                        ) {
-                            items(achievedBadges) { badge ->
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    ThunderShield(
-                                        tier          = badge.tier,
-                                        categoryColor = badge.category.accentColor,
-                                        darkBg        = categoryDarkBg(badge.category, badge.tier),
-                                        size          = 52.dp,
-                                    )
-                                    Text(
-                                        text      = badge.label,
-                                        style     = MaterialTheme.typography.labelSmall,
-                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines  = 2,
-                                        overflow  = TextOverflow.Ellipsis,
-                                        textAlign = TextAlign.Center,
-                                        modifier  = Modifier.width(60.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                RetroGallerySection(modifier = Modifier.fillMaxWidth())
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                OutlinedTextField(
-                    value          = draftName,
-                    onValueChange  = { draftName = it; saved = false },
-                    label          = { Text("Display name") },
-                    singleLine     = true,
-                    modifier       = Modifier.fillMaxWidth(),
-                    supportingText = { Text("Shown to nearby ThunderPass users") },
-                )
-
-                OutlinedTextField(
-                    value          = draftGreeting,
-                    onValueChange  = { draftGreeting = it; saved = false },
-                    label          = { Text("Personal phrase") },
-                    singleLine     = true,
-                    modifier       = Modifier.fillMaxWidth(),
-                    supportingText = { Text("Shared when you pass someone — make it memorable!") },
-                )
-
-                OutlinedTextField(
-                    value          = draftRetroUsername,
-                    onValueChange  = { draftRetroUsername = it; saved = false },
-                    label          = { Text("\uD83C\uDFAE RetroAchievements Username") },
-                    singleLine     = true,
-                    modifier       = Modifier.fillMaxWidth(),
-                    supportingText = { Text("Optional — share your RA stats on your Spark Card") },
-                )
-
-                OutlinedTextField(
-                    value                = draftRaApiKey,
-                    onValueChange        = { draftRaApiKey = it; saved = false },
-                    label                = { Text("RA API Key") },
-                    singleLine           = true,
-                    modifier             = Modifier.fillMaxWidth(),
-                    visualTransformation = PasswordVisualTransformation(),
-                    supportingText       = { Text("From retroachievements.org/settings — kept on device") },
-                )
-
-                // Device type — auto-detected, read-only info card
-                if (profile.deviceType.isNotBlank()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors   = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                        ),
-                    ) {
-                        Row(
-                            modifier          = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Text("🎮", style = MaterialTheme.typography.bodyMedium)
-                            Column {
-                                Text(
-                                    text  = "Device",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                                Text(
-                                    text       = profile.deviceType,
-                                    style      = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color      = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick  = {
-                        onSave(draftName, draftRetroUsername, draftRaApiKey, avatarSeed, draftGreeting)
-                        saved = true
-                        if (firstRun) onComplete?.invoke()
-                    },
-                ) {
-                    Text(
-                        when {
-                            firstRun -> "Start exploring!"
-                            saved    -> "\u2713 Saved"
-                            else     -> "Save Profile"
-                        }
-                    )
-                }
-
                 Spacer(Modifier.height(4.dp))
-
-                // Share ID: displayname-slug + 4-char suffix from installationId for uniqueness.
-                // Shows "private-user" when privacy mode is active.
-                val shareId = remember(profile.displayName, profile.installationId, profile.privacyMode) {
-                    if (profile.privacyMode) {
-                        "private-user"
-                    } else {
-                        val suffix = profile.installationId.takeLast(4).lowercase()
-                        val nameSlug = profile.displayName
-                            .lowercase()
-                            .replace(Regex("[^a-z0-9]+"), "-")
-                            .trim('-')
-                            .ifEmpty { "traveler" }
-                        "$nameSlug-$suffix"
-                    }
-                }
-                // Friend invite deep link using Supabase user ID (falls back to installationId)
-                val supabaseUserId = remember {
-                    SupabaseManager.client.auth.currentSessionOrNull()?.user?.id ?: ""
-                }
-                val friendInviteLink = remember(supabaseUserId, profile.installationId, profile.privacyMode) {
-                    if (profile.privacyMode) null
-                    else {
-                        val code = supabaseUserId.ifBlank { profile.installationId }
-                        "thunderpass://add-friend/$code"
-                    }
-                }
-                val clipboardManager = LocalClipboardManager.current
-                // ── Share ID card ──────────────────────────────────────────────
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors   = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    ),
-                ) {
-                    Row(
-                        modifier              = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text  = "Share ID",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                            Text(
-                                text       = shareId,
-                                style      = MaterialTheme.typography.bodySmall,
-                                color      = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontFamily = FontFamily.Monospace,
-                            )
-                            if (friendInviteLink != null) {
-                                Text(
-                                    text       = friendInviteLink,
-                                    style      = MaterialTheme.typography.labelSmall,
-                                    color      = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                                    fontFamily = FontFamily.Monospace,
-                                    maxLines   = 1,
-                                    overflow   = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                        ) {
-                            if (friendInviteLink != null) {
-                                IconButton(
-                                    onClick = {
-                                        clipboardManager.setText(AnnotatedString(friendInviteLink))
-                                    },
-                                ) {
-                                    Icon(
-                                        imageVector        = Icons.Default.ContentCopy,
-                                        contentDescription = "Copy invite link",
-                                        tint               = MaterialTheme.colorScheme.primary,
-                                    )
-                                }
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    val shareText = buildString {
-                                        append("Find me on ThunderPass! My ID: $shareId")
-                                        if (friendInviteLink != null) {
-                                            append("\nAdd me as a friend: $friendInviteLink")
-                                        }
-                                    }
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type    = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                        putExtra(Intent.EXTRA_SUBJECT, "My ThunderPass ID")
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, "Share via"))
-                                },
-                            ) {
-                                Text("Share")
-                            }
-                        }
-                    }
+                ProfileUserCard(
+                    profile        = profile,
+                    avatarSeed     = avatarSeed,
+                    encounterCount = encounterCount,
+                    streak         = streak,
+                    voltsTotal     = voltsTotal,
+                    badgeCount     = badgeCount,
+                    onRandomize    = ::randomizeAvatar,
+                    onEditSparky   = onEditSparky,
+                )
+                ProfileFormSection(
+                    draftName             = draftName,
+                    draftGreeting         = draftGreeting,
+                    draftRetroUsername    = draftRetroUsername,
+                    draftRaApiKey         = draftRaApiKey,
+                    onNameChange          = { draftName = it; hasModified = true },
+                    onGreetingChange      = onGreetingChange,
+                    onRetroUsernameChange = { draftRetroUsername = it.trimEnd(); hasModified = true },
+                    onRaApiKeyChange      = { draftRaApiKey = it; hasModified = true },
+                )
+                RetroGallerySection(modifier = Modifier.fillMaxWidth())
+                if (firstRun) {
+                    Button(
+                        onClick  = { saveNow(); onComplete?.invoke() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Start exploring! 🚀") }
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -490,28 +272,195 @@ fun ProfileScreenContent(
     }
 }
 
+// ── Gradient user card ────────────────────────────────────────────────────────
+
+@Composable
+private fun ProfileUserCard(
+    profile:        MyProfile,
+    avatarSeed:     String,
+    encounterCount: Int,
+    streak:         Int,
+    voltsTotal:     Long,
+    badgeCount:     Int,
+    onRandomize:    () -> Unit,
+    onEditSparky:   (() -> Unit)?,
+    modifier:       Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+            .drawBehind {
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(VividPurple, SpaceCyan),
+                        start  = Offset(0f, 0f),
+                        end    = Offset(size.width, size.height),
+                    ),
+                )
+                // Decorative rotating squares
+                val base = size.width * 0.32f
+                val decorations = listOf(
+                    Triple(size.width * 0.92f,   size.width * 0.18f,  35f  to base * 2.0f),
+                    Triple(size.width * 1.10f,   size.width * 0.68f,  20f  to base * 1.55f),
+                    Triple(size.width * 0.50f,   size.width * 1.40f,  45f  to base * 1.80f),
+                    Triple(size.width * -0.05f,  size.width * 0.52f, -15f  to base * 1.20f),
+                )
+                for ((cx, cy, rotAndSz) in decorations) {
+                    val (deg, sqSz) = rotAndSz
+                    rotate(deg, Offset(cx, cy)) {
+                        drawRect(
+                            color   = Color.White.copy(alpha = 0.09f),
+                            topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
+                            size    = Size(sqSz, sqSz),
+                        )
+                    }
+                }
+            },
+    ) {
+        // Dice / randomise button — top-right
+        IconButton(
+            onClick  = onRandomize,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp),
+        ) {
+            Icon(
+                imageVector        = Icons.Filled.Casino,
+                contentDescription = "Randomize avatar",
+                tint               = Color.White,
+            )
+        }
+
+        Column(
+            modifier              = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment   = Alignment.CenterHorizontally,
+            verticalArrangement   = Arrangement.spacedBy(10.dp),
+        ) {
+            // Avatar: tapping opens SparkyEditor
+            DiceBearAvatar(
+                seed     = avatarSeed.ifEmpty { "default" },
+                size     = 88.dp,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .then(
+                        if (onEditSparky != null)
+                            Modifier.clickable { onEditSparky() }
+                        else Modifier
+                    ),
+            )
+
+            Text(
+                text       = profile.displayName.ifBlank { "SparkyUser" },
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color      = Color.White,
+                maxLines   = 1,
+                overflow   = TextOverflow.Ellipsis,
+            )
+
+            if (profile.deviceType.isNotBlank()) {
+                Text(
+                    text  = "🎮 ${profile.deviceType}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.80f),
+                )
+            }
+
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                ProfileStatChip("⚡", voltsTotal.toString(),    "Volts")
+                ProfileStatChip("🤝", encounterCount.toString(), "Passes")
+                ProfileStatChip("🏆", badgeCount.toString(),    "Badges")
+                ProfileStatChip("🔥", streak.toString(),        "Streak")
+            }
+        }
+    }
+}
+
+// ── Profile form fields ───────────────────────────────────────────────────────
+
+@Composable
+private fun ProfileFormSection(
+    draftName:             String,
+    draftGreeting:         String,
+    draftRetroUsername:    String,
+    draftRaApiKey:         String,
+    onNameChange:          (String) -> Unit,
+    onGreetingChange:      (String) -> Unit,
+    onRetroUsernameChange: (String) -> Unit,
+    onRaApiKeyChange:      (String) -> Unit,
+) {
+    Column(
+        modifier            = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OutlinedTextField(
+            value         = draftName,
+            onValueChange = onNameChange,
+            label         = { Text("Display name") },
+            placeholder   = { Text("Shown to nearby Spark users") },
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value          = draftGreeting,
+            onValueChange  = onGreetingChange,
+            label          = { Text("Personal phrase") },
+            placeholder    = { Text("Shared when you pass someone") },
+            singleLine     = true,
+            modifier       = Modifier.fillMaxWidth(),
+            supportingText = {
+                val remaining = 60 - draftGreeting.length
+                Text("$remaining characters left")
+            },
+        )
+        OutlinedTextField(
+            value         = draftRetroUsername,
+            onValueChange = onRetroUsernameChange,
+            label         = { Text("RetroAchievements Username") },
+            placeholder   = { Text("Your RA username") },
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value         = draftRaApiKey,
+            onValueChange = onRaApiKeyChange,
+            label         = { Text("RetroAchievements Web API Key") },
+            placeholder   = { Text("Your RA Web API key") },
+            singleLine    = true,
+            modifier      = Modifier.fillMaxWidth(),
+            supportingText = { Text("Required to load your RA stats") },
+        )
+    }
+}
+
+// ── Stat chip (white text, for use on gradient background) ───────────────────
+
 @Composable
 private fun ProfileStatChip(icon: String, value: String, label: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text  = icon,
-            style = MaterialTheme.typography.titleMedium,
-        )
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = icon,  style = MaterialTheme.typography.bodyMedium)
         Text(
             text       = value,
-            style      = MaterialTheme.typography.titleMedium,
+            style      = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color      = MaterialTheme.colorScheme.onSurface,
+            color      = Color.White,
         )
         Text(
             text  = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.75f),
         )
     }
 }
+
+// ── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true)
 @Composable
@@ -520,104 +469,14 @@ fun ProfileScreenPreview() {
         ProfileScreenContent(
             profile = MyProfile(
                 installationId = "test-id",
-                displayName = "Gui",
-                greeting = "Hey there!",
-                voltsTotal = 2500
+                displayName    = "Gui",
+                greeting       = "Hey there!",
+                deviceType     = "AYN Thor 2",
+                voltsTotal     = 2500,
             ),
             encounterCount = 12,
-            streak = 3,
-            voltsTotal = 2500
+            streak         = 3,
+            voltsTotal     = 2500,
         )
-    }
-}
-
-// ── Avatar Seed Picker ────────────────────────────────────────────────────────────
-
-/**
- * Horizontally-scrollable strip of avatar candidates.
- * - Shows 5 alternative seeds + the currently-selected one (always visible first).
- * - Tapping a candidate immediately selects it (calls [onSeedSelected]).
- * - The 🎲 button regenerates the 5 alternative candidates without changing
- *   the current selection.
- *
- * Because [onSeedSelected] is wired to [ProfileViewModel.saveAvatarSeed], the
- * walking animation and nav-bar icon update straight away.
- */
-@Composable
-fun AvatarSeedPicker(
-    currentSeed:    String,
-    onSeedSelected: (String) -> Unit,
-    modifier:       Modifier = Modifier,
-) {
-    // 5 candidate seeds — regenerated when the dice button is tapped
-    var candidates by remember { mutableStateOf(List(5) { UUID.randomUUID().toString() }) }
-
-    // All tiles to display: current seed first, then the 5 candidates
-    // (filter out the current seed from candidates so we never show a duplicate)
-    val tiles = remember(currentSeed, candidates) {
-        listOf(currentSeed) + candidates.filter { it != currentSeed }.take(5)
-    }
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            verticalAlignment    = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 16.dp),
-        ) {
-            Text(
-                text      = "AVATAR",
-                style     = MaterialTheme.typography.labelSmall,
-                color     = MaterialTheme.colorScheme.outline,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-            )
-            Spacer(Modifier.weight(1f))
-            // Dice button — rolls 5 new candidate seeds
-            FilledTonalIconButton(
-                onClick  = { candidates = List(5) { UUID.randomUUID().toString() } },
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    imageVector        = Icons.Filled.Casino,
-                    contentDescription = "Roll new avatars",
-                    modifier           = Modifier.size(18.dp),
-                )
-            }
-        }
-
-        LazyRow(
-            contentPadding        = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(tiles) { seed ->
-                val isSelected = seed == currentSeed
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .then(
-                            if (isSelected) Modifier.border(
-                                width = 3.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = CircleShape,
-                            ) else Modifier.border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                                shape = CircleShape,
-                            )
-                        )
-                        .clickable { onSeedSelected(seed) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    DiceBearAvatar(
-                        seed     = seed,
-                        size     = 60.dp,
-                        modifier = Modifier.padding(2.dp),
-                    )
-                }
-            }
-        }
     }
 }

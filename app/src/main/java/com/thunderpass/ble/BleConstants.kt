@@ -52,20 +52,24 @@ object BleConstants {
 
     /**
      * Rotating ID window length in milliseconds.
-     * IDs rotate every 30 minutes per SPEC.md.
+     * IDs rotate every 60 minutes (1 hour).
      */
-    const val ROTATING_ID_WINDOW_MS = 30L * 60 * 1000
+    const val ROTATING_ID_WINDOW_MS = 60L * 60 * 1000
 
     /**
      * Encounter dedup cooldown in milliseconds (scan-level, per rotating-ID / device.address).
-     * Prevents redundant GATT connections within one scan session.
+     * Must be >= [ROTATING_ID_WINDOW_MS]: once the rotating ID changes the same physical device
+     * looks new to the scanner, so we gate on the full rotation window to prevent the same pair
+     * of devices from exchanging more than once per hour.
      */
-    const val DEDUP_COOLDOWN_MS = 60_000L
+    const val DEDUP_COOLDOWN_MS = ROTATING_ID_WINDOW_MS
 
     /**
      * Identity dedup window in milliseconds (post-GATT, per Supabase userId).
-     * A given user earns at most one Spark per [USER_DEDUP_WINDOW_MS].
-     * Default: 24 hours.
+     * A given user earns at most one new Spark per [USER_DEDUP_WINDOW_MS];
+     * within this window the existing pass's timestamp is refreshed instead
+     * of creating a duplicate row.
+     * Default: 24 hours — one Spark per person per day maximum.
      */
     const val USER_DEDUP_WINDOW_MS = 24L * 60 * 60 * 1000
 

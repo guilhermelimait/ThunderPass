@@ -11,7 +11,10 @@ val DeepSpaceRaised = Color(0xFF21262D)  // elevated surface / dialog
 val VividPurple      = Color(0xFF7C3AED)
 val VividPurpleLight = Color(0xFFA78BFA)
 val VividPurpleDark  = Color(0xFF5B21B6)
-
+// Primary orange — replaces purple as the UI accent
+val BurntOrange      = Color(0xFFE65100)  // deep orange, primary
+val BurntOrangeLight = Color(0xFFFFB300)  // amber, light variant
+val BurntOrangeDark  = Color(0xFFBF360C)  // very dark orange, containers
 // Secondary: electric cyan
 val SpaceCyan  = Color(0xFF06B6D4)
 val SpaceError = Color(0xFFEF4444)
@@ -21,7 +24,8 @@ val SpaceWhite  = Color(0xFFF0F6FF)
 val SpaceMuted  = Color(0xFF8B949E)
 val SpaceSubtle = Color(0xFF484F58)
 
-// ── Light palette ──────────────────────────────────────────────────────────
+// ── Accent ────────────────────────────────────────────────────────────────
+val DarkOrange = Color(0xFFCC5500)
 val LightBackground  = Color(0xFFF8F9FC)
 val LightSurface     = Color(0xFFFFFFFF)
 val LightSurfaceVar  = Color(0xFFF1F3F8)

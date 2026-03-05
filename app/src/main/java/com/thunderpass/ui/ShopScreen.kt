@@ -37,7 +37,7 @@ fun ShopScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Visual Shop") },
+                title = { Text("Visual Shop", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -59,6 +59,36 @@ fun ShopScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(Modifier.height(4.dp))
+
+            // ── In-development notice ─────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                ) {
+                    Text("🚧", fontSize = 20.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text       = "In Development",
+                            fontWeight = FontWeight.Bold,
+                            style      = MaterialTheme.typography.bodyMedium,
+                            color      = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Text(
+                            text  = "This section is coming soon. Stay tuned!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
+                        )
+                    }
+                }
+            }
 
             // ── Portrait header: balance card (left) + explanation (right) ───
             Row(
@@ -332,7 +362,7 @@ private fun VoltsExplanationCard(
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                text  = "\u26A1 New Traveler met \u2014 100 V\n" +
+                text  = "\u26A1 New SparkyUser met \u2014 100 V\n" +
                         "\u26A1 Badge unlocked \u2014 50\u2013200 V\n" +
                         "\u26A1 RetroAchievements \u2014 up to 500 V\n" +
                         "\u26A1 Daily Spark streaks",

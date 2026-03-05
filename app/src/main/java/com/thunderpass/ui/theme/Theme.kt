@@ -5,10 +5,10 @@ import androidx.compose.runtime.Composable
 
 /** ThunderPass dark colour scheme. */
 private val ThunderDarkColorScheme = darkColorScheme(
-    primary            = VividPurple,
-    onPrimary          = SpaceWhite,
-    primaryContainer   = VividPurpleDark,
-    onPrimaryContainer = VividPurpleLight,
+    primary            = BurntOrangeLight,
+    onPrimary          = DeepSpaceBlack,
+    primaryContainer   = BurntOrange,
+    onPrimaryContainer = SpaceWhite,
 
     secondary          = SpaceCyan,
     onSecondary        = DeepSpaceBlack,
@@ -31,10 +31,10 @@ private val ThunderDarkColorScheme = darkColorScheme(
 
 /** ThunderPass light colour scheme — clean, modern, bright. */
 private val ThunderLightColorScheme = lightColorScheme(
-    primary            = VividPurple,
+    primary            = BurntOrange,
     onPrimary          = SpaceWhite,
-    primaryContainer   = VividPurpleLight,
-    onPrimaryContainer = VividPurpleDark,
+    primaryContainer   = BurntOrangeLight,
+    onPrimaryContainer = BurntOrangeDark,
 
     secondary          = SpaceCyan,
     onSecondary        = LightOnSurface,

@@ -1,0 +1,369 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 13,
+    "identityHash": "1758dd9db61b3c9a1306de4328a04214",
+    "entities": [
+      {
+        "tableName": "my_profile",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `displayName` TEXT NOT NULL, `greeting` TEXT NOT NULL, `avatarKind` TEXT NOT NULL, `avatarColor` TEXT NOT NULL, `installationId` TEXT NOT NULL, `avatarSeed` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `joulesTotal` INTEGER NOT NULL, `retroUsername` TEXT NOT NULL, `ra_api_key` TEXT NOT NULL, `ghostGame` TEXT NOT NULL, `ghostScore` INTEGER NOT NULL, `stickersJson` TEXT NOT NULL, `supabaseUserId` TEXT NOT NULL, `privacyMode` INTEGER NOT NULL, `device_type` TEXT NOT NULL, `payload_public_key` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "greeting",
+            "columnName": "greeting",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarKind",
+            "columnName": "avatarKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarColor",
+            "columnName": "avatarColor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "installationId",
+            "columnName": "installationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarSeed",
+            "columnName": "avatarSeed",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voltsTotal",
+            "columnName": "joulesTotal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retroUsername",
+            "columnName": "retroUsername",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "raApiKey",
+            "columnName": "ra_api_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ghostGame",
+            "columnName": "ghostGame",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ghostScore",
+            "columnName": "ghostScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stickersJson",
+            "columnName": "stickersJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supabaseUserId",
+            "columnName": "supabaseUserId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "privacyMode",
+            "columnName": "privacyMode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceType",
+            "columnName": "device_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadPublicKey",
+            "columnName": "payload_public_key",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "encounter",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rotatingId` TEXT NOT NULL, `seenAt` INTEGER NOT NULL, `rssi` INTEGER NOT NULL, `peerSnapshotId` INTEGER, `isFriend` INTEGER NOT NULL, FOREIGN KEY(`peerSnapshotId`) REFERENCES `peer_profile_snapshot`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotatingId",
+            "columnName": "rotatingId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seenAt",
+            "columnName": "seenAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rssi",
+            "columnName": "rssi",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peerSnapshotId",
+            "columnName": "peerSnapshotId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isFriend",
+            "columnName": "isFriend",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_encounter_rotatingId",
+            "unique": false,
+            "columnNames": [
+              "rotatingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_encounter_rotatingId` ON `${TABLE_NAME}` (`rotatingId`)"
+          },
+          {
+            "name": "index_encounter_peerSnapshotId",
+            "unique": false,
+            "columnNames": [
+              "peerSnapshotId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_encounter_peerSnapshotId` ON `${TABLE_NAME}` (`peerSnapshotId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "peer_profile_snapshot",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "peerSnapshotId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "peer_profile_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rotatingId` TEXT NOT NULL, `displayName` TEXT NOT NULL, `greeting` TEXT NOT NULL, `avatarKind` TEXT NOT NULL, `avatarColor` TEXT NOT NULL, `avatarSeed` TEXT, `protocolVersion` INTEGER NOT NULL, `receivedAt` INTEGER NOT NULL, `rawJson` TEXT NOT NULL, `retroUsername` TEXT, `retroTotalPoints` INTEGER, `retroRecentlyPlayedCount` INTEGER, `retroFetchAttempted` INTEGER NOT NULL, `ghostGame` TEXT, `ghostScore` INTEGER, `peerUserId` TEXT, `retroGameTitles` TEXT, `retroGameConsoles` TEXT, `peerVoltsTotal` INTEGER, `peerPassesCount` INTEGER, `peerBadgesCount` INTEGER, `peerStreakCount` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rotatingId",
+            "columnName": "rotatingId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "greeting",
+            "columnName": "greeting",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarKind",
+            "columnName": "avatarKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarColor",
+            "columnName": "avatarColor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarSeed",
+            "columnName": "avatarSeed",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "protocolVersion",
+            "columnName": "protocolVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receivedAt",
+            "columnName": "receivedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawJson",
+            "columnName": "rawJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retroUsername",
+            "columnName": "retroUsername",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retroTotalPoints",
+            "columnName": "retroTotalPoints",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retroRecentlyPlayedCount",
+            "columnName": "retroRecentlyPlayedCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retroFetchAttempted",
+            "columnName": "retroFetchAttempted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ghostGame",
+            "columnName": "ghostGame",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "ghostScore",
+            "columnName": "ghostScore",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "peerUserId",
+            "columnName": "peerUserId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retroGameTitles",
+            "columnName": "retroGameTitles",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retroGameConsoles",
+            "columnName": "retroGameConsoles",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "peerVoltsTotal",
+            "columnName": "peerVoltsTotal",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "peerPassesCount",
+            "columnName": "peerPassesCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "peerBadgesCount",
+            "columnName": "peerBadgesCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "peerStreakCount",
+            "columnName": "peerStreakCount",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1758dd9db61b3c9a1306de4328a04214')"
+    ]
+  }
+}

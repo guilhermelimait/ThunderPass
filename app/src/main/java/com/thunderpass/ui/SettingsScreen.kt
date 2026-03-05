@@ -47,7 +47,7 @@ fun SettingsScreen(
     val privacyMode     by vm.privacyMode.collectAsState()
     val availableUpdate by vm.availableUpdate.collectAsState()
     var advancedExpanded by remember { mutableStateOf(false) }
-
+    var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
     // ── Hardware (AYN Thor LED flash) ─────────────────────────────────────────
     var ledFlashEnabled  by remember { mutableStateOf(prefs.getBoolean("led_flash_enabled", true)) }
     // WRITE_SECURE_SETTINGS is granted via ADB (not via the system settings UI):
@@ -92,7 +92,7 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -201,7 +201,7 @@ fun SettingsScreen(
             // Notifications
             PermissionRow(
                 label    = "Notifications",
-                subtitle = "Alert you when a new Traveler is nearby",
+                subtitle = "Alert you when a new SparkyUser is nearby",
                 granted  = notifGranted,
                 onRequest = {
                     if (notifGranted) {
@@ -239,31 +239,10 @@ fun SettingsScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Always-on scanning (battery optimisation)
-            SettingActionRow(
-                label    = "Always-on Scanning",
-                subtitle = "Disable battery optimisation so ThunderPass keeps the BLE service alive when the app is closed",
-                buttonLabel = "Open Settings",
-                onClick  = {
-                    runCatching {
-                        context.startActivity(
-                            Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
-                        )
-                    }.onFailure {
-                        // Fallback: open general battery settings
-                        context.startActivity(Intent(AndroidSettings.ACTION_BATTERY_SAVER_SETTINGS))
-                    }
-                },
-            )
-        }
-
-        // ── Hardware ─────────────────────────────────────────────────────────
-        SettingsSection("Hardware") {
+            // Flash LEDs on Encounter (AYN Thor hardware)
             SettingToggleRow(
                 label           = "Flash LEDs on Encounter",
-                subtitle        = "Blink the joystick LEDs yellow 3× when a Traveler is found nearby (AYN Thor)",
+                subtitle        = "Blink the joystick LEDs yellow 3× when a SparkyUser is found nearby (AYN Thor)",
                 checked         = ledFlashEnabled,
                 onCheckedChange = { enabled ->
                     ledFlashEnabled = enabled
@@ -357,49 +336,13 @@ fun SettingsScreen(
                         modifier            = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Safe Zone — pauses BLE scanning/advertising
+                        // Safe Zone — completely pauses all BLE activity
                         SettingToggleRow(
                             label           = "Safe Zone",
-                            subtitle        = "Pause BLE scanning and advertising (e.g. at home or work)",
+                            subtitle        = "Fully pause all BLE — no scanning or advertising (e.g. at home or work). This overrides the Scanning Mode setting above.",
                             checked         = safeZoneActive,
                             onCheckedChange = { vm.setSafeZone(it) },
                         )
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                        // Scan Intensity selector
-                        Column(
-                            modifier            = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text       = "Scan Intensity",
-                                style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text  = "Higher intensity finds more Travelers but uses more battery.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Row(
-                                modifier              = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                ScanMode.entries.forEach { mode ->
-                                    FilterChip(
-                                        selected = scanMode == mode,
-                                        onClick  = { vm.setScanMode(mode) },
-                                        label    = {
-                                            Text(
-                                                text  = mode.name.lowercase().replaceFirstChar { it.uppercase() },
-                                                style = MaterialTheme.typography.labelMedium,
-                                            )
-                                        },
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -409,8 +352,11 @@ fun SettingsScreen(
         SettingsSection("Updates") {
             SettingActionRow(
                 label       = "Check for Updates",
-                subtitle    = "View the latest releases on GitHub",
-                buttonLabel = "Open",
+                subtitle    = if (availableUpdate != null)
+                                  "⚡ $availableUpdate is available! ThunderPass checks automatically when connected to the internet."
+                              else
+                                  "ThunderPass checks for updates automatically when connected to the internet. New versions appear here and in the Android notification area.",
+                buttonLabel = "Releases",
                 onClick     = {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW,

@@ -24,15 +24,21 @@ import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import com.thunderpass.ble.BleConstants
 import com.thunderpass.ble.BleStats
 import com.thunderpass.ble.EncounterDedup
 import com.thunderpass.ble.ScanMode
 import com.thunderpass.ble.GattClient
 import com.thunderpass.retro.RetroAuthManager
+import com.thunderpass.retro.RetroRepository
 import com.thunderpass.ble.GattServer
 import com.thunderpass.ble.RotatingIdManager
 import com.thunderpass.data.db.ThunderPassDatabase
+import com.thunderpass.ui.randomSparkySeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -105,6 +111,14 @@ class BleService : Service() {
     private lateinit var gattClient: GattClient
     private lateinit var encounterDedup: EncounterDedup
 
+    // ── Internet sync (RA data for pending snapshots) ─────────────────────────
+    private var networkCallbackRegistered = false
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            serviceScope.launch(Dispatchers.IO) { syncPeerRetroData() }
+        }
+    }
+
     // ── Bluetooth state receiver ──────────────────────────────────────────────
     // Restarts advertising + scanning automatically when the user turns BT back on.
     private val btStateReceiver = object : BroadcastReceiver() {
@@ -161,15 +175,20 @@ class BleService : Service() {
             rotatingIdManager  = rotatingIdManager,
         )
 
-        // Ensure default profile row exists
+        // Ensure default profile row exists and always has an avatarSeed so peers
+        // receive a stable Sparky avatar from the very first BLE exchange.
         serviceScope.launch {
             val profileDao = db.myProfileDao()
-            if (profileDao.get() == null) {
+            val existing = profileDao.get()
+            if (existing == null) {
                 profileDao.upsert(
                     com.thunderpass.data.db.entity.MyProfile(
-                        installationId = rotatingIdManager.installationId
+                        installationId = rotatingIdManager.installationId,
+                        avatarSeed     = randomSparkySeed(),
                     )
                 )
+            } else if (existing.avatarSeed.isBlank()) {
+                profileDao.upsert(existing.copy(avatarSeed = randomSparkySeed()))
             }
         }
 
@@ -205,8 +224,7 @@ class BleService : Service() {
                             val encounterDao = db.encounterDao()
                             val passes       = encounterDao.countAll()
                             val profile      = db.myProfileDao().get()
-                            val badges       = profile?.stickersJson
-                                ?.split(",")?.count { it.isNotBlank() } ?: 0
+                            val badges       = com.thunderpass.ui.ALL_BADGES.count { it.tier > 0 }
                             val encounters   = encounterDao.getAll()
                             val streak       = computeEncounterStreak(encounters)
                             BleStats(passesCount = passes, badgesCount = badges, streakCount = streak)
@@ -219,6 +237,15 @@ class BleService : Service() {
                 } else {
                     Log.i(TAG, "Service started in Safe Zone — BLE paused until zone deactivated.")
                 }
+                // Register network callback to sync RA data when internet becomes available
+                if (!networkCallbackRegistered) {
+                    val req = NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build()
+                    getSystemService(ConnectivityManager::class.java)
+                        .registerNetworkCallback(req, networkCallback)
+                    networkCallbackRegistered = true
+                }
                 Log.i(TAG, "ThunderPass BLE service started.")
             }
             ACTION_STOP -> {
@@ -228,6 +255,13 @@ class BleService : Service() {
                 stopScanning()
                 stopAdvertising()
                 gattServer.stop()
+                if (networkCallbackRegistered) {
+                    runCatching {
+                        getSystemService(ConnectivityManager::class.java)
+                            .unregisterNetworkCallback(networkCallback)
+                    }
+                    networkCallbackRegistered = false
+                }
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 Log.i(TAG, "ThunderPass BLE service stopped.")
@@ -274,12 +308,46 @@ class BleService : Service() {
         stopScanning()
         stopAdvertising()
         gattServer.stop()
+        if (networkCallbackRegistered) {
+            runCatching {
+                getSystemService(ConnectivityManager::class.java)
+                    .unregisterNetworkCallback(networkCallback)
+            }
+            networkCallbackRegistered = false
+        }
         runCatching { unregisterReceiver(btStateReceiver) }
         serviceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    // ── Internet sync ─────────────────────────────────────────────────────────
+
+    /**
+     * Called when internet becomes available. Fetches RA data for all peer
+     * snapshots that have a retroUsername but haven't been fetched yet.
+     */
+    private suspend fun syncPeerRetroData() {
+        val db          = ThunderPassDatabase.getInstance(this)
+        val snapshotDao = db.peerProfileSnapshotDao()
+        val pending     = snapshotDao.findSnapshotsNeedingRetroFetch()
+        if (pending.isEmpty()) return
+        Log.i(TAG, "Internet available — syncing RA data for ${pending.size} pending snapshot(s)")
+        val retroAuth   = RetroAuthManager.getInstance(this)
+        val ownUsername = db.myProfileDao().get()?.retroUsername?.takeIf { it.isNotBlank() }
+        for (snapshot in pending) {
+            val username = snapshot.retroUsername ?: continue
+            RetroRepository.fetchAndCache(
+                context      = this,
+                peerUsername = username,
+                snapshotId   = snapshot.id,
+                snapshotDao  = snapshotDao,
+                auth         = retroAuth,
+                ownUsername  = ownUsername,
+            )
+        }
+    }
 
     // ── Advertising ───────────────────────────────────────────────────────────
 
@@ -509,9 +577,12 @@ class BleService : Service() {
     private fun updateEncounterNotification(encounterId: Long, displayName: String) {
         // ⚡ "The Spark" — double-pulse haptic feedback on successful profile exchange
         // Null-guard: VibratorManager can be null on custom ROMs (OdinOS)
-        val vibrator = getSystemService(VibratorManager::class.java)?.defaultVibrator
-        // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
-        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
+        val settingsPrefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
+        if (settingsPrefs.getBoolean("vibration_enabled", true)) {
+            val vibrator = getSystemService(VibratorManager::class.java)?.defaultVibrator
+            // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
+            vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
+        }
         flashThorLeds()
 
         val tapIntent = PendingIntent.getActivity(

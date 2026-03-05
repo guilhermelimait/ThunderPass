@@ -13,7 +13,7 @@ data class MyProfile(
     @PrimaryKey val id: Int = 1,
 
     /** Human-readable display name shown to peers. */
-    val displayName: String = "Traveler",
+    val displayName: String = "SparkyUser",
 
     /** Short greeting message exchanged during a pass. */
     val greeting: String = "Hey, greetings from ThunderPass!",
@@ -67,6 +67,9 @@ data class MyProfile(
     /** Comma-separated sticker keys the user has earned (e.g. "first_spark,player_2"). */
     val stickersJson: String = "",
 
+    /** Comma-separated badge keys the user has earned (e.g. "alfa_tester,node_zero"). */
+    val badgesJson: String = "",
+
     /**
      * Supabase auth UUID — written locally after a successful sign-in so that the
      * GATT server can include it in the profile payload for peer identity dedup.
@@ -89,4 +92,12 @@ data class MyProfile(
      */
     @ColumnInfo(name = "device_type")
     val deviceType: String = "",
+
+    /**
+     * Base64url-encoded DER P-256 public key registered in Supabase `profiles.public_key`.
+     * Populated by [ProfileViewModel.syncToSupabase] after the Android Keystore key pair
+     * is generated. Peers fetch this to verify GATT payload signatures.
+     */
+    @ColumnInfo(name = "payload_public_key")
+    val payloadPublicKey: String = "",
 )

@@ -12,6 +12,30 @@ data class RecentGame(
     @Json(name = "Title")       val title: String,
     @Json(name = "ConsoleName") val consoleName: String,
     @Json(name = "LastPlayed")  val lastPlayed: String? = null,
+    /** Image icon path suffix, e.g. "/Images/001234.png". Prepend https://media.retroachievements.org. */
+    @Json(name = "ImageIcon")   val imageIcon: String? = null,
+)
+
+/**
+ * One game entry in the GetUserCompletionProgress response.
+ * Used to derive the total softcore achievement count.
+ */
+@JsonClass(generateAdapter = true)
+data class CompletionEntry(
+    /** Total achievements unlocked in softcore mode (includes hardcore-earned ones). */
+    @Json(name = "NumAwarded")         val numAwarded: Int = 0,
+    /** Achievements earned specifically in hardcore mode. */
+    @Json(name = "NumAwardedHardcore") val numAwardedHardcore: Int = 0,
+)
+
+/**
+ * Top-level wrapper returned by API_GetUserCompletionProgress.
+ */
+@JsonClass(generateAdapter = true)
+data class UserCompletionProgress(
+    @Json(name = "Count")   val count: Int = 0,
+    @Json(name = "Total")   val total: Int = 0,
+    @Json(name = "Results") val results: List<CompletionEntry> = emptyList(),
 )
 
 /**
@@ -30,6 +54,9 @@ data class RetroProfile(
 
     /** Lifetime achievement points earned on RetroAchievements. */
     @Json(name = "TotalPoints") val totalPoints: Long,
+
+    /** Softcore (non-hardcore) points earned on RetroAchievements. */
+    @Json(name = "TotalSoftcorePoints") val totalSoftcorePoints: Long = 0L,
 
     /** Number of distinct games the peer has played recently. */
     @Json(name = "RecentlyPlayedCount") val recentlyPlayedCount: Int,

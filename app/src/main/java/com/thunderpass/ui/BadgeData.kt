@@ -185,10 +185,12 @@ data class BadgeDef(
     val label:           String,
     val category:        BadgeCategory,
     val description:     String,
-    val tier:            Int   = 0,
-    val progress:        Float = 0f,   // 0..1 fraction for bar
-    val progressCurrent: Int   = 0,
-    val progressMax:     Int   = 1,
+    val tier:            Int    = 0,
+    val progress:        Float  = 0f,   // 0..1 fraction for bar
+    val progressCurrent: Int    = 0,
+    val progressMax:     Int    = 1,
+    val key:             String = "",   // stable identifier for dynamic badge grants
+    val tierWhenEarned:  Int    = 1,    // tier unlocked to when badge is dynamically awarded
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,7 +223,7 @@ val ALL_BADGES: List<BadgeDef> = listOf(
     BadgeDef("Urban Legend",     BadgeCategory.GEO, "Encounter someone in a city with 5M+ population",             tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     BadgeDef("Off-Grid",         BadgeCategory.GEO, "Record an encounter above 2,000 metres elevation",            tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     // ── Social ────────────────────────────────────────────────────────────────
-    BadgeDef("Shared Quest",     BadgeCategory.SOCIAL, "Both you and the peer are playing the same game",           tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
+    BadgeDef("Shared Quest",  BadgeCategory.SOCIAL,   "Linked your RetroAchievements account and downloaded your game data.", key = "shared_quest"),
     BadgeDef("Hardcore Sync",    BadgeCategory.SOCIAL, "Both users have Hardcore Mode enabled on RA",               tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     BadgeDef("Friendly Fire",    BadgeCategory.SOCIAL, "Send a High Five to a user you've passed 5+ times",         tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 5),
     BadgeDef("The Rival",        BadgeCategory.SOCIAL, "Pass someone with a higher Global Rank than you",           tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
@@ -237,15 +239,27 @@ val ALL_BADGES: List<BadgeDef> = listOf(
     BadgeDef("Genre Specialist",    BadgeCategory.GAMES, "Pass someone who played 10+ games in the same genre",   tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 10),
     BadgeDef("Hidden Gem",          BadgeCategory.GAMES, "Match a user playing a game with <100 RA players",      tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     // ── Founders ──────────────────────────────────────────────────────────────
-    BadgeDef("Core Architect",   BadgeCategory.FOUNDERS, "Awarded to the ThunderPass Development Team",            tier = 3, progress = 1f,   progressCurrent = 1, progressMax = 1),
-    BadgeDef("Kinetic Beta",     BadgeCategory.FOUNDERS, "Joined during the Closed Beta phase",                    tier = 1, progress = 1f,   progressCurrent = 1, progressMax = 1),
+    BadgeDef("Alfa Tester",  BadgeCategory.FOUNDERS, "Installed ThunderPass before version 0.7 was officially launched.",            key = "alfa_tester"),
+    BadgeDef("Beta Tester",  BadgeCategory.FOUNDERS, "Installed ThunderPass during the Beta phase (before v0.8 launched).",          key = "beta_tester"),
     BadgeDef("Glitch Hunter",    BadgeCategory.FOUNDERS, "Submitted a verified bug report via the app",            tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
-    BadgeDef("Node Zero",        BadgeCategory.FOUNDERS, "Among the first 100 users to register a Bio-ID",         tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 100),
+    BadgeDef("Node Zero",    BadgeCategory.FOUNDERS, "Among the first 100 users to create and confirm their account on ThunderPass servers.", key = "node_zero"),
     BadgeDef("Patch Survivor",   BadgeCategory.FOUNDERS, "Pass someone running a different protocol version",      tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     BadgeDef("Open Circuit",     BadgeCategory.FOUNDERS, "Contributed to the GitHub repository or docs",           tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
     BadgeDef("Overclocked",      BadgeCategory.FOUNDERS, "Rare: participated in a 500+ Sparks Stress Test event",  tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
 )
 
-fun badgesForCategory(category: BadgeCategory) =
-    ALL_BADGES.filter { it.category == category }
+/**
+ * Returns ALL_BADGES with dynamic tier applied for any key found in [earnedKeys].
+ * Badges without a key are returned unchanged.
+ */
+fun computeBadges(earnedKeys: Set<String>): List<BadgeDef> =
+    ALL_BADGES.map { badge ->
+        if (badge.key.isNotBlank() && badge.key in earnedKeys && badge.tier == 0)
+            badge.copy(tier = badge.tierWhenEarned, progress = 1f, progressCurrent = badge.progressMax)
+        else badge
+    }
+
+fun badgesForCategory(category: BadgeCategory, earnedKeys: Set<String> = emptySet()) =
+    computeBadges(earnedKeys)
+        .filter { it.category == category }
         .sortedWith(compareBy({ -it.tier }, { -it.progress }))

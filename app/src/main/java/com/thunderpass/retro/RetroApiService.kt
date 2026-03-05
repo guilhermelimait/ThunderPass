@@ -26,4 +26,21 @@ interface RetroApiService {
         @Query("g") recentGames: Int = 5,
         @Query("a") recentAchievements: Int = 0,
     ): RetroProfile
+
+    /**
+     * Fetch a user's completion progress across all games.
+     * Each entry has [CompletionEntry.numAwarded] (softcore) and [CompletionEntry.numAwardedHardcore].
+     * Summing [CompletionEntry.numAwarded] gives the total softcore achievement count.
+     *
+     * @param count   Max records per page (default 100, max 500).
+     * @param offset  Skip N records (for pagination beyond 500 games).
+     */
+    @GET("API_GetUserCompletionProgress.php")
+    suspend fun getUserCompletionProgress(
+        @Query("z") apiUser: String,
+        @Query("y") apiKey: String,
+        @Query("u") user: String,
+        @Query("c") count: Int = 500,
+        @Query("o") offset: Int = 0,
+    ): UserCompletionProgress
 }

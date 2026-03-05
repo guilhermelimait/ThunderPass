@@ -40,16 +40,18 @@ import androidx.compose.ui.unit.sp
 fun BadgeCategoryDetailScreen(
     categoryName: String,
     onBack: () -> Unit,
+    vm: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
 ) {
-    val category = BadgeCategory.entries.find { it.name == categoryName } ?: return
-    val badges   = badgesForCategory(category)
+    val category       = BadgeCategory.entries.find { it.name == categoryName } ?: return
+    val earnedBadgeKeys by vm.earnedBadgeKeys.collectAsState()
+    val badges         = badgesForCategory(category, earnedBadgeKeys)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text       = "${category.emoji}  ${category.label}",
+                        text       = category.label,
                         fontWeight = FontWeight.Bold,
                     )
                 },

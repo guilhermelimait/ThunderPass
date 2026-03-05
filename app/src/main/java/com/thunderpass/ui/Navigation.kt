@@ -54,6 +54,7 @@ fun ThunderPassNavGraph(
     var darkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
 
     val homeVm: HomeViewModel = viewModel()
+    val profileVm: ProfileViewModel = viewModel()
     val pendingFriendUserId by homeVm.friendInviteUserId.collectAsState()
     val friendInviteResult  by homeVm.friendInviteResult.collectAsState()
 
@@ -176,6 +177,7 @@ fun ThunderPassNavGraph(
                     val firstRun = bs.arguments?.getBoolean("firstRun") ?: false
                     ProfileScreen(
                         firstRun     = firstRun,
+                        vm           = profileVm,
                         onEditSparky = { navController.navigate(Routes.SPARKY_EDITOR) },
                         onComplete   = if (firstRun) {
                             { navController.navigate(Routes.HOME) { popUpTo(Routes.PROFILE) { inclusive = true } } }
@@ -214,11 +216,12 @@ fun ThunderPassNavGraph(
                     )
                 }
                 composable(Routes.ABOUT) {
-                    AboutScreen()
+                    AboutScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Routes.SPARKY_EDITOR) {
                     SparkyEditorScreen(
                         onBack = { navController.popBackStack() },
+                        vm     = profileVm,
                     )
                 }
             }

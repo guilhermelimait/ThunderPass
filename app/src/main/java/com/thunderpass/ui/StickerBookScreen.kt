@@ -27,7 +27,7 @@ fun StickerBookScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sticker Book") },
+                title = { Text("Sticker Book", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
