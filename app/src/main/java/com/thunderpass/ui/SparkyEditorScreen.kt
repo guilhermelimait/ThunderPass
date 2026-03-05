@@ -43,24 +43,37 @@ fun SparkyEditorScreen(
 ) {
     val profile by vm.profile.collectAsState()
 
-    // ── Parse initial options from stored seed ──────────────────────────────
-    // Parsed once per composition session (fresh each time the screen is entered via nav).
-    // Not keyed on profile.avatarSeed so Room emissions mid-edit never reset slider positions.
-    val initial = remember {
-        if (profile.avatarSeed.startsWith("sparky|"))
-            parseSparkyOptions(profile.avatarSeed)
-        else SparkyOptions()
-    }
+    // ── Slider state ────────────────────────────────────────────────────────
+    // Initialised to SparkyOptions defaults; synced to the real profile below.
+    // We intentionally do NOT read profile.avatarSeed here directly, because the
+    // StateFlow may still hold its blank default (MyProfile(installationId=…)) on
+    // the first composition frame — the actual DB row arrives slightly later.
+    var hairIdx      by remember { mutableStateOf(SparkyOptions().hair) }
+    var hairColorIdx by remember { mutableStateOf(SparkyOptions().hairColor) }
+    var eyesIdx      by remember { mutableStateOf(SparkyOptions().eyes) }
+    var mouthIdx     by remember { mutableStateOf(SparkyOptions().mouth) }
+    var skinIdx      by remember { mutableStateOf(SparkyOptions().skin) }
+    var bgIdx        by remember { mutableStateOf(SparkyOptions().bg) }
 
-    var hairIdx      by remember { mutableStateOf(initial.hair) }
-    var hairColorIdx by remember { mutableStateOf(initial.hairColor) }
-    var eyesIdx      by remember { mutableStateOf(initial.eyes) }
-    var mouthIdx     by remember { mutableStateOf(initial.mouth) }
-    var skinIdx      by remember { mutableStateOf(initial.skin) }
-    var bgIdx        by remember { mutableStateOf(initial.bg) }
-
-    // True once the user actually moves any slider
+    // True once the user actually moves any slider (stays false during initial sync).
     var hasModified by remember { mutableStateOf(false) }
+
+    // Sync sliders from the saved profile seed whenever it arrives or changes,
+    // BUT skip the sync while the user is actively editing so that mid-edit
+    // Room saves never clobber the current slider positions.
+    LaunchedEffect(profile.avatarSeed) {
+        if (!hasModified && profile.avatarSeed.isNotEmpty()) {
+            val opts = if (profile.avatarSeed.startsWith("sparky|"))
+                parseSparkyOptions(profile.avatarSeed)
+            else SparkyOptions()
+            hairIdx      = opts.hair
+            hairColorIdx = opts.hairColor
+            eyesIdx      = opts.eyes
+            mouthIdx     = opts.mouth
+            skinIdx      = opts.skin
+            bgIdx        = opts.bg
+        }
+    }
 
     // Live preview seed rebuilt from current selections
     val previewSeed by remember {
