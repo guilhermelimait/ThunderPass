@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
@@ -40,15 +42,16 @@ val SPARKY_SKIN_LABELS = listOf("Fair", "Warm Tan", "Medium", "Brown", "Peachy")
 // Sparky attribute lists — explicit DiceBear big-smile options
 // ─────────────────────────────────────────────────────────────────────────────
 
+// v9.x DiceBear big-smile hair styles (API param: ?hair=<name>)
 val SPARKY_HAIR_STYLES = listOf(
-    "bunLarge", "bunSmall", "curly", "extraLong", "high",
-    "long", "lowReceding", "plain", "shortComb", "shortCombed",
-    "shortFromBottom", "shortSober", "wavy", "twists",
+    "bangs", "bowlCutHair", "braids", "bunHair", "curlyBob",
+    "curlyShortHair", "froBun", "halfShavedHead", "mohawk", "shavedHead",
+    "shortHair", "straightHair", "wavyBob",
 )
 val SPARKY_HAIR_LABELS = listOf(
-    "Bun Large", "Bun Small", "Curly", "Extra Long", "High",
-    "Long", "Low Receding", "Plain", "Short Comb", "Short Combed",
-    "Short Fringe", "Short Sober", "Wavy", "Twists",
+    "Bangs", "Bowl Cut", "Braids", "Bun", "Curly Bob",
+    "Curly Short", "Fro Bun", "Half Shaved", "Mohawk", "Shaved",
+    "Short Hair", "Straight", "Wavy Bob",
 )
 
 val SPARKY_HAIR_COLORS_HEX = listOf(
@@ -61,22 +64,24 @@ val SPARKY_HAIR_COLOR_LABELS = listOf(
     "Red", "Blue", "Purple", "Pink", "Silver", "Green", "White",
 )
 
+// v9.x DiceBear big-smile eye styles (API param: ?eyes=<name>)
 val SPARKY_EYE_STYLES = listOf(
-    "cheery", "normal", "happy", "sleepy", "starstruck",
-    "winking", "winkingAlt", "sad", "plain",
+    "angry", "cheery", "confused", "normal",
+    "sad", "sleepy", "starstruck", "winking",
 )
 val SPARKY_EYE_LABELS = listOf(
-    "Cheery", "Normal", "Happy", "Sleepy", "Starstruck",
-    "Winking", "Winking Alt", "Sad", "Plain",
+    "Angry", "Cheery", "Confused", "Normal",
+    "Sad", "Sleepy", "Starstruck", "Winking",
 )
 
+// v9.x DiceBear big-smile mouth styles (API param: ?mouth=<name>)
 val SPARKY_MOUTH_STYLES = listOf(
-    "bigSmile", "braces", "cheekPop", "grin", "laughing",
-    "lilSmile", "plain", "smirk", "teethSmile", "unimpressed",
+    "awkwardSmile", "braces", "gapSmile", "kawaii",
+    "openedSmile", "openSad", "teethSmile", "unimpressed",
 )
 val SPARKY_MOUTH_LABELS = listOf(
-    "Big Smile", "Braces", "Cheek Pop", "Grin", "Laughing",
-    "Lil Smile", "Plain", "Smirk", "Teeth Smile", "Unimpressed",
+    "Awkward Smile", "Braces", "Gap Smile", "Kawaii",
+    "Opened Smile", "Open Sad", "Teeth Smile", "Unimpressed",
 )
 
 val SPARKY_BG_COLORS = listOf(
@@ -96,30 +101,51 @@ val SPARKY_BG_LABELS = listOf(
 data class SparkyOptions(
     val hair:      Int = 0,
     val hairColor: Int = 0,
-    val eyes:      Int = 2,  // happy
-    val mouth:     Int = 0,  // bigSmile
+    val eyes:      Int = 1,  // cheery
+    val mouth:     Int = 0,  // awkwardSmile
     val skin:      Int = 0,
     val bg:        Int = 0,
 )
 
+/**
+ * Parses a Sparky seed into [SparkyOptions] indices.
+ * Supports both legacy numeric format ("sparky|h=3|e=2|...") and
+ * name-based format ("sparky|h=bangs|hc=0e0e0e|e=cheery|...").
+ */
 fun parseSparkyOptions(seed: String): SparkyOptions {
     if (!seed.startsWith("sparky|")) return SparkyOptions()
     val params = seed.split("|").drop(1).mapNotNull { part ->
         val idx = part.indexOf('=')
-        if (idx < 0) null else part.substring(0, idx) to (part.substring(idx + 1).toIntOrNull() ?: 0)
+        if (idx < 0) null else part.substring(0, idx) to part.substring(idx + 1)
     }.toMap()
+
+    fun idx(list: List<String>, key: String, default: Int): Int {
+        val v = params[key] ?: return default
+        val numeric = v.toIntOrNull()
+        if (numeric != null) return numeric.coerceIn(0, list.lastIndex)
+        return list.indexOfFirst { it.equals(v, ignoreCase = true) }.takeIf { it >= 0 } ?: default
+    }
+
     return SparkyOptions(
-        hair      = params["h"]  ?: 0,
-        hairColor = params["hc"] ?: 0,
-        eyes      = params["e"]  ?: 2,
-        mouth     = params["m"]  ?: 0,
-        skin      = params["s"]  ?: 0,
-        bg        = params["b"]  ?: 0,
+        hair      = idx(SPARKY_HAIR_STYLES,     "h",  0),
+        hairColor = idx(SPARKY_HAIR_COLORS_HEX, "hc", 0),
+        eyes      = idx(SPARKY_EYE_STYLES,      "e",  1),
+        mouth     = idx(SPARKY_MOUTH_STYLES,    "m",  0),
+        skin      = idx(SKIN_TONE_HEXES,        "s",  0),
+        bg        = idx(SPARKY_BG_COLORS,       "b",  0),
     )
 }
 
-fun buildSparkySeed(o: SparkyOptions): String =
-    "sparky|h=${o.hair}|hc=${o.hairColor}|e=${o.eyes}|m=${o.mouth}|s=${o.skin}|b=${o.bg}"
+/** Encodes a [SparkyOptions] as a human-readable seed string using style names. */
+fun buildSparkySeed(o: SparkyOptions): String {
+    val h  = SPARKY_HAIR_STYLES.getOrElse(o.hair)      { SPARKY_HAIR_STYLES[0] }
+    val hc = SPARKY_HAIR_COLORS_HEX.getOrElse(o.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
+    val e  = SPARKY_EYE_STYLES.getOrElse(o.eyes)       { SPARKY_EYE_STYLES[1] }
+    val m  = SPARKY_MOUTH_STYLES.getOrElse(o.mouth)    { SPARKY_MOUTH_STYLES[0] }
+    val s  = SKIN_TONE_HEXES.getOrElse(o.skin)         { SKIN_TONE_HEXES[0] }
+    val b  = SPARKY_BG_COLORS.getOrElse(o.bg)          { SPARKY_BG_COLORS[0] }
+    return "sparky|h=$h|hc=$hc|e=$e|m=$m|s=$s|b=$b"
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Skin tone helpers
@@ -166,21 +192,19 @@ fun diceBearUrl(seed: String, transparent: Boolean = false): String {
 
     if (safeSeed.startsWith("sparky|")) {
         val opts      = parseSparkyOptions(safeSeed)
-        val hair      = SPARKY_HAIR_STYLES.getOrElse(opts.hair)      { SPARKY_HAIR_STYLES[0] }
+        val hair      = SPARKY_HAIR_STYLES.getOrElse(opts.hair)          { SPARKY_HAIR_STYLES[0] }
         val hairColor = SPARKY_HAIR_COLORS_HEX.getOrElse(opts.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
-        val eyes      = SPARKY_EYE_STYLES.getOrElse(opts.eyes)       { SPARKY_EYE_STYLES[2] }
-        val mouth     = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)    { SPARKY_MOUTH_STYLES[0] }
-        val skin      = SKIN_TONE_HEXES.getOrElse(opts.skin)         { SKIN_TONE_HEXES[0] }
-        val bg        = SPARKY_BG_COLORS.getOrElse(opts.bg)          { SPARKY_BG_COLORS[0] }
-        // Use plain parameter names (no [] array notation) — OkHttp percent-encodes []
-        // to %5B%5D which DiceBear's JS server doesn't map back to array params.
-        // Single-value params work identically without the brackets.
+        val eyes      = SPARKY_EYE_STYLES.getOrElse(opts.eyes)           { SPARKY_EYE_STYLES[1] }
+        val mouth     = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)        { SPARKY_MOUTH_STYLES[0] }
+        val skin      = SKIN_TONE_HEXES.getOrElse(opts.skin)             { SKIN_TONE_HEXES[0] }
+        val bg        = SPARKY_BG_COLORS.getOrElse(opts.bg)              { SPARKY_BG_COLORS[0] }
+        // v9.x API accepts plain param names; accessories suppressed so none appear randomly
         return "https://api.dicebear.com/9.x/big-smile/svg" +
             "?seed=sparky-fixed" +
-            "&radius=50" +
-            "&size=128" +
+            "&radius=50&size=128" +
+            "&accessoriesProbability=0" +
             "&hair=$hair" +
-            "&hairColor=$hairColor" +
+            "&hairColor=${hairColor.lowercase()}" +
             "&eyes=$eyes" +
             "&mouth=$mouth" +
             "&skinColor=${skin.lowercase()}" +
@@ -196,8 +220,9 @@ fun diceBearUrl(seed: String, transparent: Boolean = false): String {
 }
 
 /**
- * Loads a unique, deterministic DiceBear "big-smile" avatar for [seed].
- * Shows a muted circle placeholder while loading / on error.
+ * Loads a DiceBear "big-smile" avatar for [seed].
+ * For Sparky seeds, renders 100% offline from pre-bundled SVG component assets.
+ * For legacy random seeds, fetches from the DiceBear HTTP API (Coil disk-caches it).
  */
 @Composable
 fun DiceBearAvatar(
@@ -207,31 +232,99 @@ fun DiceBearAvatar(
     showLoadingBackground: Boolean  = true,
     transparent:           Boolean  = false,
 ) {
-    SubcomposeAsyncImage(
-        model              = diceBearUrl(seed, transparent),
-        contentDescription = "Avatar",
-        contentScale       = ContentScale.Fit,
-        modifier           = modifier
+    if (seed.startsWith("sparky|")) {
+        val opts = remember(seed) { parseSparkyOptions(seed) }
+        SparkyLocalAvatar(
+            opts     = opts,
+            size     = size,
+            modifier = modifier,
+        )
+    } else {
+        SubcomposeAsyncImage(
+            model              = diceBearUrl(seed, transparent),
+            contentDescription = "Avatar",
+            contentScale       = ContentScale.Fit,
+            modifier           = modifier
+                .size(size)
+                .clip(CircleShape),
+            loading = {
+                if (showLoadingBackground) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                }
+            },
+            error = {
+                if (showLoadingBackground) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                }
+            },
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Local (offline) Sparky avatar compositor
+// Combines pre-downloaded SVG layer assets from res/raw to render without network.
+// Layer order: bg circle → face/skin → hair → eyes → mouth
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Converts camelCase to snake_case for res/raw file name lookup. */
+private fun String.camelToSnake(): String =
+    replace(Regex("([A-Z])"), "_$1").lowercase().trimStart('_')
+
+/**
+ * Composes a Sparky avatar from local SVG layer assets (res/raw/).
+ * Each layer (face, hair, eyes, mouth) is a separate SVG downloaded from
+ * the DiceBear API at build time and bundled with the app for offline use.
+ */
+@Composable
+fun SparkyLocalAvatar(
+    opts:     SparkyOptions,
+    size:     Dp      = 72.dp,
+    modifier: Modifier = Modifier,
+) {
+    val ctx    = LocalContext.current
+    val bgHex  = SPARKY_BG_COLORS.getOrElse(opts.bg)          { SPARKY_BG_COLORS[0] }
+    val bgColor = remember(bgHex) {
+        Color(
+            red   = bgHex.substring(0, 2).toInt(16) / 255f,
+            green = bgHex.substring(2, 4).toInt(16) / 255f,
+            blue  = bgHex.substring(4, 6).toInt(16) / 255f,
+        )
+    }
+
+    val hairStyle  = SPARKY_HAIR_STYLES.getOrElse(opts.hair)          { SPARKY_HAIR_STYLES[0] }
+    val hairColor  = SPARKY_HAIR_COLORS_HEX.getOrElse(opts.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
+    val eyeStyle   = SPARKY_EYE_STYLES.getOrElse(opts.eyes)           { SPARKY_EYE_STYLES[1] }
+    val mouthStyle = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)        { SPARKY_MOUTH_STYLES[0] }
+    val skinHex    = SKIN_TONE_HEXES.getOrElse(opts.skin)             { SKIN_TONE_HEXES[0] }
+
+    // res/raw resource IDs resolved at runtime by name
+    fun rawId(name: String) = ctx.resources.getIdentifier(name, "raw", ctx.packageName)
+
+    val faceRaw  = remember(skinHex)               { rawId("sparky_face_${skinHex.lowercase()}") }
+    val hairRaw  = remember(hairStyle, hairColor)   { rawId("sparky_hair_${hairStyle.camelToSnake()}_${hairColor.lowercase()}") }
+    val eyesRaw  = remember(eyeStyle)              { rawId("sparky_eyes_${eyeStyle.camelToSnake()}") }
+    val mouthRaw = remember(mouthStyle)            { rawId("sparky_mouth_${mouthStyle.camelToSnake()}") }
+
+    Box(
+        modifier = modifier
             .size(size)
-            .clip(CircleShape),
-        loading = {
-            if (showLoadingBackground) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
-            }
-        },
-        error = {
-            if (showLoadingBackground) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                )
-            }
-        },
-    )
+            .clip(CircleShape)
+            .background(bgColor),
+    ) {
+        // Each SVG layer fills the same 128×128 coordinate space so they align perfectly
+        if (faceRaw  != 0) SubcomposeAsyncImage(faceRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+        if (hairRaw  != 0) SubcomposeAsyncImage(hairRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+        if (eyesRaw  != 0) SubcomposeAsyncImage(eyesRaw,  null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+        if (mouthRaw != 0) SubcomposeAsyncImage(mouthRaw, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+    }
 }
 
