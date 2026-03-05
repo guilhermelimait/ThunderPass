@@ -164,35 +164,13 @@ fun HomeScreenContent(
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
+                        // Header row: avatar | name+status | volts+logo
                         Row(
                             verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier              = Modifier.fillMaxWidth(),
                         ) {
-                            Row(
-                                modifier              = Modifier.weight(1f),
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                androidx.compose.foundation.Image(
-                                    painter            = painterResource(R.drawable.logo),
-                                    contentDescription = "ThunderPass",
-                                    modifier           = Modifier.height(44.dp),
-                                )
-                                Column {
-                                    Text(
-                                        text       = displayName,
-                                        style      = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                    Text(
-                                        text  = if (serviceRunning) "Scanning nearby\u2026" else "Tap to start scanning",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
+                            // Left: user avatar
                             DiceBearAvatar(
                                 seed     = avatarSeed.ifEmpty { "default" },
                                 size     = 40.dp,
@@ -200,6 +178,50 @@ fun HomeScreenContent(
                                     .clip(CircleShape)
                                     .clickable { onNavigate("profile") },
                             )
+                            // Centre: name + scanning status
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text       = displayName,
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onBackground,
+                                    maxLines   = 1,
+                                    overflow   = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (serviceRunning)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            // Right: volt count + logo icon
+                            Column(horizontalAlignment = Alignment.End) {
+                                Row(
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Filled.ElectricBolt,
+                                        contentDescription = "Volts",
+                                        tint               = Color(0xFFFFB300),
+                                        modifier           = Modifier.size(13.dp),
+                                    )
+                                    Text(
+                                        text       = voltsTotal.toString(),
+                                        style      = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onBackground,
+                                    )
+                                }
+                                androidx.compose.foundation.Image(
+                                    painter            = painterResource(R.drawable.logo),
+                                    contentDescription = "ThunderPass",
+                                    modifier           = Modifier.height(18.dp),
+                                )
+                            }
                         }
                         NavShortcuts(onNavigate = onNavigate)
 
@@ -263,29 +285,13 @@ fun HomeScreenContent(
                 ) {
                     Spacer(Modifier.height(16.dp))
 
-                    // ── 1. Greeting + avatar row ───────────────────────────────
+                    // ── 1. Greeting row: avatar | name+status | volts+logo ──────
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Row(
-                            modifier              = Modifier.weight(1f),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            androidx.compose.foundation.Image(
-                                painter            = painterResource(R.drawable.logo),
-                                contentDescription = "ThunderPass",
-                                modifier           = Modifier.height(56.dp),
-                            )
-                            Text(
-                                text       = displayName,
-                                style      = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color      = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
+                        // Left: user avatar
                         DiceBearAvatar(
                             seed     = avatarSeed.ifEmpty { "default" },
                             size     = 52.dp,
@@ -293,6 +299,50 @@ fun HomeScreenContent(
                                 .clip(CircleShape)
                                 .clickable { onNavigate("profile") },
                         )
+                        // Centre: name + scanning status
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text       = displayName,
+                                style      = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color      = MaterialTheme.colorScheme.onBackground,
+                                maxLines   = 1,
+                                overflow   = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (serviceRunning)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        // Right: volt count + logo icon
+                        Column(horizontalAlignment = Alignment.End) {
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Filled.ElectricBolt,
+                                    contentDescription = "Volts",
+                                    tint               = Color(0xFFFFB300),
+                                    modifier           = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text       = voltsTotal.toString(),
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onBackground,
+                                )
+                            }
+                            androidx.compose.foundation.Image(
+                                painter            = painterResource(R.drawable.logo),
+                                contentDescription = "ThunderPass",
+                                modifier           = Modifier.height(20.dp),
+                            )
+                        }
                     }
 
                     Spacer(Modifier.height(10.dp))
