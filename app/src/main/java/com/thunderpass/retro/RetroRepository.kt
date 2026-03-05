@@ -1,15 +1,10 @@
 package com.thunderpass.retro
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
-import java.text.NumberFormat
 
 private const val TAG       = "ThunderPass/RetroRepo"
-private const val CHANNEL   = "retro_achievements"
 private const val RETRO_SEP = "|||"  // matches RetroProfileCache separator
 
 /**
@@ -106,52 +101,7 @@ object RetroRepository {
             Log.i(TAG, "🔌 Retro Circuit triggered! $peerUsername played ${profile.recentlyPlayedCount} games recently")
         }
 
-        // Fire notifications for all triggered achievements
-        triggers.forEach { fireAchievementNotification(context, it) }
-
         snapshotDao.markRetroFetchAttempted(snapshotId)
         return triggers
-    }
-
-    private fun fireAchievementNotification(context: Context, trigger: AchievementTrigger) {
-        val nm = context.getSystemService(NotificationManager::class.java)
-
-        // Ensure channel exists
-        if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL,
-                    "RetroAchievements",
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply { description = "ThunderPass RetroAchievements encounter milestones" }
-            )
-        }
-
-        val fmt = NumberFormat.getNumberInstance()
-
-        val (title, body) = when (trigger) {
-            is AchievementTrigger.PlatinumPulse ->
-                "🏆 Platinum Pulse!" to
-                "${trigger.peerUsername} has ${fmt.format(trigger.totalPoints)} RA points — a true elite!"
-
-            is AchievementTrigger.LegendaryEncounter ->
-                "⚡ Legendary Encounter!" to
-                "You and ${trigger.peerUsername} both played ${trigger.sharedGame} recently!"
-
-            is AchievementTrigger.RetroCircuit ->
-                "🔌 Retro Circuit!" to
-                "${trigger.peerUsername} is an active retro player — ${trigger.recentlyPlayedCount} games this session!"
-        }
-
-        val notifId = System.currentTimeMillis().toInt()
-        val notif = NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(android.R.drawable.star_on)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setAutoCancel(true)
-            .build()
-
-        nm.notify(notifId, notif)
     }
 }

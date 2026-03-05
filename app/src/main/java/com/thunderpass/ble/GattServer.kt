@@ -240,19 +240,27 @@ class GattServer(
      * ```
      */
     private fun buildPayloadJson(profile: MyProfile, stats: BleStats?): String {
-        // Privacy mode: hide identity (name, RA, device) — but share the avatar
-        // so the recipient can see a face, just not who it belongs to.
+        // Privacy mode: share name, greeting, avatar, and stats — but hide identity
+        // (retroUsername, userId, instId, deviceType, ghostGame, sig) so the peer
+        // can display the card without being able to track or verify who they met.
         val data = if (profile.privacyMode) {
             org.json.JSONObject().apply {
-                put("displayName", "Private User")
-                put("greeting", "")
+                put("displayName", profile.displayName)
+                put("greeting", profile.greeting)
                 put("avatar", org.json.JSONObject().apply {
                     put("kind", profile.avatarKind)
                     put("color", profile.avatarColor)
                     if (profile.avatarSeed.isNotBlank()) put("seed", profile.avatarSeed)
                 })
                 put("private", true)
-                // retroUsername, ghostGame, userId, deviceType intentionally omitted
+                // Volts + encounter stats — visible even in privacy mode
+                put("volts", profile.voltsTotal)
+                if (stats != null) {
+                    put("passes", stats.passesCount)
+                    put("badges", stats.badgesCount)
+                    put("streak", stats.streakCount)
+                }
+                // retroUsername, ghostGame, userId, instId, deviceType, sig intentionally omitted
             }
         } else org.json.JSONObject().apply {
             put("displayName", profile.displayName)

@@ -20,5 +20,8 @@ captures/
 *.jks
 *.keystore
 
+# Kotlin daemon / IDE artifacts
+.kotlin/
+
 # Room schema exports ARE committed intentionally (migration audit trail).
 # Do not ignore app/schemas/

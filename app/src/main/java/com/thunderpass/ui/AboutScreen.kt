@@ -112,56 +112,63 @@ fun AboutScreen(onBack: () -> Unit = {}) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    // Developer avatar
-                    SubcomposeAsyncImage(
-                        model              = "https://storage.ko-fi.com/cdn/useruploads/81b005da-03c3-4771-992a-09a0f8f77595_bc4f05e0-07c0-4ed6-a9-13f16968d95b.png",
-                        contentDescription = "Guilherme Lima",
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape),
-                        loading = {
-                            Box(
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.2f)),
-                            )
-                        },
-                        error = {
-                            DiceBearAvatar(seed = "guilhermelimait", size = 96.dp, modifier = Modifier.clip(CircleShape))
-                        },
-                    )
-
-                    // Name + tagline
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    // ── Top row: avatar+name on left, bio on right ────────────
+                    Row(
+                        modifier          = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
+                        // Left — avatar + name + tagline
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.width(110.dp),
+                        ) {
+                            SubcomposeAsyncImage(
+                                model              = "https://storage.ko-fi.com/cdn/useruploads/81b005da-03c3-4771-992a-09a0f8f77595_bc4f05e0-07c0-4ed6-a9-13f16968d95b.png",
+                                contentDescription = "Guilherme Lima",
+                                contentScale       = ContentScale.Crop,
+                                modifier           = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape),
+                                loading = {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.2f)),
+                                    )
+                                },
+                                error = {
+                                    DiceBearAvatar(seed = "guilhermelimait", size = 80.dp, modifier = Modifier.clip(CircleShape))
+                                },
+                            )
+                            Text(
+                                text       = "Guilherme Lima",
+                                style      = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color      = Color.White,
+                                textAlign  = TextAlign.Center,
+                            )
+                            Text(
+                                text      = "Made with ⚡ and ☕",
+                                style     = MaterialTheme.typography.labelSmall,
+                                color     = Color.White.copy(alpha = 0.85f),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+
+                        // Right — app bio
                         Text(
-                            text       = "Guilherme Lima",
-                            style      = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color      = Color.White,
-                        )
-                        Text(
-                            text  = "Made with ⚡ and ☕",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.85f),
+                            text      = "ThunderPass is an offline-first StreetPass app for Android handheld gaming " +
+                                        "devices. It discovers nearby players over Bluetooth LE, exchanges profile " +
+                                        "cards, and tracks encounters — no internet required.\n\n" +
+                                        "Built by a solo dev who wanted StreetPass back on modern hardware.",
+                            style     = MaterialTheme.typography.bodyMedium,
+                            color     = Color.White.copy(alpha = 0.9f),
+                            modifier  = Modifier.weight(1f),
                         )
                     }
-
-                    // Bio text
-                    Text(
-                        text      = "ThunderPass is an offline-first StreetPass app for Android handheld gaming " +
-                                    "devices. It discovers nearby players over Bluetooth LE, exchanges profile " +
-                                    "cards, and tracks encounters — no internet required.\n\n" +
-                                    "Built by a solo dev who wanted StreetPass back on modern hardware.",
-                        style     = MaterialTheme.typography.bodyMedium,
-                        color     = Color.White.copy(alpha = 0.9f),
-                        textAlign = TextAlign.Center,
-                        modifier  = Modifier.fillMaxWidth(),
-                    )
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
 
