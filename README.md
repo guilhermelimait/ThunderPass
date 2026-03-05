@@ -29,16 +29,6 @@
 
 > 📸 *Images coming soon — contributions welcome!*
 
-| Home Screen | Passes | Badges |
-|:-----------:|:------:|:------:|
-| ![Home](docs/screenshots/home.png) | ![Passes](docs/screenshots/passes.png) | ![Badges](docs/screenshots/badges.png) |
-
-| Profile | Settings | About |
-|:-------:|:--------:|:-----:|
-| ![Profile](docs/screenshots/profile.png) | ![Settings](docs/screenshots/settings.png) | ![About](docs/screenshots/about.png) |
-
-*Drop your screenshots into `docs/screenshots/` and open a PR — we'd love to show the app in action!*
-
 ---
 
 ## What happens when you Spark? ⚡
