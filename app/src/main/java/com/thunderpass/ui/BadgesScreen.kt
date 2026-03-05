@@ -8,6 +8,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,14 +23,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.thunderpass.R
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Badges screen — category grid (tap a card to see its badges)
@@ -202,40 +207,27 @@ private fun BadgeCategoryCard(
                 )
             }
 
-            // Right side: for ENCOUNTERS show just the app logo; otherwise always show shield
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            // Right side: white category icon centered in the circle area
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier         = Modifier.size(if (compact) 48.dp else 64.dp),
             ) {
-                if (category == BadgeCategory.ENCOUNTERS) {
-                    // Encounters: logo above shield badge
-                    androidx.compose.foundation.Image(
-                        painter            = painterResource(R.drawable.logo),
-                        contentDescription = null,
-                        modifier           = Modifier.size(if (compact) 32.dp else 40.dp),
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    ThunderShield(
-                        tier          = topTier,
-                        categoryColor = category.accentColor,
-                        darkBg        = categoryDarkBg(category, topTier),
-                        size          = 28.dp,
-                    )
-                } else {
-                    Text(
-                        text  = category.emoji,
-                        style = MaterialTheme.typography.displaySmall,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    // Always show shield — grey when locked, colored when earned
-                    ThunderShield(
-                        tier          = topTier,
-                        categoryColor = category.accentColor,
-                        darkBg        = categoryDarkBg(category, topTier),
-                        size          = 28.dp,
-                    )
-                }
+                Icon(
+                    imageVector        = categoryIcon(category),
+                    contentDescription = category.label,
+                    tint               = Color.White,
+                    modifier           = Modifier.size(if (compact) 28.dp else 36.dp),
+                )
             }
         }
     }
+}
+
+private fun categoryIcon(category: BadgeCategory): ImageVector = when (category) {
+    BadgeCategory.ENCOUNTERS -> Icons.Filled.ElectricBolt
+    BadgeCategory.CONSOLE    -> Icons.Filled.SportsEsports
+    BadgeCategory.GEO        -> Icons.Filled.Map
+    BadgeCategory.SOCIAL     -> Icons.Filled.Group
+    BadgeCategory.GAMES      -> Icons.Filled.Gamepad
+    BadgeCategory.FOUNDERS   -> Icons.Filled.EmojiEvents
 }
