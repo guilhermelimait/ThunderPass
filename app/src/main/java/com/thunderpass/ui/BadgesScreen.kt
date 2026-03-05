@@ -181,7 +181,7 @@ private fun BadgeCategoryCard(
                 val cy = size.height * 0.5f
                 // Radii are proportional to card height so they look identical
                 // on every screen size / density.
-                for (ratio in listOf(0.42f, 0.62f, 0.82f)) {
+                for (ratio in listOf(0.65f, 0.90f, 1.15f)) {
                     drawCircle(
                         color  = Color.White.copy(alpha = 0.08f),
                         radius = size.height * ratio,
