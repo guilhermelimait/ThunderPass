@@ -79,6 +79,14 @@ fun SparkyEditorScreen(
         else                                   -> previewSeed
     }
 
+    // Auto-save: persist any change 400 ms after the user stops moving a slider
+    LaunchedEffect(previewSeed) {
+        if (hasModified) {
+            kotlinx.coroutines.delay(400)
+            vm.saveAvatarSeed(previewSeed)
+        }
+    }
+
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Scaffold(
@@ -146,13 +154,6 @@ fun SparkyEditorScreen(
                         onSkin       = { skinIdx = it;      hasModified = true },
                         onBg         = { bgIdx = it;        hasModified = true },
                     )
-                    SaveCancelRow(
-                        onSave   = {
-                            vm.saveAvatarSeed(previewSeed)
-                            onBack()
-                        },
-                        onCancel = onBack,
-                    )
                     Spacer(Modifier.height(8.dp))
                 }
             }
@@ -192,14 +193,6 @@ fun SparkyEditorScreen(
                     onMouth      = { mouthIdx = it;     hasModified = true },
                     onSkin       = { skinIdx = it;      hasModified = true },
                     onBg         = { bgIdx = it;        hasModified = true },
-                )
-
-                SaveCancelRow(
-                    onSave   = {
-                        vm.saveAvatarSeed(previewSeed)
-                        onBack()
-                    },
-                    onCancel = onBack,
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -372,27 +365,4 @@ private fun SparkySliderSection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Save / Cancel row
-// ─────────────────────────────────────────────────────────────────────────────
 
-@Composable
-private fun SaveCancelRow(onSave: () -> Unit, onCancel: () -> Unit) {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        OutlinedButton(
-            onClick  = onCancel,
-            modifier = Modifier.weight(1f),
-        ) {
-            Text("Cancel")
-        }
-        Button(
-            onClick  = onSave,
-            modifier = Modifier.weight(1f),
-        ) {
-            Text("💾 Save Sparky")
-        }
-    }
-}
