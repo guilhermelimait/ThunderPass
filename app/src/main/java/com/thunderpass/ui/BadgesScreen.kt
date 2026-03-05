@@ -179,10 +179,12 @@ private fun BadgeCategoryCard(
                 val iconHalfPx = (if (compact) 24.dp else 32.dp).toPx()
                 val cx = size.width - endPadPx - iconHalfPx
                 val cy = size.height * 0.5f
-                for (r in listOf(90f, 130f, 170f)) {
+                // Radii are proportional to card height so they look identical
+                // on every screen size / density.
+                for (ratio in listOf(0.42f, 0.62f, 0.82f)) {
                     drawCircle(
                         color  = Color.White.copy(alpha = 0.08f),
-                        radius = r,
+                        radius = size.height * ratio,
                         center = Offset(cx, cy),
                     )
                 }
