@@ -197,10 +197,11 @@ fun HomeScreenContent(
                                         MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            // Right: volt count
+                            // Right: volt count — tap to open shop
                             Row(
                                 verticalAlignment     = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                modifier              = Modifier.clickable { onNavigate("shop") },
                             ) {
                                 Icon(
                                     imageVector        = Icons.Filled.ElectricBolt,
@@ -311,10 +312,11 @@ fun HomeScreenContent(
                                     MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        // Right: volt count
+                        // Right: volt count — tap to open shop
                         Row(
                             verticalAlignment     = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            modifier              = Modifier.clickable { onNavigate("shop") },
                         ) {
                             Icon(
                                 imageVector        = Icons.Filled.ElectricBolt,
