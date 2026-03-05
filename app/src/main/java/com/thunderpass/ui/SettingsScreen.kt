@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.thunderpass.BuildConfig
 import com.thunderpass.ble.ScanMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -363,6 +364,12 @@ fun SettingsScreen(
                             Uri.parse("https://github.com/guilhermelimait/ThunderPass/releases"))
                     )
                 },
+            )
+            Text(
+                text  = "Version ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
 

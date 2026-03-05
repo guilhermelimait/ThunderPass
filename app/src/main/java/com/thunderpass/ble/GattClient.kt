@@ -350,7 +350,12 @@ class GattClient(
                         }
                         Log.i(TAG, "Profile refreshed for $effectiveId (snapshot=$existingId)")
                     }
-                    encounterDao.delete(encounterId)
+                    // Keep the encounter row intact — its seenAt (= now) acts as a
+                    // dedup sentinel so EncounterDedup.lastSeenAt() returns a fresh
+                    // timestamp and blocks new GATT connections for the next 60 min.
+                    // Deleting it would reset lastSeenAt to the original encounter,
+                    // causing a rapid-fire GATT reconnect loop that can bypass the
+                    // 24h check and re-trigger vibration.
                     return
                 }
 
@@ -401,7 +406,8 @@ class GattClient(
                 val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
                 if (encounterDao.countLinkedByMacSince(address, cutoffMs) > 0) {
                     Log.i(TAG, "Anonymous device $address already linked within 24h window — skipping duplicate")
-                    encounterDao.delete(encounterId)
+                    // Keep the encounter row for the same reason as the identity dedup
+                    // above: its seenAt timestamp gates the 60-min EncounterDedup window.
                     return
                 }
             }

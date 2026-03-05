@@ -1,6 +1,7 @@
 package com.thunderpass.ui
 
 import android.content.Intent
+import com.thunderpass.BuildConfig
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -250,7 +251,7 @@ fun AboutScreen(onBack: () -> Unit = {}) {
 
                     // Version
                     Text(
-                        text      = "ThunderPass v0.7.7\nBluetooth LE • Zero cloud • Open source",
+                        text      = "ThunderPass v${BuildConfig.VERSION_NAME}\nBluetooth LE • Zero cloud • Open source",
                         style     = MaterialTheme.typography.bodySmall,
                         color     = Color.White.copy(alpha = 0.75f),
                         textAlign = TextAlign.Center,

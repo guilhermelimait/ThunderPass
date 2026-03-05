@@ -23,8 +23,8 @@ android {
         applicationId = "com.thunderpass"
         minSdk = 33
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.7.8"
+        versionCode = 14
+        versionName = "0.7.12"
 
         // RetroAchievements API credentials — set in local.properties or CI secrets
         buildConfigField("String", "RA_API_KEY",  "\"${localProp("ra.apiKey")}\"")
