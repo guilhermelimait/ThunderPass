@@ -44,23 +44,23 @@ fun SparkyEditorScreen(
     val profile by vm.profile.collectAsState()
 
     // ── Parse initial options from stored seed ──────────────────────────────
-    val initial = remember(profile.avatarSeed) {
+    // Parsed once per composition session (fresh each time the screen is entered via nav).
+    // Not keyed on profile.avatarSeed so Room emissions mid-edit never reset slider positions.
+    val initial = remember {
         if (profile.avatarSeed.startsWith("sparky|"))
             parseSparkyOptions(profile.avatarSeed)
         else SparkyOptions()
     }
 
-    var hairIdx      by remember(initial) { mutableStateOf(initial.hair) }
-    var hairColorIdx by remember(initial) { mutableStateOf(initial.hairColor) }
-    var eyesIdx      by remember(initial) { mutableStateOf(initial.eyes) }
-    var mouthIdx     by remember(initial) { mutableStateOf(initial.mouth) }
-    var skinIdx      by remember(initial) { mutableStateOf(initial.skin) }
-    var bgIdx        by remember(initial) { mutableStateOf(initial.bg) }
+    var hairIdx      by remember { mutableStateOf(initial.hair) }
+    var hairColorIdx by remember { mutableStateOf(initial.hairColor) }
+    var eyesIdx      by remember { mutableStateOf(initial.eyes) }
+    var mouthIdx     by remember { mutableStateOf(initial.mouth) }
+    var skinIdx      by remember { mutableStateOf(initial.skin) }
+    var bgIdx        by remember { mutableStateOf(initial.bg) }
 
     // True once the user actually moves any slider
     var hasModified by remember { mutableStateOf(false) }
-    // Also reset hasModified when profile seed reloads (so re-entering shows correct avatar)
-    LaunchedEffect(profile.avatarSeed) { hasModified = false }
 
     // Live preview seed rebuilt from current selections
     val previewSeed by remember {
