@@ -197,29 +197,22 @@ fun HomeScreenContent(
                                         MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            // Right: volt count + logo icon
-                            Column(horizontalAlignment = Alignment.End) {
-                                Row(
-                                    verticalAlignment     = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Icon(
-                                        imageVector        = Icons.Filled.ElectricBolt,
-                                        contentDescription = "Volts",
-                                        tint               = Color(0xFFFFB300),
-                                        modifier           = Modifier.size(13.dp),
-                                    )
-                                    Text(
-                                        text       = voltsTotal.toString(),
-                                        style      = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onBackground,
-                                    )
-                                }
-                                androidx.compose.foundation.Image(
-                                    painter            = painterResource(R.drawable.logo),
-                                    contentDescription = "ThunderPass",
-                                    modifier           = Modifier.height(18.dp),
+                            // Right: volt count
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Filled.ElectricBolt,
+                                    contentDescription = "Volts",
+                                    tint               = Color(0xFFFFB300),
+                                    modifier           = Modifier.size(13.dp),
+                                )
+                                Text(
+                                    text       = voltsTotal.toString(),
+                                    style      = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onBackground,
                                 )
                             }
                         }
@@ -318,29 +311,22 @@ fun HomeScreenContent(
                                     MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        // Right: volt count + logo icon
-                        Column(horizontalAlignment = Alignment.End) {
-                            Row(
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Icon(
-                                    imageVector        = Icons.Filled.ElectricBolt,
-                                    contentDescription = "Volts",
-                                    tint               = Color(0xFFFFB300),
-                                    modifier           = Modifier.size(14.dp),
-                                )
-                                Text(
-                                    text       = voltsTotal.toString(),
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onBackground,
-                                )
-                            }
-                            androidx.compose.foundation.Image(
-                                painter            = painterResource(R.drawable.logo),
-                                contentDescription = "ThunderPass",
-                                modifier           = Modifier.height(20.dp),
+                        // Right: volt count
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Filled.ElectricBolt,
+                                contentDescription = "Volts",
+                                tint               = Color(0xFFFFB300),
+                                modifier           = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text       = voltsTotal.toString(),
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onBackground,
                             )
                         }
                     }
