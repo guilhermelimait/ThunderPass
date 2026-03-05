@@ -1,10 +1,12 @@
 package com.thunderpass.ui
 
 import android.content.res.Configuration
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -13,11 +15,14 @@ import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -283,75 +288,109 @@ private fun EncounterCard(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val enc      = item.encounter
-    val snapshot = item.snapshot
-    val timeStr  = remember(enc.seenAt) { relativeTimeString(enc.seenAt) }
+    val enc         = item.encounter
+    val snapshot    = item.snapshot
+    val timeStr     = remember(enc.seenAt) { relativeTimeString(enc.seenAt) }
+    val displayName = snapshot?.displayName ?: "Unknown traveler"
+    val greeting    = snapshot?.greeting
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape  = RoundedCornerShape(14.dp),
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier          = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            // Peer avatar — prefer their own avatarSeed so it matches what they see on
-            // their device; fall back to rotatingId for pre-fix snapshots.
-            DiceBearAvatar(
-                seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                    ?: snapshot?.rotatingId
-                    ?: enc.rotatingId,
-                size = 52.dp,
-            )
-
-            Spacer(Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = snapshot?.displayName ?: "Unknown traveler",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                if (!snapshot?.greeting.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "\"${snapshot!!.greeting}\"",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
+            // ── LEFT: rounded-rect block — avatar + name + greeting ───────
+            Box(
+                modifier = Modifier
+                    .weight(0.52f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f))
+                    .padding(10.dp),
+            ) {
+                Row(
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(10.dp),
+                ) {
+                    // Peer avatar — prefer their own avatarSeed so it matches what they see
+                    DiceBearAvatar(
+                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                            ?: snapshot?.rotatingId
+                            ?: enc.rotatingId,
+                        size = 48.dp,
                     )
+                    Column {
+                        Text(
+                            text       = displayName,
+                            style      = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines   = 1,
+                            overflow   = TextOverflow.Ellipsis,
+                        )
+                        if (!greeting.isNullOrBlank()) {
+                            Text(
+                                text      = "\u201C$greeting\u201D",
+                                style     = MaterialTheme.typography.bodySmall,
+                                fontStyle = FontStyle.Italic,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines  = 2,
+                                overflow  = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (snapshot == null) {
+                            Text(
+                                text  = "Pending\u2026",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = "$timeStr  \u00B7  ${enc.rssi} dBm",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-                if (snapshot == null) {
-                    Spacer(Modifier.height(2.dp))
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // ── RIGHT: encounter info chips + RetroAchievements ───────────
+            Column(modifier = Modifier.weight(0.48f)) {
+                // Inline info chips + friend star on same row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                ) {
+                    SuggestionChip(
+                        onClick = {},
+                        label   = { Text(timeStr, style = MaterialTheme.typography.labelSmall) },
+                    )
+                    SuggestionChip(
+                        onClick = {},
+                        label   = { Text("${enc.rssi}\u00A0dBm", style = MaterialTheme.typography.labelSmall) },
+                    )
+                    if (enc.isFriend) {
+                        Icon(
+                            imageVector        = Icons.Filled.Star,
+                            contentDescription = "Friend",
+                            tint               = MaterialTheme.colorScheme.primary,
+                            modifier           = Modifier.size(16.dp),
+                        )
+                    }
+                }
+                // RetroAchievements username — shown below the chips if available
+                if (snapshot?.retroUsername != null) {
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Profile exchange pending\u2026",
+                        text  = "\uD83C\uDFAE ${snapshot.retroUsername}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
             }
-
-            // Friend star indicator
-            if (enc.isFriend) {
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    imageVector        = Icons.Filled.Star,
-                    contentDescription = "Friend",
-                    tint               = MaterialTheme.colorScheme.primary,
-                    modifier           = Modifier.size(20.dp),
-                )
-            }
         }
     }
-
 }
 
 
