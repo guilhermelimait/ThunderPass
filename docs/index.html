@@ -491,11 +491,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-const SUPABASE_URL='https://wrunnzrxuapqpxoxvzpa.supabase.co';
-const ANON_KEY='REDACTED_ANON_KEY';
+// Supabase credentials are loaded at deploy time — do not hardcode secrets here.
+const SUPABASE_URL='';
+const ANON_KEY='';
 const STICKER_MAP={first_spark:{icon:'⚡',name:'First Spark'},player_2:{icon:'🎮',name:'Player 2'},night_owl:{icon:'🦉',name:'Night Owl'},world_traveler:{icon:'🌍',name:'World Traveler'},glitch_hunter:{icon:'🐛',name:'Glitch Hunter'},power_surge:{icon:'🔋',name:'Power Surge'},ghost_buster:{icon:'👻',name:'Ghost Buster'},retro_fan:{icon:'🕹️',name:'Retro Fan'},social_spark:{icon:'🤝',name:'Social Spark'},early_adopter:{icon:'🚀',name:'Early Adopter'},marathon:{icon:'🏃',name:'Marathon'},collector:{icon:'🏆',name:'Collector'}};
 
-const supabase = window.supabase.createClient(SUPABASE_URL, ANON_KEY);
+const supabase = (SUPABASE_URL && ANON_KEY) ? window.supabase.createClient(SUPABASE_URL, ANON_KEY) : null;
 
 window.addEventListener('DOMContentLoaded',()=>{
   const id=new URLSearchParams(window.location.search).get('id');
@@ -509,6 +510,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 async function lookup(){
   const id=document.getElementById('idInput').value.trim();
   if(!id)return;
+  if(!supabase){setStatus('Profile lookup is currently unavailable.');return;}
   setStatus('Searching…');hideCard();
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/profiles?installation_id=eq.${encodeURIComponent(id)}&select=*&limit=1`,{headers:{'apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY}});
@@ -560,6 +562,11 @@ async function sendWaitlistOtp(){
   const input=document.getElementById('emailInput');
   const btn=document.getElementById('emailBtn');
   const email=input.value.trim();
+
+  if(!supabase){
+    setEmailStatus('Email signup is currently unavailable.','err');
+    return;
+  }
 
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     setEmailStatus('Please enter a valid email address.','err');
