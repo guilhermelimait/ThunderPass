@@ -33,5 +33,5 @@ SPEC.md
 app/src/test/
 
 # Supabase CLI local state — may contain connection strings and session tokens
-supabase/.temp/
-supabase/
+/supabase/.temp/
+/supabase/
