@@ -20,6 +20,14 @@ captures/
 *.jks
 *.keystore
 
+# Environment / secret files (defence-in-depth — NEVER commit)
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.p12
+
 # Kotlin daemon / IDE artifacts
 .kotlin/
 

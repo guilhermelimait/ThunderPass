@@ -1,0 +1,15 @@
+# Copy to local.properties and fill in real values.
+# NEVER commit local.properties — it is gitignored.
+
+sdk.dir=C\:\\Users\\YOU\\AppData\\Local\\Android\\Sdk
+
+# Supabase
+supabase.url=https\://YOUR_PROJECT_REF.supabase.co
+supabase.anonKey=sb_publishable_YOUR_ANON_KEY
+
+# Google Sign-In (Firebase console → Web client ID)
+google.webClientId=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
+
+# RetroAchievements (optional)
+ra.apiKey=
+ra.apiUser=
