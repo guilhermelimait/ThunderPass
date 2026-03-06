@@ -27,7 +27,10 @@
 
 ## Screenshots
 
-> 📸 *Images coming soon — contributions welcome!*
+| Start Screen | My Profile | My Sparky | Friend Card (Privacy Mode) |
+|:---:|:---:|:---:|:---:|
+| ![Start Screen](docs/1%20Start%20Screen.jpg) | ![My Profile](docs/2%20My%20Profile.jpg) | ![My Sparky](docs/3%20My%20Sparky.jpg) | ![Friend Card with Privacy Mode](docs/4%20Friend%20Exchanged%20with%20Privacy%20Mode.jpg) |
+| The home screen with the ThunderPass toggle, scan animation, volts counter, and quick-access buttons. | Your profile card showing avatar, display name, device, volts, passes, badges, and streak. | The Sparky avatar editor where you customise your DiceBear head with hair, accessories, and colours. | A friend card received via BLE Spark — when the sender has Privacy Mode enabled, personal details are hidden. |
 
 ---
 
