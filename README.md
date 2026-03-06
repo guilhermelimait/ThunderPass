@@ -40,6 +40,16 @@
 
 ---
 
+## Is this app AI Developed?
+
+Short answer, Yes.
+Long answer, Thanks for asking it, yes it was, this app was made with AI to make it fast, the project is open source, so if you want to come and develop it with me as a side hobby project join me!
+It is on alpha/beta phase yet and as a proof of concept it was made using it. I will keep using it but I will make sure to use well and keeping the security, visibility, accountability, and proactive improvement. 
+I am open to explain, talk and share about the project. 
+Most important of all, thanks for believing on me to make this come to life to our gaming community!❤️⚡
+
+---
+
 ## What happens when you Spark? ⚡
 
 When two ThunderPassers cross paths:
@@ -185,12 +195,8 @@ Come hang out on **[Discord](https://discord.gg/jVxQnp8Fy)** — share screensho
 
 ---
 
-## Is this app vibecoded?
-
-Thanks for asking it, yes it was, I never hid that information, but first of all, I work on IT for the past 23 years, 15 of them as a professional solution developer, nowadays working as Tech Expert on AI in the biggest food company in the world. This app was made with AI to make it fast, but my experience, my knowledge, my skills and wiz made the app come to life. I am spending money, time and dedication to make it work. The project is open source, so if you want to come and develop it with me as a side hobby project, I am open to it. And most important of all, thanks for believing on me as a solo dev to make this come to life!❤️⚡
 ## Thanks
 
----
 A huge thank you to everyone who has tried ThunderPass, reported bugs, sent feedback, and kept the spirit of StreetPass alive. You're the reason this exists.
 
 Special thanks to:
