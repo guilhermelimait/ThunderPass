@@ -42,6 +42,9 @@
     <!-- Allows showing the battery optimisation whitelist request dialog -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Allows BootReceiver to restart BleService after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- PACKAGE_USAGE_STATS: lets us read per-app foreground time for the daily play-time card.
          This is a privileged/special permission; the user must grant it manually in
          Settings > Apps > Special app access > Usage access. It is NOT a runtime permission. -->
@@ -110,6 +113,21 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/encounter_widget_info" />
+        </receiver>
+
+        <!--
+            BootReceiver: restarts BleService on device reboot if the user had
+            scanning enabled before power-off. Handles both normal BOOT_COMPLETED
+            and MediaTek QUICKBOOT_POWERON (AYN Thor and similar devices).
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
         </receiver>
 
         <!--
