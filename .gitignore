@@ -25,3 +25,13 @@ captures/
 
 # Room schema exports ARE committed intentionally (migration audit trail).
 # Do not ignore app/schemas/
+
+# Internal planning / spec documents (not for public distribution)
+SPEC.md
+
+# Unit tests (internal; not distributed with open-source release)
+app/src/test/
+
+# Supabase CLI local state — may contain connection strings and session tokens
+supabase/.temp/
+supabase/
