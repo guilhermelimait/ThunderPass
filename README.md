@@ -27,19 +27,16 @@
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/1%20Start%20Screen.jpg" alt="Start Screen" width="200"/>
-  &nbsp;&nbsp;
-  <img src="docs/2%20My%20Profile.jpg" alt="My Profile" width="200"/>
-  &nbsp;&nbsp;
-  <img src="docs/3%20My%20Sparky.jpg" alt="My Sparky" width="200"/>
-  &nbsp;&nbsp;
-  <img src="docs/4%20Friend%20Exchanged%20with%20Privacy%20Mode.jpg" alt="Friend Exchanged with Privacy Mode" width="200"/>
-</p>
-
-<p align="center">
-  <b>Start Screen</b> · <b>My Profile</b> · <b>My Sparky</b> · <b>Friend Exchanged with Privacy Mode</b>
-</p>
+<table>
+  <tr>
+    <td align="center"><img src="docs/1%20Start%20Screen.jpg" alt="Start Screen" width="100%"/><br/><b>Start Screen</b></td>
+    <td align="center"><img src="docs/2%20My%20Profile.jpg" alt="My Profile" width="100%"/><br/><b>My Profile</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/3%20My%20Sparky.jpg" alt="My Sparky" width="100%"/><br/><b>My Sparky</b></td>
+    <td align="center"><img src="docs/4%20Friend%20Exchanged%20with%20Privacy%20Mode.jpg" alt="Friend Exchanged with Privacy Mode" width="100%"/><br/><b>Friend Exchanged with Privacy Mode</b></td>
+  </tr>
+</table>
 
 ---
 
