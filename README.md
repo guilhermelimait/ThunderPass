@@ -2,7 +2,7 @@
   <img src="logo.png" alt="ThunderPass Logo" width="180"/>
 </p>
 
-<h1 align="center">ThunderPass ⚡</h1>
+<h1 align="center">ThunderPass ⚡ALPHA VERSION </h1>
 
 <p align="center">
   <em>The modern StreetPass experience — for Android.</em>
@@ -43,10 +43,9 @@
 ## Is this app AI Developed?
 
 Short answer, Yes.
-Long answer, Thanks for asking it, yes it was, this app was made with AI to make it fast, the project is open source, so if you want to come and develop it with me as a side hobby project join me!
-It is on alpha/beta phase yet and as a proof of concept it was made using it. I will keep using it but I will make sure to use well and keeping the security, visibility, accountability, and proactive improvement. 
-I am open to explain, talk and share about the project. 
-Most important of all, thanks for believing on me to make this come to life to our gaming community!❤️⚡
+
+Long answer, yes, as this is a hobby app and made during my spare time I've chose it to help me code faster while I do the validation, studies and a lot of tests. The AI codes, but it is not something that it made to me, I have tailored each part of it, each color, each button and permission using all official android documentation available like the bluetooth BLE to advertise for example [android docs](https://source.android.com/docs/core/connect/bluetooth/ble_advertising) and many other tools and features, services and permissions to make the app secure, available and interesting to use. As it is (I believe) the first of its kind to the android gaming community, I hope it can make you happy as it made me!
+Thanks for believing on me to make this project come to life and to our gaming community!❤️⚡
 
 ---
 
