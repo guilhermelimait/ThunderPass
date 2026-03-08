@@ -109,11 +109,6 @@ Connect your [RetroAchievements](https://retroachievements.org) username and unl
 - **Safe Zones**: pause scanning automatically when you're home.
 - **Privacy Mode**, Background Music, Keep-Screen-On, and OTA update checks.
 
-### ☁️ Anonymous Cloud Identity
-ThunderPass signs you in **silently and anonymously** on first launch — no email, no password, no account creation. This creates a cloud identity used only for encounter verification and deduplication. Your profile (name, avatar, greeting, Volts) is backed up and restored automatically.
-
-> **What if I delete the app?** Your anonymous identity is tied to this install. Your cloud profile stays on the server, but it cannot be auto-linked after reinstall. Signing in with a named account (email OTP) lets you recover everything. Cloud backup of Spark history is planned for a future version.
-
 ---
 
 ## Getting Started
