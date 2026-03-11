@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Release builds: only system (pre-installed) CAs are trusted.
+
+        This blocks MITM attacks that rely on users installing a proxy certificate
+        (e.g. Charles, mitmproxy, Burp Suite). Without this, any app with INTERNET
+        permission is vulnerable to credential interception on a compromised network
+        because Android trusts user-added CAs by default.
+
+        Covers ALL connections including RetroAchievements API calls that carry the
+        RA API key.
+    -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+        Debug builds only: also trust user-installed CAs so developers can inspect
+        traffic with a proxy without changing app code.
+    -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

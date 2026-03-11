@@ -1,0 +1,407 @@
+package com.thunderpass.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShopScreen(
+    onBack: () -> Unit,
+    vm: HomeViewModel = viewModel(),
+) {
+    val voltsTotal     by vm.voltsTotal.collectAsState()
+    val unlockedEffects by vm.unlockedEffects.collectAsState()
+    val encounters      by vm.encounters.collectAsState()
+    var confirmEffect  by remember { mutableStateOf<ShopItem?>(null) }
+    var toastMessage   by remember { mutableStateOf<String?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Visual Shop", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+        },
+    ) { innerPadding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Spacer(Modifier.height(4.dp))
+
+            // ── In-development notice ─────────────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors   = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                ) {
+                    Text("🚧", fontSize = 20.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text       = "In Development",
+                            fontWeight = FontWeight.Bold,
+                            style      = MaterialTheme.typography.bodyMedium,
+                            color      = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Text(
+                            text  = "This section is coming soon. Stay tuned!",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f),
+                        )
+                    }
+                }
+            }
+
+            // ── Portrait header: balance card (left) + explanation (right) ───
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment     = Alignment.Top,
+            ) {
+                VoltsBalanceCard(
+                    voltsTotal = voltsTotal,
+                    modifier    = Modifier.weight(0.42f),
+                )
+                VoltsExplanationCard(
+                    modifier = Modifier.weight(0.58f),
+                )
+            }
+
+            // ── Recent encounters (moved from Home) ───────────────────────────
+            if (encounters.isNotEmpty()) {
+                Text(
+                    text       = "Recent Encounters",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.onBackground,
+                )
+                Row(
+                    modifier              = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    encounters.take(20).forEach { ewp ->
+                        val seed = ewp.snapshot?.rotatingId ?: ewp.encounter.rotatingId
+                        val name = ewp.snapshot?.displayName ?: "Unknown"
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier            = Modifier.width(56.dp),
+                        ) {
+                            DiceBearAvatar(seed = seed, size = 48.dp,
+                                           modifier = Modifier.clip(CircleShape))
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                text      = name,
+                                style     = MaterialTheme.typography.labelSmall,
+                                maxLines  = 1,
+                                overflow  = TextOverflow.Ellipsis,
+                                color     = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            // ── Shop header ───────────────────────────────────────────────────
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color    = MaterialTheme.colorScheme.primaryContainer,
+                shape    = MaterialTheme.shapes.medium,
+            ) {
+                Row(
+                    modifier              = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text       = "🛒 Visual Shop",
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Text(
+                        text       = "%,d V".format(voltsTotal),
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
+            Text(
+                text  = "Unlock visual profile effects — spent Volts are permanent.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // ── Shop items ───────────────────────────────────────────────────
+            SHOP_ITEMS.forEach { item ->
+                val isUnlocked = item.key in unlockedEffects
+                ShopItemCard(
+                    item       = item,
+                    isUnlocked = isUnlocked,
+                    canAfford  = voltsTotal >= item.price,
+                    onBuy      = { confirmEffect = item },
+                )
+            }
+
+            // ── Toast ────────────────────────────────────────────────────────
+            toastMessage?.let { msg ->
+                Snackbar(
+                    modifier    = Modifier.padding(top = 8.dp),
+                    action      = { TextButton(onClick = { toastMessage = null }) { Text("OK") } },
+                ) { Text(msg) }
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+
+    // ── Purchase confirmation dialog ─────────────────────────────────────────
+    confirmEffect?.let { item ->
+        AlertDialog(
+            onDismissRequest = { confirmEffect = null },
+            title   = { Text("Unlock ${item.name}?") },
+            text    = {
+                Text("Spend ${"%,d".format(item.price)} V to permanently unlock this effect. You currently have ${"%,d".format(voltsTotal)} V.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val success = vm.spendVolts(item.price, item.key)
+                    toastMessage = if (success) "🎉 ${item.name} unlocked!" else "Not enough Volts!"
+                    confirmEffect = null
+                }) { Text("Unlock") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEffect = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun ShopItemCard(
+    item: ShopItem,
+    isUnlocked: Boolean,
+    canAfford: Boolean,
+    onBuy: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(
+            containerColor = if (isUnlocked)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Row(
+            modifier            = Modifier.padding(16.dp),
+            verticalAlignment   = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(item.icon, style = MaterialTheme.typography.displaySmall)
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text       = item.name,
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text  = item.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text  = "%,d V".format(item.price),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            if (isUnlocked) {
+                AssistChip(
+                    onClick  = {},
+                    enabled  = false,
+                    label    = { Text("Owned") },
+                    leadingIcon = { Text("✓") },
+                )
+            } else {
+                Button(
+                    onClick  = onBuy,
+                    enabled  = canAfford,
+                ) {
+                    Text("Buy")
+                }
+            }
+        }
+    }
+}
+
+// ── Compact Volts balance card (left column in portrait header) ─────────────────
+@Composable
+private fun VoltsBalanceCard(
+    voltsTotal: Long,
+    modifier: Modifier = Modifier,
+) {
+    val level  = voltLevelFor(voltsTotal)
+    val accent = level.color
+
+    Card(
+        modifier = modifier,
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier            = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text     = "⚡",
+                fontSize = 36.sp,
+            )
+            Text(
+                text       = "%,d V".format(voltsTotal),
+                style      = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color      = accent,
+                textAlign  = TextAlign.Center,
+            )
+            Text(
+                text      = level.name,
+                style     = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+// ── Volts explanation card (right column in portrait header) ─────────────────
+@Composable
+private fun VoltsExplanationCard(
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        ),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier            = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text       = "WHAT ARE VOLTS?",
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.primary,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text  = "Volts are your ThunderPass energy — earned by exploring and meeting other players. Spend them here to unlock visual effects on your Spark Card.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text       = "HOW TO EARN",
+                style      = MaterialTheme.typography.labelSmall,
+                color      = MaterialTheme.colorScheme.primary,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text  = "\u26A1 New SparkyUser met \u2014 100 V\n" +
+                        "\u26A1 Badge unlocked \u2014 50\u2013200 V\n" +
+                        "\u26A1 RetroAchievements \u2014 up to 500 V\n" +
+                        "\u26A1 Daily Spark streaks",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ── Static shop catalogue ────────────────────────────────────────────────────
+data class ShopItem(
+    val key:         String,
+    val icon:        String,
+    val name:        String,
+    val description: String,
+    val price:       Long,
+)
+
+val SHOP_ITEMS = listOf(
+    ShopItem(
+        key         = "crt_scanlines",
+        icon        = "📺",
+        name        = "CRT Scanlines",
+        description = "Overlays a retro scanline effect on your Spark Card — show off your old-school roots.",
+        price       = 500L,
+    ),
+    ShopItem(
+        key         = "pixelated_aura",
+        icon        = "✨",
+        name        = "Pixelated Aura",
+        description = "Surrounds your avatar with a shimmering pixel-art glow. You earned it.",
+        price       = 1_000L,
+    ),
+    ShopItem(
+        key         = "thunder_trail",
+        icon        = "⚡",
+        name        = "Thunder Trail",
+        description = "Electrified entry animation when your Spark Card loads on another player's screen.",
+        price       = 2_500L,
+    ),
+)

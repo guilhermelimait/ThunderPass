@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="#CC111122"
+    android:gravity="center_vertical"
+    android:padding="10dp">
+
+    <!-- Tapping the logo opens the app -->
+    <ImageView
+        android:id="@+id/widget_logo"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/logo"
+        android:contentDescription="ThunderPass"
+        android:scaleType="fitCenter" />
+
+    <!-- Center info column -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="10dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ThunderPass"
+            android:textColor="#FFFFFFFF"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OFF"
+            android:textColor="#AAFFFFFF"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- ON/OFF toggle button — tapping toggles the BLE service -->
+    <ImageView
+        android:id="@+id/widget_toggle"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_notification"
+        android:contentDescription="Toggle ThunderPass"
+        android:scaleType="fitCenter"
+        android:tint="#FFFFD700" />
+
+</LinearLayout>

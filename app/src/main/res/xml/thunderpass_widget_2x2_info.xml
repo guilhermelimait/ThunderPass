@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AppWidgetProviderInfo for the ThunderPass 2×2 widget.
+    Size: 2×2 cells — profile card on top, passes/badges/streak stats on bottom.
+-->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_thunderpass"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="configuration_optional" />

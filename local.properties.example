@@ -1,0 +1,8 @@
+# Copy to local.properties and fill in real values.
+# NEVER commit local.properties — it is gitignored.
+
+sdk.dir=C\:\\Users\\YOU\\AppData\\Local\\Android\\Sdk
+
+# RetroAchievements (optional)
+ra.apiKey=
+ra.apiUser=

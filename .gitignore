@@ -1,0 +1,60 @@
+# Android / Gradle
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Kotlin
+*.class
+
+# Signing keystores (never commit private keys)
+*.jks
+*.keystore
+
+# Environment / secret files (defence-in-depth — NEVER commit)
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.p12
+
+# Kotlin daemon / IDE artifacts
+.kotlin/
+
+# Room schema exports ARE committed intentionally (migration audit trail).
+# Do not ignore app/schemas/
+
+# Internal planning / spec documents (not for public distribution)
+SPEC.md
+ROADMAP.md
+.internal/
+
+# Agent instruction files — internal dev context, never public
+AGENTS.md
+**/AGENTS.md
+
+# Unit tests (internal; not distributed with open-source release)
+app/src/test/
+
+# Local device tooling / ADB test scripts (never published)
+tools/
+
+# Debug / ADB log captures — may contain BLE MAC addresses and device identifiers
+*.log
+retroid_ble.log
+
+# Loose image files (screenshots, test captures — not part of the app)
+black.png
+streetview.png
+docs/black.png
+docs/streetview.png

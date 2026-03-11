@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ────────────────────────────────────────────────────────────
+         BLE permissions (Android 12+ / API 31+)
+         BLUETOOTH_SCAN with neverForLocation = we do NOT derive location from BLE.
+         ──────────────────────────────────────────────────────────── -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Foreground service (Android 9+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- connectedDevice type required for BLE foreground services (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- POST_NOTIFICATIONS required for the persistent service notification (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+
+    <!-- INTERNET required for DiceBear avatar images and RetroAchievements API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- VIBRATE required for "The Spark" haptic feedback on successful BLE exchange -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- WRITE_SETTINGS: original system-settings permission (kept for compat). -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- WRITE_SECURE_SETTINGS: needed to write joystick_led_light_picker_color and
+         joystick_light_enabled on OdinOS, which enforces them in the secure namespace.
+         Cannot be granted via UI — must be granted once via ADB:
+           adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Allows showing the battery optimisation whitelist request dialog -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Allows BootReceiver to restart BleService after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- PACKAGE_USAGE_STATS: lets us read per-app foreground time for the daily play-time card.
+         This is a privileged/special permission; the user must grant it manually in
+         Settings > Apps > Special app access > Usage access. It is NOT a runtime permission. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- ACTIVITY_RECOGNITION: required to read the hardware step-counter sensor (Android 10+ / API 29+).
+         This IS a runtime permission — the user will be asked to grant it on first BleService start. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- Require BLE hardware; set required="false" if you also want to support non-BLE devices -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <application
+        android:name=".ThunderPassApplication"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.ThunderPass"
+        android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Friend invite deep links: thunderpass://add-friend/{userId} -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="thunderpass" android:host="add-friend" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            BleService: foreground service that runs the BLE scanner + advertiser.
+            foregroundServiceType="connectedDevice" is required on Android 14+
+            for services that use BLE.
+        -->
+        <service
+            android:name=".BleService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!--
+            BootReceiver: restarts BleService on device reboot if the user had
+            scanning enabled before power-off. Handles both normal BOOT_COMPLETED
+            and MediaTek QUICKBOOT_POWERON (AYN Thor and similar devices).
+        -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+            ThunderPassWidget: Glance-based 2×1 toggle widget.
+            Shows service ON/OFF status with a tap-to-toggle button.
+        -->
+        <receiver
+            android:name=".widget.ThunderPassWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/thunderpass_widget_info" />
+        </receiver>
+
+        <!--
+            ThunderPassWidget2x2: Glance-based 2×2 widget.
+            Includes profile card (top) + passes/badges/streak stats (bottom).
+        -->
+        <receiver
+            android:name=".widget.ThunderPassWidget2x2Receiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/thunderpass_widget_2x2_info" />
+        </receiver>
+
+    </application>
+</manifest>

@@ -1,0 +1,6 @@
+<resources>
+    <!-- Base application theme -->
+    <style name="Theme.ThunderPass" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Material3 / Compose handles theming at runtime; this is just the window background -->
+    </style>
+</resources>
