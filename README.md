@@ -18,9 +18,9 @@
 
 ---
 
-<img src="streetview.png" alt="ThunderPass" width="720"/>
+<img src="docs/screenshots.png" alt="ThunderPass" width="720"/>
 
-Remember StreetPass? You would carry your 3DS in your bag to a coffee shop, a convention, a train station -- and later pull it out to find it had quietly swapped little profile cards with strangers while it sat in your pocket. That tiny green light was one of the most quietly brilliant things Nintendo ever shipped. Then it disappeared.
+Remember StreetPass? You would carry your 3DS in your bag to a coffee shop, a convention, a train station -- and later pull it out to find it had quietly swapped little profile cards with strangers while it sat in your pocket. That tiny blue light was one of the most quietly brilliant things Nintendo ever shipped. Then it disappeared.
 
 ThunderPass brings it back. Walk around with your Android device in your pocket. Whenever another ThunderPasser is nearby, your phones silently find each other over Bluetooth, shake hands with end-to-end encryption, swap profile cards, and go back to sleep. No tapping. No accounts. No internet. Just the same low-key magic -- rebuilt from scratch with modern cryptography and a healthy respect for your privacy.
 
@@ -43,16 +43,25 @@ This version fixes all issues that were shared during the super initial phases o
 
 ---
 
-## Is this app AI Developed?
+## Was this app AI Developed?
 
-Short answer, Yes.
+Yes. And I will never pretend otherwise.
 
-Long answer, yes, as this is a hobby app and made during my spare time I've chose it to help me code faster while I do the validation, studies and a lot of tests. The AI codes, but it is not something that it made to me, I have tailored each part of it, each color, each button and permission using all official android documentation available like the bluetooth BLE to advertise for example [android docs](https://source.android.com/docs/core/connect/bluetooth/ble_advertising) and many other tools and features, services and permissions to make the app secure, available and interesting to use. As it is (I believe) the first of its kind to the android gaming community, I hope it can make you happy as it made me!
-Thanks for believing on me to make this project come to life and to our gaming community!❤️⚡
+I work full-time. ThunderPass gets whatever hours are left after that — nights, weekends, the occasional lunch break. I do not have the luxury of spending three months polishing a single feature from scratch. So I use AI to write code faster. That is the honest truth.
+
+But here is what AI did not do: AI did not decide that this app should exist. I've tailored each part of it to bring StreetPass back for Android. The name, the yellow lightning bolt, make the LED flash yellow on encounter, or decide that privacy mode should still show your name and avatar to strangers but hide the parts that could be used to track you, every encription method to keep your safety, and of course 100 steps should equal 1 Volt as a nod to the 3DS Play Coin system.
+
+Every one of those choices was mine.
+
+Every screen, every button, every permission, every colour, every behaviour — I thought about it, argued with myself about it, tested it on my own devices, and made a call. The AI wrote the code that implemented those calls. I reviewed every line, caught the bugs, pushed back when something felt wrong, and put my name on the result.
+
+This is not "AI made an app and I uploaded it." This is me building something I genuinely wanted to exist, using every tool available to me — including AI — because time is finite and I refused to let that stop me.
+
+If that bothers you, I understand. If it does not, welcome. I hope you enjoy it as much as I enjoyed making it.
 
 ---
 
-## What happens when you Spark? ⚡
+## Now let's talk about what really matters, what happens when you Spark?
 
 Two phones cross paths. Here is what happens in the background, in order:
 
@@ -64,7 +73,7 @@ Two phones cross paths. Here is what happens in the background, in order:
 6. The encounter lands in your Passes list.
 7. You earn 100 Volts.
 
-That is the whole thing. It takes about two seconds. All of this in transparent mode, you can play, walk around and will never be interrupted!
+That is the whole thing. It takes about two seconds. All of this in transparent mode, you can play, walk around and will never be interrupted, but of course you will know as a notification on your android and if you have leds on your device, it will spark!!!
 
 > Every single byte that crosses the air between two devices is encrypted. There is no mode, no fallback, no legacy path where data is sent in the clear. If the encryption fails, the exchange fails -- nothing gets through.
 
@@ -86,13 +95,17 @@ ThunderPass runs as a foreground service that restarts itself after a reboot, so
 
 When a new encounter happens you get an instant push notification. The full encounter card -- timestamps, their profile, signal strength -- is saved in your history.
 
-### Your Sparky
+### Your Sparky (Mii like)
 
 Your profile is what the other person sees when you Spark. Give yourself a name, write a greeting (up to 60 characters), and build your avatar in the Sparky Editor using per-feature sliders. Set your Origin to your home country or, if you want, claim a planet -- Mercury through Pluto are all valid options.
 
 **Privacy mode** is a single toggle. When it is on, strangers still see your name, avatar, greeting, origin, and stats -- your card is still meaningful -- but nothing that could be used to track you across encounters is included (no account ID, no device fingerprint, no RetroAchievements username). Your paired devices still sync everything normally. Only strangers get the redacted view.
 
 Connect your [RetroAchievements](https://retroachievements.org) username to show your gaming stats on your Spark card. The API key field is encripted by default -- tap the eye icon to reveal it.
+
+### RetroAchievements
+
+Connect your [RetroAchievements](https://retroachievements.org) username to see a peer's rank, points, and recently mastered games right on their encounter card. RA-linked accounts also unlock a handful of exclusive badges you cannot get any other way.
 
 ### Badges (in development)
 
@@ -111,13 +124,9 @@ Two widgets are available in the widget picker:
 - **Toggle widget (2x1)** -- your avatar, name, scanning status, and Volt count. Tap to start or stop the service.
 - **Stats widget (2x2)** -- same profile card on top, with a stats row below showing total Passes, earned Badges, and your current day Streak. Also tap-to-toggle.
 
-### RetroAchievements
-
-Connect your [RetroAchievements](https://retroachievements.org) username to see a peer's rank, points, and recently mastered games right on their encounter card. RA-linked accounts also unlock a handful of exclusive badges you cannot get any other way.
-
 ---
 
-## Device Sync
+## Device Sync, yes ThunderPass can support more than 2 devices!
 
 If you carry more than one device -- a phone for daily life, a Retroid Pocket for weekends, an AYN Thor for travel -- ThunderPass keeps them all in sync. Pairing is manual and deliberate: a one-time short authentication code confirms it is actually you on both ends. After that, when both devices are in Bluetooth range, they sync your profile, Volt balance, badges, and Spark history every 15 minutes automatically.
 
@@ -147,9 +156,8 @@ Your raw scan data, Device Group Key, and RA API key never leave the device they
 | BLE advertisement | Service UUID only -- no device name, rotating anonymous ID |
 | Perfect forward secrecy | Compromising one session reveals nothing about any other |
 
-> If you ever want a clean slate, go to Settings > Advanced > Reset All Data. It wipes everything -- profile, encounters, badges, Volts, paired devices, all settings. There is no undo.
+> If you ever want a clean profile, go to Settings > Advanced > Reset All Data. It wipes everything -- profile, encounters, badges, Volts, paired devices, all settings. There is no undo.
 
->>>>>>> 0a5849c (This version fixes all issues that were shared during the super initial phases of the open alpha and discussed from reddit, discord or in private chat. From now on I will focus on usability, badges, character customization, UX and UI. Please stay tuned!)
 ---
 
 ## Getting Started
@@ -210,7 +218,7 @@ Internal references for developers and security reviewers live in `.internal/` -
 
 ## Roadmap
 
-The roadmap is maintained privately. The next major chunk of work is Milestone 8 -- replacing the destructive database migration strategy with real migration objects, hardening the HKDF salt versioning, and getting the codebase to a point where v1.0 can be called with a straight face.
+The roadmap is maintained privately. Updates and previews will be shared on discord only.
 
 ---
 
@@ -227,16 +235,6 @@ Found a bug? [Open an issue](https://github.com/guilhermelimait/ThunderPass/issu
 ---
 
 Come hang out on **[Discord](https://discord.gg/jVxQnp8Fy)**. Share screenshots, report weirdness, or just say what device you are running it on. The community is small and I am active there.
-
----
-
-## Was it developed with AI?
-
-Yes. I will never claim otherwise.
-
-ThunderPass was tailored with AI assistance because I work full-time and this project gets whatever hours are left after that. Every architecture decision, every privacy choice, every "should we add this or not" -- that was me. The AI wrote a lot of the code. I made every call about what the product actually does and does not do.
-
-It is open source because I think side projects are better when they are open. If you want to help build it, I would genuinely love that. If you just want to use it and tell me what is broken, that matters just as much.
 
 ---
 
