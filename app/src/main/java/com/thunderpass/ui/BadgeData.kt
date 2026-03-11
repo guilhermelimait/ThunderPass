@@ -238,6 +238,10 @@ val ALL_BADGES: List<BadgeDef> = listOf(
     BadgeDef("The Completionist",   BadgeCategory.GAMES, "Match a user with 50+ Mastery (100%) badges on RA",     tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 50),
     BadgeDef("Genre Specialist",    BadgeCategory.GAMES, "Pass someone who played 10+ games in the same genre",   tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 10),
     BadgeDef("Hidden Gem",          BadgeCategory.GAMES, "Match a user playing a game with <100 RA players",      tier = 0, progress = 0f,   progressCurrent = 0, progressMax = 1),
+    // ── Fitness (step-Volts) ───────────────────────────────────────────────────
+    BadgeDef("First Step",   BadgeCategory.FOUNDERS, "Earned your first Volt from walking.",                                         key = "first_step"),
+    BadgeDef("Daily Walker", BadgeCategory.FOUNDERS, "Hit the full 100-Volt step quota in a single day.",                            key = "daily_walker"),
+    BadgeDef("Marathon",     BadgeCategory.FOUNDERS, "Accumulated 10,000 Volts from walking across all time.",                       key = "marathon"),
     // ── Founders ──────────────────────────────────────────────────────────────
     BadgeDef("Alfa Tester",  BadgeCategory.FOUNDERS, "Installed ThunderPass before version 0.7 was officially launched.",            key = "alfa_tester"),
     BadgeDef("Beta Tester",  BadgeCategory.FOUNDERS, "Installed ThunderPass during the Beta phase (before v0.8 launched).",          key = "beta_tester"),

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +35,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import com.thunderpass.ui.theme.SpaceCyan
 import com.thunderpass.ui.theme.VividPurple
@@ -51,7 +55,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import com.thunderpass.R
+import com.thunderpass.steps.DAILY_VOLT_CAP
+import com.thunderpass.steps.STEPS_PER_VOLT
 
 private val BLE_PERMISSIONS = arrayOf(
     Manifest.permission.BLUETOOTH_SCAN,
@@ -67,13 +75,23 @@ fun HomeScreen(
     onNavigate: (String) -> Unit = {},
     vm: HomeViewModel = viewModel(),
 ) {
-    val context        = LocalContext.current
-    val serviceRunning by vm.serviceRunning.collectAsState()
-    val voltsTotal      by vm.voltsTotal.collectAsState()
-    val installationId by vm.installationId.collectAsState()
-    val avatarSeed     by vm.avatarSeed.collectAsState()
-    val displayName    by vm.displayName.collectAsState()
-    val encounters     by vm.encounters.collectAsState()
+    val context          = LocalContext.current
+    val serviceRunning   by vm.serviceRunning.collectAsState()
+    val bleEnabled       by vm.bleEnabled.collectAsState()
+    val autoWalkEnabled  by vm.autoWalkEnabled.collectAsState()
+    val voltsTotal       by vm.voltsTotal.collectAsState()
+    val stepVoltsToday   by vm.stepVoltsToday.collectAsState()
+    val stepsToday       by vm.stepsToday.collectAsState()
+    val installationId   by vm.installationId.collectAsState()
+    val avatarSeed       by vm.avatarSeed.collectAsState()
+    val displayName      by vm.displayName.collectAsState()
+    val encounters       by vm.encounters.collectAsState()
+
+    // Request ACTIVITY_RECOGNITION after BLE permissions are granted (non-blocking — step Volts
+    // degrade gracefully to 0 if the user denies; the BLE UI is unaffected).
+    val stepPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* result ignored — StepVoltManager handles sensor absent / permission denied */ }
 
     var allGranted by remember {
         mutableStateOf(
@@ -93,16 +111,43 @@ fun HomeScreen(
         if (result.resultCode == Activity.RESULT_OK) vm.startService()
     }
 
+    // Auto-request BLE permissions on first composition if not yet granted
+    LaunchedEffect(Unit) {
+        if (!allGranted) {
+            permLauncher.launch(BLE_PERMISSIONS)
+        }
+    }
+
+    // Request ACTIVITY_RECOGNITION only after BLE permissions are granted,
+    // so the user doesn't see two permission dialogs at once.
+    LaunchedEffect(allGranted) {
+        if (allGranted && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACTIVITY_RECOGNITION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            stepPermLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
+    }
+
     HomeScreenContent(
         allGranted = allGranted,
         displayName = displayName,
         serviceRunning = serviceRunning,
+        bleEnabled = bleEnabled,
+        autoWalkEnabled = autoWalkEnabled,
         avatarSeed = avatarSeed.ifEmpty { installationId },
         encounters = encounters,
         voltsTotal = voltsTotal,
+        stepVoltsToday = stepVoltsToday,
+        stepsToday = stepsToday,
         onToggleService = {
-            if (serviceRunning) {
+            if (!allGranted) {
+                // Permissions denied — navigate to in-app Settings, highlighting the Permissions area
+                onNavigate(Routes.settings(highlight = "permissions"))
+            } else if (serviceRunning) {
                 vm.stopService()
+            } else if (!bleEnabled) {
+                // BLE disabled in Settings — do not start
             } else {
                 val btAdapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
                 if (btAdapter?.isEnabled == true) {
@@ -125,30 +170,26 @@ fun HomeScreenContent(
     allGranted: Boolean,
     displayName: String,
     serviceRunning: Boolean,
+    bleEnabled: Boolean = true,
+    autoWalkEnabled: Boolean = false,
     avatarSeed: String,
     encounters: List<EncounterWithProfile>,
     voltsTotal: Long,
+    stepVoltsToday: Long = 0L,
+    stepsToday: Long = 0L,
     onToggleService: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onNavigate: (String) -> Unit = {},
     onGrantPermissions: () -> Unit
 ) {
+    var skyColor by remember { mutableStateOf(Color(0xFFB4D4EE)) } // synced from WalkingSceneCard
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-        if (!allGranted) {
-            Box(
-                modifier         = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                PermissionPrompt { onGrantPermissions() }
-            }
-        } else if (isLandscape) {
+        if (isLandscape) {
             // Landscape: left=info, right=animation 50% width x 50% HEIGHT, 12dp gap
             BoxWithConstraints(
                 modifier = Modifier
@@ -170,6 +211,7 @@ fun HomeScreenContent(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         // Header banner — gradient card with decorative squares
+                        val landscapeBannerColors = if (!allGranted) listOf(Color(0xFFB71C1C), Color(0xFFD32F2F)) else listOf(VividPurple, SpaceCyan)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -179,7 +221,7 @@ fun HomeScreenContent(
                                 .drawBehind {
                                     drawRect(
                                         brush = Brush.linearGradient(
-                                            colors = listOf(VividPurple, SpaceCyan),
+                                            colors = landscapeBannerColors,
                                             start  = Offset(0f, 0f),
                                             end    = Offset(size.width, size.height),
                                         ),
@@ -218,8 +260,12 @@ fun HomeScreenContent(
                                         .clip(CircleShape)
                                         .clickable { onNavigate("profile") },
                                 )
-                                // Centre: name + scanning status
-                                Column(modifier = Modifier.weight(1f)) {
+                                // Centre: name + scanning status (tap to toggle service)
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onToggleService() },
+                                ) {
                                     Text(
                                         text       = displayName,
                                         style      = MaterialTheme.typography.titleMedium,
@@ -227,30 +273,33 @@ fun HomeScreenContent(
                                         color      = Color.White,
                                         maxLines   = 1,
                                         overflow   = TextOverflow.Ellipsis,
+                                        modifier   = Modifier.clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onToggleService() },
                                     )
                                     Text(
-                                        text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                        text  = if (!allGranted) "Enable BLE in Settings to start playing" else if (!bleEnabled) "BLE disabled in Settings" else if (serviceRunning) "Scanning nearby" else "Tap to start scanning",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.White.copy(alpha = 0.80f),
                                     )
                                 }
-                                // Right: volt count — tap to open shop
+                                // Right: Volts balance → Shop
                                 Row(
-                                    verticalAlignment     = Alignment.CenterVertically,
+                                    verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier              = Modifier.clickable { onNavigate("shop") },
+                                    modifier = Modifier
+                                        .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onNavigate("shop") }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
                                 ) {
                                     Icon(
-                                        imageVector        = Icons.Filled.ElectricBolt,
+                                        painter = painterResource(com.thunderpass.R.drawable.ic_notification),
                                         contentDescription = "Volts",
-                                        tint               = Color(0xFFCC8F00),
-                                        modifier           = Modifier.size(13.dp),
+                                        tint = Color(0xFFFFD700),
+                                        modifier = Modifier.size(16.dp),
                                     )
                                     Text(
-                                        text       = voltsTotal.toString(),
-                                        style      = MaterialTheme.typography.titleSmall,
+                                        text = "$voltsTotal",
+                                        style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
-                                        color      = Color.White,
+                                        color = Color.White,
                                     )
                                 }
                             }
@@ -280,7 +329,7 @@ fun HomeScreenContent(
                             )
                     )
 
-                    // Right panel: toggle (above) → animation → LastPassedBy
+                    // Right panel: step progress (above) → animation → LastPassedBy
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -289,10 +338,11 @@ fun HomeScreenContent(
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        ThunderPassToggleCard(
-                            active   = serviceRunning,
-                            onToggle = onToggleService,
-                            modifier = if (bannerHeightPx > 0)
+                        StepProgressCard(
+                            stepsToday     = stepsToday,
+                            stepVoltsToday = stepVoltsToday,
+                            skyColor       = skyColor,
+                            modifier       = if (bannerHeightPx > 0)
                                 Modifier.height(with(density) { bannerHeightPx.toDp() })
                             else Modifier,
                         )
@@ -303,9 +353,10 @@ fun HomeScreenContent(
                                 .height(animH),
                         ) {
                             WalkingSceneCard(
-                                avatarSeed     = avatarSeed.ifEmpty { "default" },
-                                serviceRunning = serviceRunning,
-                                fillHeight     = true,
+                                avatarSeed        = avatarSeed.ifEmpty { "default" },
+                                serviceRunning    = serviceRunning,
+                                fillHeight        = true,
+                                onSkyColorChanged = { skyColor = it },
                             )
                         }
                         val lastEnc = encounters.firstOrNull()
@@ -340,6 +391,7 @@ fun HomeScreenContent(
                     Spacer(Modifier.height(16.dp))
 
                     // ── 1. Greeting banner — gradient card with decorative squares ─
+                    val portraitBannerColors = if (!allGranted) listOf(Color(0xFFB71C1C), Color(0xFFD32F2F)) else listOf(VividPurple, SpaceCyan)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -349,7 +401,7 @@ fun HomeScreenContent(
                             .drawBehind {
                                 drawRect(
                                     brush = Brush.linearGradient(
-                                        colors = listOf(VividPurple, SpaceCyan),
+                                        colors = portraitBannerColors,
                                         start  = Offset(0f, 0f),
                                         end    = Offset(size.width, size.height),
                                     ),
@@ -388,8 +440,12 @@ fun HomeScreenContent(
                                     .clip(CircleShape)
                                     .clickable { onNavigate("profile") },
                             )
-                            // Centre: name + scanning status
-                            Column(modifier = Modifier.weight(1f)) {
+                            // Centre: name + scanning status (tap to toggle service)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onToggleService() },
+                            ) {
                                 Text(
                                     text       = displayName,
                                     style      = MaterialTheme.typography.titleLarge,
@@ -397,30 +453,33 @@ fun HomeScreenContent(
                                     color      = Color.White,
                                     maxLines   = 1,
                                     overflow   = TextOverflow.Ellipsis,
+                                    modifier   = Modifier.clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onToggleService() },
                                 )
                                 Text(
-                                    text  = if (serviceRunning) "Scanning nearby \u2713" else "Tap to start scanning",
+                                    text  = if (!allGranted) "Enable BLE in Settings to start playing" else if (!bleEnabled) "BLE disabled in Settings" else if (serviceRunning) "Scanning nearby" else "Tap to start scanning",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.80f),
                                 )
                             }
-                            // Right: volt count — tap to open shop
+                            // Right: Volts balance → Shop
                             Row(
-                                verticalAlignment     = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier              = Modifier.clickable { onNavigate("shop") },
+                                modifier = Modifier
+                                    .clickable(indication = null, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }) { onNavigate("shop") }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                             ) {
                                 Icon(
-                                    imageVector        = Icons.Filled.ElectricBolt,
+                                    painter = painterResource(com.thunderpass.R.drawable.ic_notification),
                                     contentDescription = "Volts",
-                                    tint               = Color(0xFFCC8F00),
-                                    modifier           = Modifier.size(14.dp),
+                                    tint = Color(0xFFFFD700),
+                                    modifier = Modifier.size(18.dp),
                                 )
                                 Text(
-                                    text       = voltsTotal.toString(),
-                                    style      = MaterialTheme.typography.titleMedium,
+                                    text = "$voltsTotal",
+                                    style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color      = Color.White,
+                                    color = Color.White,
                                 )
                             }
                         }
@@ -428,11 +487,12 @@ fun HomeScreenContent(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // ── 2. ThunderPass toggle (above animation) ────────────────
-                    ThunderPassToggleCard(
-                        active   = serviceRunning,
-                        onToggle = onToggleService,
-                        modifier = if (bannerHeightPx > 0)
+                    // ── 2. Step progress toward next Volt ────────────────────
+                    StepProgressCard(
+                        stepsToday     = stepsToday,
+                        stepVoltsToday = stepVoltsToday,
+                        skyColor       = skyColor,
+                        modifier       = if (bannerHeightPx > 0)
                             Modifier.height(with(density) { bannerHeightPx.toDp() })
                         else Modifier,
                     )
@@ -446,9 +506,10 @@ fun HomeScreenContent(
                             .height(animHeight),
                     ) {
                         WalkingSceneCard(
-                            avatarSeed     = avatarSeed.ifEmpty { "default" },
-                            serviceRunning = serviceRunning,
-                            fillHeight     = true,
+                            avatarSeed        = avatarSeed.ifEmpty { "default" },
+                            serviceRunning    = serviceRunning,
+                            fillHeight        = true,
+                            onSkyColorChanged = { skyColor = it },
                         )
                     }
 
@@ -478,87 +539,185 @@ fun HomeScreenContent(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ThunderPass ON/OFF toggle card — gradient + decorative squares (same as header)
+// Step progress bar — horizontal bar showing steps toward the next Volt
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ThunderPassToggleCard(
-    active:   Boolean,
-    onToggle: () -> Unit,
+internal fun StepProgressCard(
+    stepsToday: Long,
+    stepVoltsToday: Long,
+    skyColor: Color = Color(0xFFB4D4EE),
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .drawBehind {
-                if (active) {
-                    // Deep amber → golden yellow diagonal gradient (enabled)
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(Color(0xFFBF3900), Color(0xFFCC8F00), Color(0xFFBE9200)),
-                            start  = Offset(0f, 0f),
-                            end    = Offset(size.width, size.height),
-                        ),
-                    )
-                    val base = size.width * 0.32f
-                    val positions = listOf(
-                        Triple(size.width * 0.92f,  size.width * 0.18f,  35f to base * 2.0f),
-                        Triple(size.width * 1.10f,  size.width * 0.68f,  20f to base * 1.55f),
-                        Triple(size.width * 0.50f,  size.width * 1.40f,  45f to base * 1.80f),
-                        Triple(size.width * -0.05f, size.width * 0.52f, -15f to base * 1.20f),
-                    )
-                    for ((cx, cy, rotAndSize) in positions) {
-                        val (deg, sqSz) = rotAndSize
-                        rotate(deg, Offset(cx, cy)) {
-                            drawRect(
-                                color   = Color.White.copy(alpha = 0.12f),
-                                topLeft = Offset(cx - sqSz / 2, cy - sqSz / 2),
-                                size    = Size(sqSz, sqSz),
-                            )
-                        }
-                    }
-                } else {
-                    // Solid black when disabled
-                    drawRect(color = Color(0xFF0D0D0D))
-                }
-            },
+    val stepsInBucket = (stepsToday % STEPS_PER_VOLT).toInt()
+    val fraction      = stepsInBucket.toFloat() / STEPS_PER_VOLT
+    val full          = stepVoltsToday >= DAILY_VOLT_CAP
+
+    val barColor    = if (full) Color(0xFFFFD700) else Color(0xFFCC8F00)
+    val trackColor  = Color.White.copy(alpha = 0.35f)
+    val dotColor    = Color.White.copy(alpha = 0.5f)
+    val dotCount    = 11 // 0, 10, 20 … 100
+
+    // Animate the background color smoothly to stay in sync with the animation
+    val animatedSky by animateColorAsState(targetValue = skyColor, animationSpec = tween(600), label = "sky")
+
+    // Animate text color smoothly as the sky changes (no hard flip)
+    val onSky by animateColorAsState(
+        targetValue    = if (animatedSky.luminance() > 0.4f) Color(0xFF1A1C22) else Color.White,
+        animationSpec  = tween(600),
+        label          = "onSky",
+    )
+
+    Card(
+        modifier  = modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors    = CardDefaults.cardColors(containerColor = animatedSky),
     ) {
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
+            // Top row: step count on left, "100 steps = 1 ⚡" on right
             Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                androidx.compose.foundation.Image(
-                    painter            = painterResource(R.drawable.logo),
-                    contentDescription = "ThunderPass logo",
-                    modifier           = Modifier.size(28.dp),
+                Text(
+                    text       = if (full) "\u26A1 $stepVoltsToday / $DAILY_VOLT_CAP Volts today"
+                                 else "$stepsInBucket / $STEPS_PER_VOLT steps",
+                    style      = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color      = if (full) Color(0xFFFFD700) else onSky,
                 )
                 Text(
-                    text       = "ThunderPass",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color      = Color.White,
+                    text  = "$STEPS_PER_VOLT steps = 1 \u26A1",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = onSky.copy(alpha = 0.75f),
                 )
             }
-            Switch(
-                checked         = active,
-                onCheckedChange = { onToggle() },
-                colors          = SwitchDefaults.colors(
-                    checkedTrackColor   = Color.White.copy(alpha = 0.35f),
-                    uncheckedTrackColor = Color.White.copy(alpha = 0.20f),
-                    checkedThumbColor   = Color.White,
-                    uncheckedThumbColor = Color.White.copy(alpha = 0.65f),
-                    checkedBorderColor  = Color.White.copy(alpha = 0.0f),
-                    uncheckedBorderColor = Color.White.copy(alpha = 0.0f),
-                ),
+
+            Spacer(Modifier.height(8.dp))
+
+            // Horizontal progress bar with dot markers
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp),
+            ) {
+                val barH      = 6.dp.toPx()
+                val dotRadius = 3.5.dp.toPx()
+                val yCenter   = size.height / 2
+                val barTop    = yCenter - barH / 2
+                val barLeft   = dotRadius
+                val barRight  = size.width - dotRadius
+                val barWidth  = barRight - barLeft
+
+                // Track background
+                drawRoundRect(
+                    color         = trackColor,
+                    topLeft       = Offset(barLeft, barTop),
+                    size          = Size(barWidth, barH),
+                    cornerRadius  = androidx.compose.ui.geometry.CornerRadius(barH / 2),
+                )
+
+                // Filled progress
+                val fillWidth = barWidth * fraction
+                if (fillWidth > 0f) {
+                    drawRoundRect(
+                        color         = barColor,
+                        topLeft       = Offset(barLeft, barTop),
+                        size          = Size(fillWidth, barH),
+                        cornerRadius  = androidx.compose.ui.geometry.CornerRadius(barH / 2),
+                    )
+                }
+
+                // Dot markers at every 10 steps
+                for (i in 0 until dotCount) {
+                    val dotX = barLeft + barWidth * i / (dotCount - 1)
+                    val dotFraction = i.toFloat() / (dotCount - 1)
+                    val filled = dotFraction <= fraction
+                    drawCircle(
+                        color  = if (filled) barColor else dotColor,
+                        radius = dotRadius,
+                        center = Offset(dotX, yCenter),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step-Volt daily progress card — shows today's step-earned Volts (0..100)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+internal fun StepVoltsCard(stepVoltsToday: Long, stepsToday: Long = 0L, modifier: Modifier = Modifier) {
+    val fraction = (stepVoltsToday.toFloat() / DAILY_VOLT_CAP).coerceIn(0f, 1f)
+    val full     = stepVoltsToday >= DAILY_VOLT_CAP
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("🚶", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text  = "Step Volts",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Icon(
+                        imageVector        = Icons.Filled.ElectricBolt,
+                        contentDescription = null,
+                        tint               = if (full) Color(0xFFFFD700) else Color(0xFFCC8F00),
+                        modifier           = Modifier.size(13.dp),
+                    )
+                    Text(
+                        text      = "$stepVoltsToday / $DAILY_VOLT_CAP",
+                        style     = MaterialTheme.typography.labelMedium,
+                        color     = if (full) Color(0xFFFFD700)
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (full) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text  = "$stepsToday steps today (${STEPS_PER_VOLT} steps = 1 \u26A1)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress          = { fraction },
+                modifier          = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color             = if (full) Color(0xFFFFD700) else Color(0xFFCC8F00),
+                trackColor        = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
             )
         }
     }
@@ -604,6 +763,16 @@ internal fun VoltsInfoCard() {
 
 @Composable
 internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Unit) {
+    val isOwnDevice = encounter.snapshot?.avatarKind == "own_device"
+    val ownDevicePalette = listOf(
+        Color(0xFFFFB300), // Amber
+        Color(0xFF06B6D4), // Cyan
+        Color(0xFF7C3AED), // Vivid Purple
+    )
+    val ownDeviceColorSeed = encounter.snapshot?.peerInstId?.takeIf { it.isNotBlank() }
+        ?: encounter.snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+        ?: encounter.encounter.rotatingId
+    val ownDeviceColor = ownDevicePalette[kotlin.math.abs(ownDeviceColorSeed.hashCode()) % ownDevicePalette.size]
     val name = encounter.snapshot?.displayName
         ?.takeIf { it.isNotBlank() } ?: "Unknown SparkyUser"
     val seed = encounter.snapshot?.rotatingId ?: encounter.encounter.rotatingId
@@ -623,14 +792,33 @@ internal fun LastPassedByCard(encounter: EncounterWithProfile, onClick: () -> Un
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            DiceBearAvatar(
-                seed     = encounter.snapshot?.avatarSeed?.takeIf { it.isNotBlank() } ?: seed,
-                size     = 40.dp,
-                modifier = Modifier.clip(CircleShape),
-            )
+            if (isOwnDevice) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = ownDeviceColor,
+                            shape = RoundedCornerShape(10.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector        = Icons.Filled.SportsEsports,
+                        contentDescription = "Paired device",
+                        tint               = androidx.compose.ui.graphics.Color.White,
+                        modifier           = Modifier.size(24.dp),
+                    )
+                }
+            } else {
+                DiceBearAvatar(
+                    seed     = encounter.snapshot?.avatarSeed?.takeIf { it.isNotBlank() } ?: seed,
+                    size     = 40.dp,
+                    modifier = Modifier.clip(CircleShape),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text       = "Last Passed By",
+                    text       = if (isOwnDevice) "Your Other Device" else "Last Passed By",
                     style      = MaterialTheme.typography.labelSmall,
                     color      = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -802,6 +990,7 @@ fun HomeScreenPreview() {
             avatarSeed = "test-id",
             encounters = emptyList(),
             voltsTotal = 2500,
+            stepVoltsToday = 42,
             onToggleService = {},
             onNavigateToDetail = {},
             onGrantPermissions = {}

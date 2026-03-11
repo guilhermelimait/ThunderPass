@@ -21,6 +21,7 @@ class BootReceiver : BroadcastReceiver() {
         ) return
 
         val prefs = context.getSharedPreferences(BleService.PREFS_NAME, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(BleService.PREF_BLE_ENABLED, true)) return
         if (!prefs.getBoolean(BleService.PREF_SERVICE_ACTIVE, false)) return
 
         ContextCompat.startForegroundService(

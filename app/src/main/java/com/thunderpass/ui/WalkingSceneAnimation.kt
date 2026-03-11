@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 
 // ── Pastel palettes per scene ─────────────────────────────────────────────────
 
-private data class ScenePalette(
+internal data class ScenePalette(
     val sky1: Color, val sky2: Color,
     val groundA: Color, val groundB: Color,
     val silhouette: Color,
@@ -101,6 +101,7 @@ fun WalkingSceneCard(
     serviceRunning: Boolean = true,
     cardHeight:     Dp      = 200.dp,
     fillHeight:     Boolean = false,
+    onSkyColorChanged: ((Color) -> Unit)? = null,
 ) {
     val inf = rememberInfiniteTransition(label = "walk_scene")
     val textMeasurer = rememberTextMeasurer()
@@ -173,6 +174,10 @@ fun WalkingSceneCard(
     }
     val showZzz = showBubble
 
+    // Report current sky color to parent
+    val currentSky = blendPalette(scrollFrac).sky1
+    LaunchedEffect(currentSky) { onSkyColorChanged?.invoke(currentSky) }
+
     Card(
         modifier  = Modifier
             .fillMaxWidth()
@@ -204,7 +209,7 @@ fun WalkingSceneCard(
                 drawWalker(effectiveWalkPhase, serviceRunning, armColor, showZzz, textMeasurer)
             }
 
-            // 3 ── DiceBear head — bobs with body, transparent background
+            // 3 ── DiceBear head — transparent background, blends into scene
             DiceBearAvatar(
                 seed                  = avatarSeed,
                 size                  = headDiamDp,
@@ -214,8 +219,6 @@ fun WalkingSceneCard(
                     .align(Alignment.TopStart)
                     .offset(
                         x = personXDp - headHalfDp,
-                        // Push the DiceBear image down so the visible face
-                        // sits flush against the neck (avatars have top padding)
                         y = cardSizeH * HEAD_TOP_FRAC + headDiamDp * 0.12f,
                     ),
             )
@@ -232,7 +235,7 @@ private fun lerpColor(a: Color, b: Color, t: Float) = Color(
     blue  = lerp(a.blue,  b.blue,  t),
 )
 
-private fun blendPalette(scrollFrac: Float): ScenePalette {
+internal fun blendPalette(scrollFrac: Float): ScenePalette {
     val world = (scrollFrac * 4f).coerceIn(0f, 4f - 1e-6f)
     val idx   = world.toInt() % 4
     val frac  = world - floor(world)

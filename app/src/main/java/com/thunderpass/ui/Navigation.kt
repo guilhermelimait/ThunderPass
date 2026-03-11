@@ -36,11 +36,13 @@ internal object Routes {
     const val BADGES            = "badges"
     const val BADGES_CATEGORY   = "badges_category/{categoryName}"
     const val SHOP              = "shop"
-    const val SETTINGS          = "settings"
+    const val SETTINGS          = "settings?highlight={highlight}"
     const val ABOUT             = "about"
     const val SPARKY_EDITOR     = "sparky_editor"
+    const val DEVICE_SYNC       = "device_sync"
     fun encounterDetail(id: Long) = "encounter_detail/$id"
     fun badgesCategory(name: String) = "badges_category/$name"
+    fun settings(highlight: String? = null) = if (highlight != null) "settings?highlight=$highlight" else "settings"
 }
 
 
@@ -55,13 +57,13 @@ fun ThunderPassNavGraph(
 
     val homeVm: HomeViewModel = viewModel()
     val profileVm: ProfileViewModel = viewModel()
-    val pendingFriendUserId by homeVm.friendInviteUserId.collectAsState()
+    val pendingFriendPeerInstId by homeVm.friendInvitePeerInstId.collectAsState()
     val friendInviteResult  by homeVm.friendInviteResult.collectAsState()
 
     ThunderPassTheme(darkTheme = darkMode) {
 
         // ── Friend-invite dialogs (shown over any screen) ─────────────────────
-        pendingFriendUserId?.let { userId ->
+        pendingFriendPeerInstId?.let { userId ->
             AlertDialog(
                 onDismissRequest = { homeVm.resolveFriendInvite(userId) },
                 title   = { Text("Friend Invite 🤝") },
@@ -203,16 +205,24 @@ fun ThunderPassNavGraph(
                     )
                 }
                 composable(Routes.SHOP)  { ShopScreen(onBack = { navController.popBackStack() }, vm = homeVm) }
-                composable(Routes.SETTINGS) {
+                composable(
+                    Routes.SETTINGS,
+                    arguments = listOf(
+                        navArgument("highlight") { type = NavType.StringType; defaultValue = "" },
+                    ),
+                ) { bs ->
+                    val highlight = bs.arguments?.getString("highlight") ?: ""
                     SettingsScreen(
                         darkMode         = darkMode,
                         onDarkModeToggle = { enabled ->
                             darkMode = enabled
                             prefs.edit().putBoolean("dark_mode", enabled).apply()
                         },
-                        onMusicChange = onMusicChange,
-                        onBack = { navController.popBackStack() },
+                        onMusicChange         = onMusicChange,
+                        onBack                = { navController.popBackStack() },
+                        onNavigateToDeviceSync = { navController.navigate(Routes.DEVICE_SYNC) },
                         vm = homeVm,
+                        highlightSection = highlight,
                     )
                 }
                 composable(Routes.ABOUT) {
@@ -223,6 +233,9 @@ fun ThunderPassNavGraph(
                         onBack = { navController.popBackStack() },
                         vm     = profileVm,
                     )
+                }
+                composable(Routes.DEVICE_SYNC) {
+                    DeviceSyncScreen(onBack = { navController.popBackStack() })
                 }
             }
         }

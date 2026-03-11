@@ -6,7 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothAdapter
-import android.provider.Settings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
@@ -17,27 +16,28 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.BroadcastReceiver
-import android.content.IntentFilter
 import android.content.Intent
+import android.content.IntentFilter
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.IBinder
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import com.thunderpass.ble.BleConstants
 import com.thunderpass.ble.BleStats
 import com.thunderpass.ble.EncounterDedup
-import com.thunderpass.ble.ScanMode
 import com.thunderpass.ble.GattClient
-import com.thunderpass.retro.RetroAuthManager
-import com.thunderpass.retro.RetroRepository
 import com.thunderpass.ble.GattServer
 import com.thunderpass.ble.RotatingIdManager
+import com.thunderpass.ble.ScanMode
 import com.thunderpass.data.db.ThunderPassDatabase
+import com.thunderpass.steps.StepVoltManager
+import com.thunderpass.widget.ThunderPassWidget
+import com.thunderpass.widget.ThunderPassWidget2x2
 import com.thunderpass.ui.randomSparkySeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,12 +66,16 @@ class BleService : Service() {
         const val EXTRA_SCAN_MODE      = "EXTRA_SCAN_MODE"
         const val ACTION_SET_SAFE_ZONE = "com.thunderpass.SET_SAFE_ZONE"
         const val EXTRA_SAFE_ZONE      = "EXTRA_SAFE_ZONE"
+        const val ACTION_SET_AUTO_WALK = "com.thunderpass.SET_AUTO_WALK"
+        const val EXTRA_AUTO_WALK      = "EXTRA_AUTO_WALK"
 
         /** SharedPreferences file and key used by both Service and ViewModel. */
-        const val PREFS_NAME         = "thunderpass_prefs"
-        const val PREF_SAFE_ZONE     = "safe_zone_active"
-        const val PREF_SCAN_MODE     = "scan_mode"
+        const val PREFS_NAME          = "thunderpass_prefs"
+        const val PREF_SAFE_ZONE      = "safe_zone_active"
+        const val PREF_SCAN_MODE      = "scan_mode"
         const val PREF_SERVICE_ACTIVE = "service_active"
+        const val PREF_BLE_ENABLED    = "ble_enabled"
+        const val PREF_AUTO_WALK      = "auto_walk_enabled"
 
         /** Compute encounter streak in consecutive calendar days (local timezone). */
         fun computeEncounterStreak(encounters: List<com.thunderpass.data.db.entity.Encounter>): Int {
@@ -101,6 +105,30 @@ class BleService : Service() {
     private var _isActive: Boolean  = false
     // ── Safe Zone ───────────────────────────────────────────────────
     private var _safeZoneActive: Boolean = false
+    // ── Auto-Walk mode ────────────────────────────────────────────────────────
+    // When enabled: BLE scanning/advertising is paused while idle; resumes the
+    // moment the step detector fires, and pauses again after STILL_TIMEOUT_MS
+    // of inactivity.  TYPE_STEP_DETECTOR is hardware-backed and essentially free.
+    @Volatile private var _autoWalkEnabled: Boolean = false
+    @Volatile private var _autoWalkPaused:  Boolean = false  // true = BLE paused awaiting motion
+    @Volatile private var lastStepDetectedMs: Long  = 0L
+    private var stillCheckJob: kotlinx.coroutines.Job? = null
+    private var walkSensorManager: SensorManager? = null
+    private val autoWalkListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
+            lastStepDetectedMs = System.currentTimeMillis()
+            Log.d(TAG, "Auto-Walk: step detected (paused=$_autoWalkPaused active=$_isActive safe=$_safeZoneActive)")
+            if (_autoWalkPaused && _isActive && !_safeZoneActive) {
+                _autoWalkPaused = false
+                startAdvertising()
+                startScanning()
+                Log.i(TAG, "Auto-Walk: motion detected — BLE resumed.")
+                refreshNotification()
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
     // ── BLE handles ───────────────────────────────────────────────────────────
     private var bluetoothAdapter: BluetoothAdapter? = null
     private var bleScanner: BluetoothLeScanner? = null
@@ -110,14 +138,6 @@ class BleService : Service() {
     private lateinit var gattServer: GattServer
     private lateinit var gattClient: GattClient
     private lateinit var encounterDedup: EncounterDedup
-
-    // ── Internet sync (RA data for pending snapshots) ─────────────────────────
-    private var networkCallbackRegistered = false
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            serviceScope.launch(Dispatchers.IO) { syncPeerRetroData() }
-        }
-    }
 
     // ── Bluetooth state receiver ──────────────────────────────────────────────
     // Restarts advertising + scanning automatically when the user turns BT back on.
@@ -131,7 +151,7 @@ class BleService : Service() {
                     stopAdvertising()
                 }
                 BluetoothAdapter.STATE_ON -> {
-                    if (_isActive && !_safeZoneActive) {
+                    if (_isActive && !_safeZoneActive && !_autoWalkPaused) {
                         Log.i(TAG, "Bluetooth turned on \u2014 restarting BLE operations.")
                         startAdvertising()
                         startScanning()
@@ -155,6 +175,7 @@ class BleService : Service() {
         _scanMode = runCatching {
             ScanMode.valueOf(prefs.getString(PREF_SCAN_MODE, ScanMode.BALANCED.name)!!)
         }.getOrDefault(ScanMode.BALANCED)
+        _autoWalkEnabled = prefs.getBoolean(PREF_AUTO_WALK, false)
 
         // Wire up components
         rotatingIdManager = RotatingIdManager(this)
@@ -167,7 +188,6 @@ class BleService : Service() {
             snapshotDao  = db.peerProfileSnapshotDao(),
             profileDao   = db.myProfileDao(),
             scope        = serviceScope,
-            retroAuth    = RetroAuthManager.getInstance(this),
             onProfileReceived = { encId, name -> updateEncounterNotification(encId, name) },
         )
         gattServer = GattServer(
@@ -197,6 +217,12 @@ class BleService : Service() {
             btStateReceiver,
             IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
         )
+
+        // Step counter — awards up to 100 Volts/day from walking (no-ops on devices without sensor)
+        StepVoltManager.start(this)
+
+        // Auto-Walk — register step detector now; BLE is only started on demand in onStartCommand
+        if (_autoWalkEnabled) startAutoWalkWatch()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -209,6 +235,8 @@ class BleService : Service() {
                 _isActive = true
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                     .putBoolean(PREF_SERVICE_ACTIVE, true).apply()
+                serviceScope.launch { ThunderPassWidget.refreshAll(this@BleService, true) }
+                serviceScope.launch { ThunderPassWidget2x2.refreshAll(this@BleService, true) }
                 startForeground(BleConstants.NOTIF_ID, buildNotification())
                 gattServer.start(
                     profileProvider = {
@@ -232,36 +260,30 @@ class BleService : Service() {
                     },
                 )
                 if (!_safeZoneActive) {
-                    startAdvertising()
-                    startScanning()
+                    if (_autoWalkEnabled) {
+                        // Start paused — auto-walk will resume BLE when motion is detected
+                        _autoWalkPaused = true
+                        refreshNotification()
+                        Log.i(TAG, "Auto-Walk enabled — waiting for motion before starting BLE.")
+                    } else {
+                        Log.i(TAG, "Starting BLE: safeZone=$_safeZoneActive autoWalk=$_autoWalkEnabled scanMode=$_scanMode")
+                        startAdvertising()
+                        startScanning()
+                    }
                 } else {
                     Log.i(TAG, "Service started in Safe Zone — BLE paused until zone deactivated.")
                 }
-                // Register network callback to sync RA data when internet becomes available
-                if (!networkCallbackRegistered) {
-                    val req = NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build()
-                    getSystemService(ConnectivityManager::class.java)
-                        .registerNetworkCallback(req, networkCallback)
-                    networkCallbackRegistered = true
-                }
-                Log.i(TAG, "ThunderPass BLE service started.")
+                Log.i(TAG, "ThunderPass BLE service started. active=$_isActive safeZone=$_safeZoneActive autoWalk=$_autoWalkEnabled autoWalkPaused=$_autoWalkPaused scanMode=$_scanMode")
             }
             ACTION_STOP -> {
                 _isActive = false
                 getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                     .putBoolean(PREF_SERVICE_ACTIVE, false).apply()
+                serviceScope.launch { ThunderPassWidget.refreshAll(this@BleService, false) }
+                serviceScope.launch { ThunderPassWidget2x2.refreshAll(this@BleService, false) }
                 stopScanning()
                 stopAdvertising()
                 gattServer.stop()
-                if (networkCallbackRegistered) {
-                    runCatching {
-                        getSystemService(ConnectivityManager::class.java)
-                            .unregisterNetworkCallback(networkCallback)
-                    }
-                    networkCallbackRegistered = false
-                }
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 Log.i(TAG, "ThunderPass BLE service stopped.")
@@ -273,7 +295,7 @@ class BleService : Service() {
                     _scanMode = newMode
                     getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                         .putString(PREF_SCAN_MODE, newMode.name).apply()
-                    if (_isActive && !_safeZoneActive) {
+                    if (_isActive && !_safeZoneActive && !_autoWalkPaused) {
                         stopScanning()
                         if (newMode != ScanMode.OFF) startScanning()
                     }
@@ -291,63 +313,54 @@ class BleService : Service() {
                         stopAdvertising()
                         Log.i(TAG, "Safe Zone activated — BLE paused.")
                     } else {
-                        startAdvertising()
-                        startScanning()
+                        // Only resume if auto-walk isn't also holding BLE paused
+                        if (!_autoWalkPaused) {
+                            startAdvertising()
+                            startScanning()
+                        }
                         Log.i(TAG, "Safe Zone deactivated — BLE resumed.")
                     }
                 }
-                // Refresh the persistent notification to reflect Safe Zone state
-                getSystemService(android.app.NotificationManager::class.java)
-                    .notify(BleConstants.NOTIF_ID, buildNotification())
+                refreshNotification()
+            }
+            ACTION_SET_AUTO_WALK -> {
+                val enabled = intent.getBooleanExtra(EXTRA_AUTO_WALK, false)
+                _autoWalkEnabled = enabled
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .putBoolean(PREF_AUTO_WALK, enabled).apply()
+                if (enabled) {
+                    startAutoWalkWatch()
+                    // If service is already active and BLE is running, set paused state so the
+                    // still-check can take over — don't immediately cut BLE, give it one timeout.
+                    lastStepDetectedMs = System.currentTimeMillis()
+                } else {
+                    stopAutoWalkWatch()
+                    // If BLE was paused by auto-walk, resume it now
+                    if (_autoWalkPaused && _isActive && !_safeZoneActive) {
+                        _autoWalkPaused = false
+                        startAdvertising()
+                        startScanning()
+                    }
+                }
+                refreshNotification()
+                Log.i(TAG, "Auto-Walk mode ${if (enabled) "enabled" else "disabled"}.")
             }
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
+        StepVoltManager.stop(this)
+        stopAutoWalkWatch()
         stopScanning()
         stopAdvertising()
         gattServer.stop()
-        if (networkCallbackRegistered) {
-            runCatching {
-                getSystemService(ConnectivityManager::class.java)
-                    .unregisterNetworkCallback(networkCallback)
-            }
-            networkCallbackRegistered = false
-        }
         runCatching { unregisterReceiver(btStateReceiver) }
         serviceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    // ── Internet sync ─────────────────────────────────────────────────────────
-
-    /**
-     * Called when internet becomes available. Fetches RA data for all peer
-     * snapshots that have a retroUsername but haven't been fetched yet.
-     */
-    private suspend fun syncPeerRetroData() {
-        val db          = ThunderPassDatabase.getInstance(this)
-        val snapshotDao = db.peerProfileSnapshotDao()
-        val pending     = snapshotDao.findSnapshotsNeedingRetroFetch()
-        if (pending.isEmpty()) return
-        Log.i(TAG, "Internet available — syncing RA data for ${pending.size} pending snapshot(s)")
-        val retroAuth   = RetroAuthManager.getInstance(this)
-        val ownUsername = db.myProfileDao().get()?.retroUsername?.takeIf { it.isNotBlank() }
-        for (snapshot in pending) {
-            val username = snapshot.retroUsername ?: continue
-            RetroRepository.fetchAndCache(
-                context      = this,
-                peerUsername = username,
-                snapshotId   = snapshot.id,
-                snapshotDao  = snapshotDao,
-                auth         = retroAuth,
-                ownUsername  = ownUsername,
-            )
-        }
-    }
 
     // ── Advertising ───────────────────────────────────────────────────────────
 
@@ -369,7 +382,7 @@ class BleService : Service() {
         // A 128-bit UUID AD record is 18 bytes; adding 18 bytes of service data would
         // exceed the 31-byte BLE advertisement payload limit and cause
         // ADVERTISE_FAILED_DATA_TOO_LARGE.
-        // Identity dedup is done post-GATT via peerUserId, not via scan payload.
+        // Identity dedup is done post-GATT via peerInstId (installationId), not via scan payload.
         val data = AdvertiseData.Builder()
             .addServiceUuid(BleConstants.THUNDERPASS_SERVICE_PARCEL)
             .setIncludeDeviceName(false)    // omit device name for privacy
@@ -438,7 +451,7 @@ class BleService : Service() {
                 // Use device.address as a session-scoped dedup key: it's stable within
                 // an advertising session so it prevents redundant GATT connections to the
                 // same hardware in one scan pass.  True 24-hour identity dedup is handled
-                // post-GATT via the peer's Supabase userId (see GattClient).
+                // post-GATT via the peer's installationId (see GattClient).
                 val rotatingId = device.address
 
                 Log.d(TAG, "Seen: ${device.address} rotId=${rotatingId.take(8)}… RSSI=$rssi")
@@ -451,6 +464,13 @@ class BleService : Service() {
                         showEncounterNotification(encounterId)
                         com.thunderpass.widget.EncounterWidget.refresh(applicationContext)
                         gattClient.connect(device, encounterId)
+                    } else if (gattClient.shouldReconnectPaired(device.address)) {
+                        // Known paired device — bypass encounter dedup for delta sync.
+                        // encounterId=0 signals GattClient this is a paired-only reconnection.
+                        Log.i(TAG, "Paired device reconnect for ${device.address} — bypassing encounter dedup")
+                        gattClient.connect(device, 0L)
+                    } else {
+                        Log.d(TAG, "Dedup suppressed GATT for ${device.address} (rotId=${rotatingId.take(8)}…)")
                     }
                 }
             }
@@ -514,6 +534,17 @@ class BleService : Service() {
                 lightColor = android.graphics.Color.YELLOW
             }
         )
+        // Paired-device sync channel
+        nm.createNotificationChannel(
+            NotificationChannel(
+                BleConstants.PAIRED_SYNC_CHANNEL_ID,
+                "Device Sync",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Alerts when a paired device is nearby and syncing data"
+                setShowBadge(true)
+            }
+        )
     }
 
     /** Show a dismissible notification when a new encounter is recorded. */
@@ -538,37 +569,81 @@ class BleService : Service() {
     }
 
     /**
-     * Flashes the AYN Thor joystick LEDs yellow 3× then restores original colours.
-     * On OdinOS the vendor keys live in the SECURE namespace:
-     *   joystick_led_light_picker_color  = "#AARRGGBB,#AARRGGBB"  (left, right)
-     *   joystick_light_enabled           = "1,1" | "0,0"
-     * Requires WRITE_SECURE_SETTINGS, granted once via:
-     *   adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS
-     * Silently no-ops on other devices or if permission not granted.
+     * Flashes the AYN Thor joystick LEDs yellow 3× then restores them to white.
+     * SN3112 LED driver sysfs interface (AYN Thor — left and right joystick):
+     *   /sys/class/sn3112l/led/brightness   ← left  joystick LED
+     *   /sys/class/sn3112r/led/brightness   ← right joystick LED
+     *
+     * Command format (per LED, per index):  "{index}-{R}:{G}:{B}:{brightness}"
+     *   index 1 = top LED, index 2 = bottom LED (each joystick has two LEDs)
+     *   e.g. "1-255:212:0:255" = top LED, yellow (#FFD400), full brightness
+     *
+     * Commands are sent via PServerBinder (a privileged AYN system service) using
+     * reflection on android.os.ServiceManager — same mechanism as Bifrost.
+     * Falls back to direct FileOutputStream if the binder is unavailable.
+     *
+     * Silently no-ops on non-AYN devices or if the sysfs node is inaccessible.
      */
     private fun flashThorLeds() {
-        val settingsPrefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
-        if (!settingsPrefs.getBoolean("led_flash_enabled", true)) return
-        val hasPermission = checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) return
-        val cr = contentResolver
-        val prevColor   = Settings.Secure.getString(cr, "joystick_led_light_picker_color") ?: return
-        val prevEnabled = Settings.Secure.getString(cr, "joystick_light_enabled") ?: "1,1"
+        val prefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("led_flash_enabled", true)) return
+
+        val isAyn = android.os.Build.MANUFACTURER.equals("AYN", ignoreCase = true) ||
+                    android.os.Build.BRAND.equals("AYN", ignoreCase = true)
+        if (!isAyn) return
+
         serviceScope.launch(Dispatchers.IO) {
+            // SN3112 format: "{index}-{R}:{G}:{B}:{brightness}"
+            // yellow = #FFD400 (R:255, G:212, B:0)
+            val yellowOn = listOf("1-255:212:0:255", "2-255:212:0:255")
+            val off      = listOf("1-0:0:0:0",       "2-0:0:0:0")
+            val restore  = listOf("1-255:255:255:255","2-255:255:255:255")
+
+            // Obtain PServerBinder via reflection (no special Android permission needed).
+            val pServerBinder: android.os.IBinder? = runCatching {
+                val sm = Class.forName("android.os.ServiceManager")
+                val getService = sm.getDeclaredMethod("getService", String::class.java)
+                getService.invoke(null, "PServerBinder") as? android.os.IBinder
+            }.getOrNull()
+
+            fun sendCommand(value: String, path: String) {
+                val cmd = "echo $value > $path"
+                if (pServerBinder != null) {
+                    runCatching {
+                        val data  = android.os.Parcel.obtain()
+                        val reply = android.os.Parcel.obtain()
+                        try {
+                            data.writeStringArray(arrayOf(cmd, "1"))
+                            pServerBinder.transact(0, data, reply, android.os.IBinder.FLAG_ONEWAY)
+                        } finally {
+                            data.recycle()
+                            reply.recycle()
+                        }
+                    }
+                } else {
+                    // Fallback: direct write (file is world-writable on AYN Thor)
+                    runCatching {
+                        java.io.FileOutputStream(path).use { it.write(value.toByteArray()) }
+                    }
+                }
+            }
+
+            fun writeLeds(values: List<String>) {
+                for (path in listOf("/sys/class/sn3112l/led/brightness",
+                                    "/sys/class/sn3112r/led/brightness")) {
+                    for (v in values) sendCommand(v, path)
+                }
+            }
+
             try {
-                Settings.Secure.putString(cr, "joystick_led_light_picker_color", "#ffffff00,#ffffff00")
                 repeat(3) {
-                    Settings.Secure.putString(cr, "joystick_light_enabled", "1,1")
+                    writeLeds(yellowOn)
                     delay(300)
-                    Settings.Secure.putString(cr, "joystick_light_enabled", "0,0")
+                    writeLeds(off)
                     delay(200)
                 }
-            } catch (_: Exception) {
-                // Fail silently — LED flash is best-effort.
             } finally {
-                runCatching { Settings.Secure.putString(cr, "joystick_led_light_picker_color", prevColor) }
-                runCatching { Settings.Secure.putString(cr, "joystick_light_enabled", prevEnabled) }
+                runCatching { writeLeds(restore) }
             }
         }
     }
@@ -610,10 +685,11 @@ class BleService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val text = if (_safeZoneActive)
-            "\uD83D\uDEE1\uFE0F Safe Zone active — BLE paused"
-        else
-            getString(R.string.notification_text)
+        val text = when {
+            _safeZoneActive  -> "\uD83D\uDEE1\uFE0F Safe Zone active \u2014 BLE paused"
+            _autoWalkPaused  -> "\uD83D\uDEB6 Waiting for motion\u2026"
+            else             -> getString(R.string.notification_text)
+        }
         return NotificationCompat.Builder(this, BleConstants.NOTIF_CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(text)
@@ -621,5 +697,50 @@ class BleService : Service() {
             .setContentIntent(tapIntent)
             .setOngoing(true)
             .build()
+    }
+
+    // ── Auto-Walk helpers ─────────────────────────────────────────────────────
+
+    private fun startAutoWalkWatch() {
+        val sm = getSystemService(SensorManager::class.java) ?: return
+        walkSensorManager = sm
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+        if (sensor == null) {
+            Log.w(TAG, "Auto-Walk: no step detector — feature unavailable on this device.")
+            return
+        }
+        sm.registerListener(autoWalkListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        // Coroutine that auto-pauses BLE if no steps for STILL_TIMEOUT_MS
+        stillCheckJob?.cancel()
+        stillCheckJob = serviceScope.launch {
+            val STILL_TIMEOUT_MS = 10 * 60 * 1_000L   // 10 minutes
+            val CHECK_INTERVAL   =      60 * 1_000L   //  1 minute
+            while (true) {
+                delay(CHECK_INTERVAL)
+                if (!_autoWalkEnabled) break
+                val idleMs = System.currentTimeMillis() - lastStepDetectedMs
+                if (idleMs >= STILL_TIMEOUT_MS && !_autoWalkPaused && _isActive && !_safeZoneActive) {
+                    _autoWalkPaused = true
+                    stopScanning()
+                    stopAdvertising()
+                    Log.i(TAG, "Auto-Walk: idle for ${idleMs / 60_000} min — BLE paused.")
+                    refreshNotification()
+                }
+            }
+        }
+        Log.i(TAG, "Auto-Walk: step detector registered.")
+    }
+
+    private fun stopAutoWalkWatch() {
+        stillCheckJob?.cancel()
+        stillCheckJob = null
+        walkSensorManager?.unregisterListener(autoWalkListener)
+        walkSensorManager = null
+        _autoWalkPaused = false
+    }
+
+    private fun refreshNotification() {
+        getSystemService(android.app.NotificationManager::class.java)
+            .notify(BleConstants.NOTIF_ID, buildNotification())
     }
 }

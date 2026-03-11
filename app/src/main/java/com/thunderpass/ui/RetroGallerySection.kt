@@ -68,14 +68,21 @@ fun RetroGallerySection(modifier: Modifier = Modifier) {
         loaded = true
     }
 
-    // One-time background network refresh. On completion save() bumps cacheVersion
-    // which triggers the LaunchedEffect above to re-read and recompose.
-    LaunchedEffect(Unit) {
-        val auth      = RetroAuthManager.getInstance(context)
+    // Background network refresh. Re-runs whenever credentials change (e.g. user
+    // enters their RA API key) so cards update without requiring a restart.
+    // On completion save() bumps cacheVersion which triggers the LaunchedEffect
+    // above to re-read and recompose.
+    val auth             = RetroAuthManager.getInstance(context)
+    val credVersion by auth.credentialsVersion.collectAsState()
+    LaunchedEffect(credVersion) {
         val dbProfile = com.thunderpass.data.db.ThunderPassDatabase.getInstance(context)
             .myProfileDao().get()
-        val username  = (data?.username?.takeIf { it.isNotBlank() }
-            ?: dbProfile?.retroUsername?.trim()?.takeIf { it.isNotBlank() })
+        // Prefer the authoritative username from Room / EncryptedSharedPreferences
+        // over the cache — the cache may hold a stale partial value from a mid-typing
+        // auto-save, which would permanently poison subsequent API calls.
+        val username  = (dbProfile?.retroUsername?.trim()?.takeIf { it.isNotBlank() }
+            ?: auth.getApiUser().takeIf { it.isNotBlank() }
+            ?: data?.username?.takeIf { it.isNotBlank() })
             ?: return@LaunchedEffect
         val summaryJob    = async { RetroRetrofitClient.fetchRetroMetadata(username, auth) }
         val countJob      = async { RetroRetrofitClient.fetchSoftcoreAchievementCount(username, auth) }

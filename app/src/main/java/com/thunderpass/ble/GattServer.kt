@@ -12,11 +12,14 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
+import java.security.KeyPair
+import javax.crypto.SecretKey
 import com.thunderpass.ble.BleConstants.CCCD_UUID
 import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
 import com.thunderpass.ble.BleConstants.THUNDERPASS_SERVICE_UUID
 import com.thunderpass.data.db.entity.MyProfile
+import com.thunderpass.security.DeviceGroupManager
 import com.thunderpass.security.PayloadSigner
 
 private const val TAG = "ThunderPass/GattServer"
@@ -92,12 +95,13 @@ class GattServer(
             BluetoothGattCharacteristic.PERMISSION_WRITE
         )
 
-        // RESPONSE characteristic: Notify + Read
+        // RESPONSE characteristic: Notify only — direct reads are not permitted.
+        // Data flows exclusively as encrypted notifications; no ciphertext should be
+        // retrievable by a passive BLE scanner via a plain ATT Read request.
         val responseChar = BluetoothGattCharacteristic(
             RESPONSE_CHAR_UUID,
-            BluetoothGattCharacteristic.PROPERTY_NOTIFY or
-                    BluetoothGattCharacteristic.PROPERTY_READ,
-            BluetoothGattCharacteristic.PERMISSION_READ
+            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+            0 // No ATT read permission — notifications only
         ).also { char ->
             // CCCD descriptor — required for the client to enable notifications
             char.addDescriptor(
@@ -147,7 +151,20 @@ class GattServer(
                 value: ByteArray?
             ) {
                 if (characteristic?.uuid != REQUEST_CHAR_UUID) return
-                Log.d(TAG, "REQUEST_CHAR written by ${device?.address}")
+
+                // Require encrypted request frame: [0x02][91-byte X.509 P-256 client ephemeral pubkey]
+                val frame = value
+                if (frame == null ||
+                    frame.size != BleEncryption.REQUEST_FRAME_SIZE ||
+                    frame[0] != BleEncryption.REQUEST_TYPE_ENCRYPTED
+                ) {
+                    Log.w(TAG, "Unencrypted or malformed REQUEST from ${device?.address} " +
+                        "(size=${frame?.size ?: 0}) — rejected (no plaintext accepted)")
+                    if (responseNeeded) {
+                        gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null)
+                    }
+                    return
+                }
 
                 // Acknowledge the write
                 if (responseNeeded) {
@@ -156,10 +173,22 @@ class GattServer(
                     )
                 }
 
-                // Build and send our profile as (possibly chunked) notifications
+                Log.d(TAG, "Encrypted REQUEST received from ${device?.address}")
+
+                // Parse client ephemeral public key and perform ECDH key agreement
+                val clientPubKey = try {
+                    BleEncryption.decodePublicKey(frame.copyOfRange(1, 1 + BleEncryption.PUBLIC_KEY_BYTES))
+                } catch (e: Exception) {
+                    Log.w(TAG, "Malformed client pubkey from ${device?.address}: ${e.message}")
+                    return
+                }
+
+                val serverEphemeral = BleEncryption.generateEphemeralKeyPair()
+                val sharedKey       = BleEncryption.deriveSharedKey(serverEphemeral.private, clientPubKey)
+
                 device?.let { dev ->
                     val mtu = deviceMtu[dev.address] ?: BleConstants.DEFAULT_MTU
-                    sendProfileNotification(dev, profileProvider(), statsProvider(), mtu)
+                    sendEncryptedProfileNotification(dev, profileProvider(), statsProvider(), mtu, serverEphemeral, sharedKey)
                 }
             }
 
@@ -184,18 +213,29 @@ class GattServer(
     // ── Payload builder ───────────────────────────────────────────────────────
 
     /**
-     * Sends the local profile to [device] as one or more chunked GATT notifications.
+     * Encrypts the local profile payload with AES-256-GCM using the session [sharedKey] and
+     * sends it to [device] as one or more chunked GATT notifications.
      *
-     * Chunk format: [CHUNK_MAGIC:1][totalChunks:1][chunkIndex:1][data…]
-     * The magic byte (0xCA) never appears as the first byte of valid JSON, so the
-     * client can distinguish chunked vs. legacy single-notification payloads.
+     * Wire format (before chunking):
+     *   `[0xE5][server ephemeral pubkey: 91 bytes][IV: 12 bytes][AES-GCM ciphertext + 16-byte tag]`
      *
-     * @param mtu  The negotiated ATT MTU for this device. Each notification payload must
-     *             be ≤ (mtu - 3) bytes (3 bytes for the ATT op-code + handle overhead).
+     * Chunk format: `[CHUNK_MAGIC: 1][totalChunks: 1][chunkIndex: 1][data…]`
+     *
+     * @param mtu             Negotiated ATT MTU; each packet must be ≤ (mtu − 3) bytes.
+     * @param serverEphemeral Server's ephemeral key pair for this session.
+     * @param sharedKey       256-bit AES session key derived from ECDH.
      */
-    private fun sendProfileNotification(device: BluetoothDevice, profile: MyProfile?, stats: BleStats?, mtu: Int) {
+    private fun sendEncryptedProfileNotification(
+        device: BluetoothDevice,
+        profile: MyProfile?,
+        stats: BleStats?,
+        mtu: Int,
+        serverEphemeral: KeyPair,
+        sharedKey: SecretKey,
+    ) {
         if (profile == null) {
-            Log.w(TAG, "No local profile; skipping GATT notification.")
+            Log.w(TAG, "No local profile \u2014 disconnecting client ${device.address} so it doesn't hang.")
+            gattServer?.cancelConnection(device)
             return
         }
 
@@ -203,16 +243,20 @@ class GattServer(
             ?.getService(THUNDERPASS_SERVICE_UUID)
             ?.getCharacteristic(RESPONSE_CHAR_UUID) ?: return
 
-        val payload = buildPayloadJson(profile, stats).toByteArray(Charsets.UTF_8)
+        val payload = BleEncryption.buildEncryptedResponse(
+            serverEphemeral = serverEphemeral,
+            sharedKey       = sharedKey,
+            json            = buildPayloadJson(profile, stats),
+        )
 
         // ATT notification overhead: 3 bytes (opcode 1 + handle 2).
         // Chunk header: 3 bytes (magic 1 + totalChunks 1 + chunkIndex 1).
         val maxDataPerChunk = maxOf(1, mtu - 3 - 3)
 
         val chunks = payload.toList().chunked(maxDataPerChunk) { it.toByteArray() }
-        val totalChunks = chunks.size.coerceAtMost(255)  // uint8 cap — profiles won't exceed this
+        val totalChunks = chunks.size.coerceAtMost(255)  // uint8 cap
 
-        Log.d(TAG, "Sending ${payload.size} bytes to ${device.address} in $totalChunks chunk(s) (mtu=$mtu)")
+        Log.d(TAG, "Sending ${payload.size} encrypted bytes to ${device.address} in $totalChunks chunk(s) (mtu=$mtu)")
 
         chunks.forEachIndexed { index, data ->
             if (index >= 255) return@forEachIndexed  // safety guard
@@ -279,14 +323,9 @@ class GattServer(
                 put("ghostGame", profile.ghostGame)
                 if (profile.ghostScore > 0L) put("ghostScore", profile.ghostScore)
             }
-            // Include Supabase userId so the peer can perform 24-hour identity dedup.
-            // Only sent when the user is signed in; withheld in privacy mode.
-            if (profile.supabaseUserId.isNotBlank()) {
-                put("userId", profile.supabaseUserId)
-            }
-            // Always include the stable installationId as a fallback dedup key.
-            // This ensures dedup works even when Supabase is offline / user has no session,
-            // so nearby devices don't accumulate duplicate Sparks every rotating-ID window.
+            // Always include the stable installationId as the identity dedup key.
+            // Peers use this to perform 24-hour dedup so nearby devices don't
+            // accumulate duplicate Sparks on every rotating-ID window change.
             if (profile.installationId.isNotBlank()) {
                 put("instId", profile.installationId)
             }
@@ -294,8 +333,10 @@ class GattServer(
             if (profile.deviceType.isNotBlank()) {
                 put("deviceType", profile.deviceType)
             }
+            // Country + city — visible to all encounters when privacy is off
+            if (profile.country.isNotBlank()) put("country", profile.country)
+            if (profile.city.isNotBlank()) put("city", profile.city)
             // Include Volts + encounter stats so peers can display them
-            // (omitted entirely in privacy mode so these keys are never present)
             put("volts", profile.voltsTotal)
             if (stats != null) {
                 put("passes", stats.passesCount)
@@ -303,23 +344,43 @@ class GattServer(
                 put("streak", stats.streakCount)
             }
         }
+
+        // ── Paired-device delta sync — always appended regardless of privacy mode ──
+        // Paired devices authenticate via HMAC(DGK, instId); strangers without
+        // the DGK cannot verify or use the groupTag.  Including instId here for
+        // the HMAC check is a minimal privacy trade-off (SHA-256 derivative, inside
+        // AES-256-GCM payload) that enables country, city, and all profile fields
+        // to stay in sync across paired devices even when privacy mode is on.
+        val groupTag = DeviceGroupManager.computeGroupTag(context, profile.installationId)
+        if (groupTag.isNotBlank()) {
+            data.put("instId", profile.installationId)
+            data.put("groupTag", groupTag)
+            // Extra fields for periodic paired-device delta sync (PairedSyncManager).
+            // The receiving GattClient verifies the groupTag before consuming these.
+            // NOTE: credentials (raApiKey) are intentionally excluded — they are only
+            // transferred during the explicit SAS-verified SyncGattServer flow.
+            data.put("updatedAt", profile.updatedAt)
+            if (profile.badgesJson.isNotBlank())   data.put("syncBadges",   profile.badgesJson)
+            if (profile.stickersJson.isNotBlank()) data.put("syncStickers", profile.stickersJson)
+            data.put("syncPrivacyMode", profile.privacyMode)
+            // Country + city — always synced to paired devices
+            if (profile.country.isNotBlank()) data.put("country", profile.country)
+            if (profile.city.isNotBlank())    data.put("city",    profile.city)
+        }
         val rotatingId = rotatingIdManager.currentRotatingId()
         val ts         = System.currentTimeMillis() / 1000
+        // Authenticate this payload: sign the rotatingId + time window with the
+        // device-bound Keystore key so peers can verify origin without breaking privacy.
+        val pubKey = PayloadSigner.ensureKeyPairAndGetPublicKey()
+        val sig    = PayloadSigner.sign(PayloadSigner.signedPayload(rotatingId, ts)) ?: ""
         return org.json.JSONObject().apply {
             put("v", BleConstants.PROTOCOL_VERSION)
             put("type", "profile")
             put("rotatingId", rotatingId)
             put("ts", ts)
+            put("pubKey", pubKey)
+            put("sig", sig)
             put("data", data)
-            // Cryptographic proof of ownership: ECDSA-P256 + SHA-256 signature over
-            // "thunderpass:v1:{userId}:{rotatingId}:{ts300}" using the Android Keystore
-            // private key.  Peers verify this with the public key stored in Supabase,
-            // proving the payload came from the device that generated the key pair.
-            // Omitted in privacy mode (userId is also withheld there).
-            if (!profile.privacyMode && profile.supabaseUserId.isNotBlank()) {
-                val msg = PayloadSigner.signedPayload(profile.supabaseUserId, rotatingId, ts)
-                PayloadSigner.sign(msg)?.let { put("sig", it) }
-            }
         }.toString()
     }
 }

@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 
-private const val TAG       = "ThunderPass/RetroRepo"
-private const val RETRO_SEP = "|||"  // matches RetroProfileCache separator
+private const val TAG = "ThunderPass/RetroRepo"
+private const val SEP = "|||"
 
 /**
  * Achievement trigger variants detected after a peer RA profile fetch.
@@ -48,60 +48,57 @@ object RetroRepository {
         ownUsername: String? = null,
     ): List<AchievementTrigger> {
         if (peerUsername.isBlank()) return emptyList()
+        try {
+            val result = RetroRetrofitClient.fetchRetroMetadata(peerUsername, auth)
+            val profile = result.getOrNull()
+            if (profile != null) {
+                val games = profile.recentlyPlayed.orEmpty()
+                snapshotDao.updateRetroStatsWithGames(
+                    id          = snapshotId,
+                    points      = profile.totalPoints,
+                    recentCount = profile.recentlyPlayedCount,
+                    gameTitles  = games.joinToString(SEP) { it.title },
+                    gameConsoles = games.joinToString(SEP) { it.consoleName },
+                    gameImages  = games.joinToString(SEP) { it.imageIcon.orEmpty() },
+                )
 
-        val result = RetroRetrofitClient.fetchRetroMetadata(peerUsername, auth)
-        val profile = result.getOrElse {
-            Log.w(TAG, "Could not fetch RA for $peerUsername: ${it.message}")
-            snapshotDao.markRetroFetchAttempted(snapshotId)
-            return emptyList()
-        }
+                // ── Achievement trigger evaluation ──
+                val triggers = mutableListOf<AchievementTrigger>()
 
-        // Persist in Room — store title + console lists so EncounterDetailScreen can show them
-        val recentGames  = profile.recentlyPlayed ?: emptyList()
-        val gameTitles   = recentGames.joinToString(RETRO_SEP) { it.title }
-        val gameConsoles = recentGames.joinToString(RETRO_SEP) { it.consoleName }
-        val gameImages   = recentGames.joinToString(RETRO_SEP) { it.imageIcon ?: "" }
-        snapshotDao.updateRetroStatsWithGames(
-            id           = snapshotId,
-            points       = profile.totalPoints,
-            recentCount  = profile.recentlyPlayedCount,
-            gameTitles   = gameTitles,
-            gameConsoles = gameConsoles,
-            gameImages   = gameImages,
-        )
-
-        Log.i(TAG, "Cached RA stats for $peerUsername: ${profile.totalPoints} pts, ${profile.recentlyPlayedCount} recent games")
-
-        // ── Achievement detection ──────────────────────────────────────────────
-        val triggers = mutableListOf<AchievementTrigger>()
-
-        // Platinum Pulse — peer has > 20,000 points
-        if (profile.totalPoints > 20_000L) {
-            triggers += AchievementTrigger.PlatinumPulse(peerUsername, profile.totalPoints)
-            Log.i(TAG, "🏆 Platinum Pulse triggered! $peerUsername has ${profile.totalPoints} pts")
-            com.thunderpass.data.StickerManager.award(context, "high_roller")
-        }
-
-        // Legendary Encounter — both players share a recently played game
-        if (!ownUsername.isNullOrBlank() && profile.recentlyPlayed != null) {
-            val peerGameIds = profile.recentlyPlayed.map { it.gameId }.toSet()
-            val ownResult = RetroRetrofitClient.fetchRetroMetadata(ownUsername, auth)
-            ownResult.getOrNull()?.recentlyPlayed
-                ?.firstOrNull { it.gameId in peerGameIds }
-                ?.let { shared ->
-                    triggers += AchievementTrigger.LegendaryEncounter(peerUsername, shared.title)
-                    Log.i(TAG, "⚡ Legendary Encounter! Shared game: ${shared.title}")
-                    com.thunderpass.data.StickerManager.award(context, "legendary")
+                // PlatinumPulse: peer has > 20k lifetime points
+                if (profile.totalPoints > 20_000) {
+                    triggers += AchievementTrigger.PlatinumPulse(peerUsername, profile.totalPoints)
+                    com.thunderpass.data.StickerManager.award(context, "high_roller")
                 }
-        }
 
-        // Retro Circuit — peer is an active dedicated player
-        if (profile.totalPoints > 100L && profile.recentlyPlayedCount >= 3) {
-            triggers += AchievementTrigger.RetroCircuit(peerUsername, profile.recentlyPlayedCount)
-            Log.i(TAG, "🔌 Retro Circuit triggered! $peerUsername played ${profile.recentlyPlayedCount} games recently")
-        }
+                // RetroCircuit: peer has > 100 points AND >= 3 recently played games
+                if (profile.totalPoints > 100 && profile.recentlyPlayedCount >= 3) {
+                    triggers += AchievementTrigger.RetroCircuit(peerUsername, profile.recentlyPlayedCount)
+                }
 
-        snapshotDao.markRetroFetchAttempted(snapshotId)
-        return triggers
+                // LegendaryEncounter: local user and peer share a recently-played game
+                if (!ownUsername.isNullOrBlank() && games.isNotEmpty()) {
+                    val ownResult = RetroRetrofitClient.fetchRetroMetadata(ownUsername, auth)
+                    val ownProfile = ownResult.getOrNull()
+                    if (ownProfile != null) {
+                        val ownGameIds = ownProfile.recentlyPlayed.orEmpty().map { it.gameId }.toSet()
+                        val shared = games.firstOrNull { it.gameId in ownGameIds }
+                        if (shared != null) {
+                            triggers += AchievementTrigger.LegendaryEncounter(peerUsername, shared.title)
+                            com.thunderpass.data.StickerManager.award(context, "legendary")
+                        }
+                    }
+                }
+
+                return triggers
+            } else {
+                Log.w(TAG, "fetchAndCache($peerUsername): API returned failure: ${result.exceptionOrNull()?.message}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchAndCache($peerUsername) failed", e)
+        } finally {
+            snapshotDao.markRetroFetchAttempted(snapshotId)
+        }
+        return emptyList()
     }
 }

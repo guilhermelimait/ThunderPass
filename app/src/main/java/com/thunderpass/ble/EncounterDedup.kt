@@ -1,5 +1,6 @@
 package com.thunderpass.ble
 
+import android.util.Log
 import com.thunderpass.ble.BleConstants.DEDUP_COOLDOWN_MS
 import com.thunderpass.data.db.dao.EncounterDao
 import com.thunderpass.data.db.entity.Encounter
@@ -19,6 +20,10 @@ import kotlinx.coroutines.sync.withLock
  * updates [Encounter.peerSnapshotId] on success.
  */
 class EncounterDedup(private val encounterDao: EncounterDao) {
+
+    private companion object {
+        const val TAG = "EncounterDedup"
+    }
 
     /** Prevents concurrent coroutines from racing past the check-then-insert. */
     private val mutex = Mutex()
@@ -40,7 +45,14 @@ class EncounterDedup(private val encounterDao: EncounterDao) {
         val lastSeen = encounterDao.lastSeenAt(rotatingId)
 
         val shouldRecord = lastSeen == null || (nowMs - lastSeen) >= DEDUP_COOLDOWN_MS
-        if (!shouldRecord) return@withLock null
+        if (!shouldRecord) {
+            val ageMs = nowMs - (lastSeen ?: 0L)
+            val remainingMin = ((DEDUP_COOLDOWN_MS - ageMs) / 60_000L)
+            Log.d(TAG, "Dedup BLOCKED rotId=${rotatingId.take(8)}… " +
+                    "age=${ageMs / 1000}s, cooldown=${DEDUP_COOLDOWN_MS / 60_000}min, " +
+                    "remaining≈${remainingMin}min")
+            return@withLock null
+        }
 
         val encounterId = encounterDao.insert(
             Encounter(

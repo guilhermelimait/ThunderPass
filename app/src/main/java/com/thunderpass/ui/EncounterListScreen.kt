@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.animation.core.*
@@ -305,6 +306,16 @@ private fun EncounterCard(
     val snapshot = item.snapshot
     val timeStr  = remember(enc.seenAt) { relativeTimeString(enc.seenAt) }
 
+    val ownDevicePalette = listOf(
+        Color(0xFFFFB300), // Amber
+        Color(0xFF06B6D4), // Cyan
+        Color(0xFF7C3AED), // Vivid Purple
+    )
+    val ownDeviceColorSeed = snapshot?.peerInstId?.takeIf { it.isNotBlank() }
+        ?: snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+        ?: enc.rotatingId
+    val ownDeviceColor = ownDevicePalette[kotlin.math.abs(ownDeviceColorSeed.hashCode()) % ownDevicePalette.size]
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -317,12 +328,31 @@ private fun EncounterCard(
             modifier          = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DiceBearAvatar(
-                seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                    ?: snapshot?.rotatingId
-                    ?: enc.rotatingId,
-                size = 52.dp,
-            )
+            if (snapshot?.avatarKind == "own_device") {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .background(
+                            color = ownDeviceColor,
+                            shape = RoundedCornerShape(12.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector        = Icons.Filled.SportsEsports,
+                        contentDescription = "Paired device",
+                        tint               = Color.White,
+                        modifier           = Modifier.size(30.dp),
+                    )
+                }
+            } else {
+                DiceBearAvatar(
+                    seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                        ?: snapshot?.rotatingId
+                        ?: enc.rotatingId,
+                    size = 52.dp,
+                )
+            }
 
             Spacer(Modifier.width(16.dp))
 

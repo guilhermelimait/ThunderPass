@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -55,7 +56,7 @@ fun EncounterDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(item?.snapshot?.displayName ?: "SparkyUser", fontWeight = FontWeight.Bold) },
+                title = { Text(if (item?.snapshot?.avatarKind == "own_device") item.snapshot?.greeting?.ifBlank { "Paired Device" } ?: "Paired Device" else item?.snapshot?.displayName ?: "SparkyUser", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -82,10 +83,30 @@ fun EncounterDetailScreen(
         } else {
             val enc      = item.encounter
             val snapshot = item.snapshot
+            val isOwnDevice = snapshot?.avatarKind == "own_device"
+
+            val ownDevicePalette = listOf(
+                Color(0xFFFFB300), // Amber
+                Color(0xFF06B6D4), // Cyan
+                Color(0xFF7C3AED), // Vivid Purple
+            )
+            val ownDeviceColorSeed = snapshot?.peerInstId?.takeIf { it.isNotBlank() }
+                ?: snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                ?: enc.rotatingId
+            val ownDeviceColor = ownDevicePalette[kotlin.math.abs(ownDeviceColorSeed.hashCode()) % ownDevicePalette.size]
+
+            // Own profile data — used when this card represents our paired device
+            val ownDisplayName  by vm.displayName.collectAsState()
+            val ownAvatarSeed   by vm.avatarSeed.collectAsState()
+            val ownVolts        by vm.voltsTotal.collectAsState()
+            val ownPasses       by vm.encounterCount.collectAsState()
+            val ownBadgeKeys    by vm.earnedBadgeKeys.collectAsState()
+            val ownStreak       by vm.encounterStreak.collectAsState()
 
             // Live reactive snapshot — re-emits when RA data is updated in Room.
             val peerSnapshotId = enc.peerSnapshotId ?: 0L
-            val liveSnapshot by vm.observeSnapshotById(peerSnapshotId).collectAsState(initial = snapshot)
+            val liveSnapshotFlow = remember(peerSnapshotId) { vm.observeSnapshotById(peerSnapshotId) }
+            val liveSnapshot by liveSnapshotFlow.collectAsState(initial = snapshot)
 
             // Auto-fetch peer RA data using the local user's API key when the peer
             // shared their retroUsername but data was never retrieved (e.g. they had
@@ -157,22 +178,50 @@ fun EncounterDetailScreen(
                                     verticalAlignment     = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    DiceBearAvatar(
-                                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                                            ?: snapshot?.rotatingId
-                                            ?: enc.rotatingId,
-                                        size = 72.dp,
-                                    )
+                                    if (isOwnDevice) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(72.dp)
+                                                .background(
+                                                    color = ownDeviceColor,
+                                                    shape = RoundedCornerShape(14.dp),
+                                                ),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector        = Icons.Filled.SportsEsports,
+                                                contentDescription = "Paired device",
+                                                tint               = Color.White,
+                                                modifier           = Modifier.size(40.dp),
+                                            )
+                                        }
+                                    } else {
+                                        DiceBearAvatar(
+                                            seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                                                ?: snapshot?.rotatingId
+                                                ?: enc.rotatingId,
+                                            size = 72.dp,
+                                        )
+                                    }
                                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                         Text(
-                                            text       = snapshot?.displayName ?: "Unknown SparkyUser",
+                                            text       = if (isOwnDevice) ownDisplayName else snapshot?.displayName ?: "Unknown SparkyUser",
                                             style      = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
                                             color      = Color.White,
                                             maxLines   = 1,
                                             overflow   = TextOverflow.Ellipsis,
                                         )
-                                        if (!snapshot?.greeting.isNullOrBlank()) {
+                                        if (isOwnDevice) {
+                                            Text(
+                                                text      = snapshot?.greeting?.ifBlank { null } ?: "Your paired device",
+                                                style     = MaterialTheme.typography.bodySmall,
+                                                fontStyle = FontStyle.Italic,
+                                                color     = Color.White.copy(alpha = 0.80f),
+                                                maxLines  = 2,
+                                                overflow  = TextOverflow.Ellipsis,
+                                            )
+                                        } else if (!snapshot?.greeting.isNullOrBlank()) {
                                             Text(
                                                 text      = "\u201C${snapshot!!.greeting}\u201D",
                                                 style     = MaterialTheme.typography.bodySmall,
@@ -182,7 +231,23 @@ fun EncounterDetailScreen(
                                                 overflow  = TextOverflow.Ellipsis,
                                             )
                                         }
-                                        if (snapshot == null) {
+                                        // Location line (flag/planet + city)
+                                        if (!isOwnDevice) {
+                                            val locParts = buildList {
+                                                snapshot?.peerCountry?.takeIf { it.isNotBlank() }?.let { add(locationEmoji(it)) }
+                                                snapshot?.peerCity?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                            }
+                                            if (locParts.isNotEmpty()) {
+                                                Text(
+                                                    text     = locParts.joinToString(" "),
+                                                    style    = MaterialTheme.typography.bodySmall,
+                                                    color    = Color.White.copy(alpha = 0.80f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                        }
+                                        if (!isOwnDevice && snapshot == null) {
                                             Text(
                                                 text  = "Profile exchange pending\u2026",
                                                 style = MaterialTheme.typography.labelSmall,
@@ -196,15 +261,22 @@ fun EncounterDetailScreen(
                                     modifier              = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                 ) {
-                                    TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    if (isOwnDevice) {
+                                        TravelerStat("Volts",  "%,d".format(ownVolts), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Badges", ownBadgeKeys.size.toString(), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Passes", ownPasses.toString(), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Streak", "${ownStreak}d", Color.White, Color.White.copy(alpha = 0.70f))
+                                    } else {
+                                        TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    }
                                 }
                             }
                             // Friend toggle — top-right corner of the card
                             IconButton(
-                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerUserId) },
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerInstId) },
                                 modifier = Modifier.align(Alignment.TopEnd),
                             ) {
                                 Icon(
@@ -397,22 +469,50 @@ fun EncounterDetailScreen(
                                     verticalAlignment     = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    DiceBearAvatar(
-                                        seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
-                                            ?: snapshot?.rotatingId
-                                            ?: enc.rotatingId,
-                                        size = 56.dp,
-                                    )
+                                    if (isOwnDevice) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .background(
+                                                    color = ownDeviceColor,
+                                                    shape = RoundedCornerShape(12.dp),
+                                                ),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector        = Icons.Filled.SportsEsports,
+                                                contentDescription = "Paired device",
+                                                tint               = Color.White,
+                                                modifier           = Modifier.size(32.dp),
+                                            )
+                                        }
+                                    } else {
+                                        DiceBearAvatar(
+                                            seed = snapshot?.avatarSeed?.takeIf { it.isNotBlank() }
+                                                ?: snapshot?.rotatingId
+                                                ?: enc.rotatingId,
+                                            size = 56.dp,
+                                        )
+                                    }
                                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(
-                                            text       = snapshot?.displayName ?: "Unknown SparkyUser",
+                                            text       = if (isOwnDevice) ownDisplayName else snapshot?.displayName ?: "Unknown SparkyUser",
                                             style      = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color      = Color.White,
                                             maxLines   = 1,
                                             overflow   = TextOverflow.Ellipsis,
                                         )
-                                        if (!snapshot?.greeting.isNullOrBlank()) {
+                                        if (isOwnDevice) {
+                                            Text(
+                                                text      = snapshot?.greeting?.ifBlank { null } ?: "Your paired device",
+                                                style     = MaterialTheme.typography.bodySmall,
+                                                fontStyle = FontStyle.Italic,
+                                                color     = Color.White.copy(alpha = 0.80f),
+                                                maxLines  = 2,
+                                                overflow  = TextOverflow.Ellipsis,
+                                            )
+                                        } else if (!snapshot?.greeting.isNullOrBlank()) {
                                             Text(
                                                 text      = "\u201C${snapshot!!.greeting}\u201D",
                                                 style     = MaterialTheme.typography.bodySmall,
@@ -422,7 +522,23 @@ fun EncounterDetailScreen(
                                                 overflow  = TextOverflow.Ellipsis,
                                             )
                                         }
-                                        if (snapshot == null) {
+                                        // Location line (flag/planet + city)
+                                        if (!isOwnDevice) {
+                                            val locParts = buildList {
+                                                snapshot?.peerCountry?.takeIf { it.isNotBlank() }?.let { add(locationEmoji(it)) }
+                                                snapshot?.peerCity?.takeIf { it.isNotBlank() }?.let { add(it) }
+                                            }
+                                            if (locParts.isNotEmpty()) {
+                                                Text(
+                                                    text     = locParts.joinToString(" "),
+                                                    style    = MaterialTheme.typography.bodySmall,
+                                                    color    = Color.White.copy(alpha = 0.80f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                        }
+                                        if (!isOwnDevice && snapshot == null) {
                                             Text(
                                                 text  = "Profile exchange pending\u2026",
                                                 style = MaterialTheme.typography.labelSmall,
@@ -436,15 +552,22 @@ fun EncounterDetailScreen(
                                     modifier              = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                 ) {
-                                    TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
-                                    TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    if (isOwnDevice) {
+                                        TravelerStat("Volts",  "%,d".format(ownVolts), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Badges", ownBadgeKeys.size.toString(), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Passes", ownPasses.toString(), Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Streak", "${ownStreak}d", Color.White, Color.White.copy(alpha = 0.70f))
+                                    } else {
+                                        TravelerStat("Volts",  snapshot?.peerVoltsTotal?.let { "%,d".format(it) } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Badges", snapshot?.peerBadgesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Passes", snapshot?.peerPassesCount?.toString() ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                        TravelerStat("Streak", snapshot?.peerStreakCount?.let { "${it}d" } ?: "—", Color.White, Color.White.copy(alpha = 0.70f))
+                                    }
                                 }
                             }
                             // Friend toggle — top-right corner of the card
                             IconButton(
-                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerUserId) },
+                                onClick  = { vm.toggleFriend(enc.id, enc.isFriend, liveSnapshot?.peerInstId) },
                                 modifier = Modifier.align(Alignment.TopEnd),
                             ) {
                                 Icon(

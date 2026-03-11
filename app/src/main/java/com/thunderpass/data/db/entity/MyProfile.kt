@@ -70,12 +70,13 @@ data class MyProfile(
     /** Comma-separated badge keys the user has earned (e.g. "alfa_tester,node_zero"). */
     val badgesJson: String = "",
 
-    /**
-     * Supabase auth UUID — written locally after a successful sign-in so that the
-     * GATT server can include it in the profile payload for peer identity dedup.
-     * Empty string when the user is not signed in.
-     */
-    val supabaseUserId: String = "",
+    // ── Location ────────────────────────────────────────────────────────────
+
+    /** ISO 3166-1 alpha-2 country code, e.g. "BR", "US". Empty = not set. */
+    val country: String = "",
+
+    /** Free-text city name, e.g. "São Paulo". Empty = not set. */
+    val city: String = "",
 
     /**
      * When true the BLE profile exchange sends "Private User" instead of the
@@ -94,9 +95,9 @@ data class MyProfile(
     val deviceType: String = "",
 
     /**
-     * Base64url-encoded DER P-256 public key registered in Supabase `profiles.public_key`.
-     * Populated by [ProfileViewModel.syncToSupabase] after the Android Keystore key pair
-     * is generated. Peers fetch this to verify GATT payload signatures.
+     * Base64url-encoded DER P-256 public key for this device's signing key pair.
+     * Populated after Keystore key pair generation on first launch.
+     * Peers use this to verify GATT payload signatures.
      */
     @ColumnInfo(name = "payload_public_key")
     val payloadPublicKey: String = "",

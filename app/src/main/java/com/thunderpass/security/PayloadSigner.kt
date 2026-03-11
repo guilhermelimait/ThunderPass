@@ -14,25 +14,22 @@ import java.util.Base64
  * Manages a device-bound P-256 signing key pair stored in the Android Keystore.
  *
  * ## Purpose
- * Provides cryptographic proof that a GATT payload was produced by the device
- * that registration the Supabase userId, not by someone who merely copied the UUID.
+ * Provides cryptographic proof that a GATT payload was produced by this specific
+ * device, not by someone who merely copied the installationId.
  *
  * ## Key lifecycle
  * - The key pair is generated once on first call to [ensureKeyPairAndGetPublicKey] and
  *   stored in the Android Keystore (hardware-backed TEE on most devices).
  * - The **private key never leaves the Keystore** — it cannot be extracted or exported.
- * - The **public key** is uploaded to Supabase `profiles.public_key` so peers can
- *   verify signatures without any server-side function.
+ * - The **public key** is shared with peers via the GATT payload so they can verify
+ *   signatures without any server-side function.
  * - If the app is reinstalled or the device is factory-reset, a new key pair is generated
- *   and the new public key overwrites the old one in Supabase on next sync.
+ *   automatically on next launch.
  *
  * ## Signed message format
- * `"thunderpass:v1:{userId}:{rotatingId}:{ts300}"`
+ * `"thunderpass:v1:{installationId}:{rotatingId}:{ts300}"`
  * where `ts300 = floor(epochSeconds / 300)` — a new signature is required every 5 minutes,
  * preventing indefinite replay attacks.
- *
- * ## Supabase prerequisite
- * The `profiles` table must have: `ALTER TABLE profiles ADD COLUMN public_key TEXT DEFAULT NULL;`
  */
 object PayloadSigner {
 
@@ -44,7 +41,7 @@ object PayloadSigner {
      * Idempotent — safe to call on every launch.
      *
      * @return Base64url-encoded DER SubjectPublicKeyInfo of the public key,
-     *         ready to store in Supabase `profiles.public_key`.
+     *         ready to share with peers as `profiles.public_key`.
      */
     fun ensureKeyPairAndGetPublicKey(): String {
         val ks = KeyStore.getInstance(PROVIDER).also { it.load(null) }
@@ -103,12 +100,28 @@ object PayloadSigner {
      * Builds the canonical message string to sign or verify for a given exchange.
      *
      * Binds together:
-     * - `userId`    — identifies the claiming Supabase account
+     * - `installationId` — identifies the claiming device
      * - `rotatingId` — ties the signature to this specific BLE rotation window
      * - `ts300`     — `floor(epochSeconds / 300)` — expires every 5 minutes
      */
     fun signedPayload(userId: String, rotatingId: String, epochSeconds: Long): String {
         val ts300 = epochSeconds / 300
         return "thunderpass:v1:$userId:$rotatingId:$ts300"
+    }
+
+    /**
+     * Builds the canonical message string for BLE mutual authentication (protocol v2).
+     *
+     * Binds together:
+     * - `rotatingId` — ties the signature to this BLE rotation window
+     * - `ts300`      — `floor(epochSeconds / 300)` — expires every 5 minutes
+     *
+     * Deliberately excludes userId/installationId so this format is safe for
+     * privacy-mode devices too: every ThunderPass device can be authenticated
+     * without revealing a stable long-term identifier.
+     */
+    fun signedPayload(rotatingId: String, epochSeconds: Long): String {
+        val ts300 = epochSeconds / 300
+        return "thunderpass:v2:$rotatingId:$ts300"
     }
 }

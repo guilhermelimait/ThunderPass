@@ -30,13 +30,6 @@ interface MyProfileDao {
     @Query("UPDATE my_profile SET joulesTotal = MAX(0, joulesTotal - :amount) WHERE id = 1")
     suspend fun spendVolts(amount: Long)
 
-    /**
-     * Persist the Supabase auth UUID locally after sign-in so the GATT server can
-     * include it in the profile payload for peer identity dedup.
-     */
-    @Query("UPDATE my_profile SET supabaseUserId = :userId WHERE id = 1")
-    suspend fun updateSupabaseUserId(userId: String)
-
     /** Persist the device's P-256 public key after Keystore key pair generation. */
     @Query("UPDATE my_profile SET payload_public_key = :key WHERE id = 1")
     suspend fun updatePayloadPublicKey(key: String)

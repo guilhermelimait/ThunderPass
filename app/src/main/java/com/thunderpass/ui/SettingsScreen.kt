@@ -1,16 +1,24 @@
 package com.thunderpass.ui
 
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.Manifest
+import android.app.AppOpsManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.os.Process
 import android.provider.Settings as AndroidSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,6 +28,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -36,30 +47,21 @@ fun SettingsScreen(
     onDarkModeToggle: (Boolean) -> Unit,
     onMusicChange: (Boolean) -> Unit = {},
     onBack: () -> Unit = {},
+    onNavigateToDeviceSync: () -> Unit = {},
     vm: HomeViewModel = viewModel(),
+    highlightSection: String = "",
 ) {
     val context = LocalContext.current
+    val activity = context as? Activity
     val prefs = remember { context.getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE) }
     var musicEnabled by remember { mutableStateOf(prefs.getBoolean("music_enabled", true)) }
-    var screenOnActive by remember { mutableStateOf(prefs.getBoolean("screen_on_active", true)) }
-
-    val safeZoneActive  by vm.safeZoneActive.collectAsState()
     val scanMode        by vm.scanMode.collectAsState()
     val privacyMode     by vm.privacyMode.collectAsState()
+    val bleEnabled      by vm.bleEnabled.collectAsState()
+    val autoWalkEnabled by vm.autoWalkEnabled.collectAsState()
     val availableUpdate by vm.availableUpdate.collectAsState()
     var advancedExpanded by remember { mutableStateOf(false) }
     var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
-    // ── Hardware (AYN Thor LED flash) ─────────────────────────────────────────
-    var ledFlashEnabled  by remember { mutableStateOf(prefs.getBoolean("led_flash_enabled", true)) }
-    // WRITE_SECURE_SETTINGS is granted via ADB (not via the system settings UI):
-    //   adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS
-    var canWriteSettings by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.WRITE_SECURE_SETTINGS
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
 
     // ── Permission state — re-checked on every recomposition ──────────────────
     var notifGranted by remember {
@@ -80,11 +82,46 @@ fun SettingsScreen(
             }
         )
     }
+    var usageAccessGranted by remember {
+        mutableStateOf(hasUsageStatsPermission(context))
+    }
+    var batteryOptGranted by remember {
+        mutableStateOf(
+            (context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager)
+                ?.isIgnoringBatteryOptimizations(context.packageName) == true
+        )
+    }
+    var activityRecognitionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION)
+                == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    // Re-check permissions when returning from system settings
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                usageAccessGranted = hasUsageStatsPermission(context)
+                batteryOptGranted = (context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager)
+                    ?.isIgnoringBatteryOptimizations(context.packageName) == true
+                notifGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                bleGranted = blePermissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+                activityRecognitionGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // ── Permission launchers ───────────────────────────────────────────────────
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> notifGranted = granted }
+
+    val activityRecLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> activityRecognitionGranted = granted }
 
     val bleLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -102,10 +139,24 @@ fun SettingsScreen(
             )
         },
     ) { innerPadding ->
+    val scrollState = rememberScrollState()
+    // Auto-scroll to the permissions section when highlighted
+    val permissionsSectionY = remember { mutableStateOf(0) }
+    LaunchedEffect(highlightSection) {
+        if (highlightSection == "permissions" && permissionsSectionY.value > 0) {
+            scrollState.animateScrollTo(permissionsSectionY.value)
+        }
+    }
+    // Retry scroll once the layout position is known
+    LaunchedEffect(permissionsSectionY.value) {
+        if (highlightSection == "permissions" && permissionsSectionY.value > 0) {
+            scrollState.animateScrollTo(permissionsSectionY.value)
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scrollState)
             .padding(innerPadding)
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -168,13 +219,10 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             SettingToggleRow(
-                label           = "Keep Screen On",
-                subtitle        = "Prevent the screen from turning off while ThunderPass is active",
-                checked         = screenOnActive,
-                onCheckedChange = { enabled ->
-                    screenOnActive = enabled
-                    prefs.edit().putBoolean("screen_on_active", enabled).apply()
-                },
+                label           = "BLE Service",
+                subtitle        = "Allow ThunderPass to scan and exchange Sparks over Bluetooth. When off, the service will not run or restart on boot.",
+                checked         = bleEnabled,
+                onCheckedChange = { vm.setBleEnabled(it) },
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -185,7 +233,14 @@ fun SettingsScreen(
                 checked         = privacyMode,
                 onCheckedChange = { vm.setPrivacyMode(it) },
             )
-        }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            SettingToggleRow(
+                label           = "Auto-Walk Mode",
+                subtitle        = "BLE pauses automatically when you\u2019re still for 10 minutes and resumes when you start walking \u2014 saves battery at home",
+                checked         = autoWalkEnabled,
+                onCheckedChange = { vm.setAutoWalk(it) },
+            )        }
 
         // ── Appearance ───────────────────────────────────────────────────
         SettingsSection("Appearance") {
@@ -198,7 +253,17 @@ fun SettingsScreen(
         }
 
         // ── Permissions ───────────────────────────────────────────────────────
-        SettingsSection("Permissions") {
+        Column(
+            modifier = Modifier
+                .onGloballyPositioned { coords ->
+                    permissionsSectionY.value = coords.positionInParent().y.toInt()
+                },
+        ) {
+            val allPermsGranted = notifGranted && bleGranted && activityRecognitionGranted && usageAccessGranted && batteryOptGranted
+            SettingsSection(
+                title = "Permissions",
+                highlightTitle = highlightSection == "permissions" && !allPermsGranted,
+            ) {
             // Notifications
             PermissionRow(
                 label    = "Notifications",
@@ -206,7 +271,13 @@ fun SettingsScreen(
                 granted  = notifGranted,
                 onRequest = {
                     if (notifGranted) {
-                        // Already granted — open app settings so user can revoke if desired
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
+                    } else if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                        // Permanently denied or never asked — open app settings
                         context.startActivity(
                             Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                 data = Uri.parse("package:${context.packageName}")
@@ -232,6 +303,15 @@ fun SettingsScreen(
                                 data = Uri.parse("package:${context.packageName}")
                             }
                         )
+                    } else if (activity != null && blePermissions.any { perm ->
+                        !activity.shouldShowRequestPermissionRationale(perm)
+                    }) {
+                        // At least one BLE permission permanently denied — open app settings
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
                     } else {
                         bleLauncher.launch(blePermissions)
                     }
@@ -240,27 +320,55 @@ fun SettingsScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Flash LEDs on Encounter (AYN Thor hardware)
-            SettingToggleRow(
-                label           = "Flash LEDs on Encounter",
-                subtitle        = "Blink the joystick LEDs yellow 3× when a SparkyUser is found nearby (AYN Thor)",
-                checked         = ledFlashEnabled,
-                onCheckedChange = { enabled ->
-                    ledFlashEnabled = enabled
-                    prefs.edit().putBoolean("led_flash_enabled", enabled).apply()
-                    if (enabled) canWriteSettings = ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.WRITE_SECURE_SETTINGS
-                    ) == PackageManager.PERMISSION_GRANTED
+            // Activity Recognition — step counter for Walking Volts
+            PermissionRow(
+                label    = "Activity Recognition",
+                subtitle = "Step counter for Walking Volts (100 steps = 1 Volt)",
+                granted  = activityRecognitionGranted,
+                onRequest = {
+                    if (activityRecognitionGranted) {
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
+                    } else if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.ACTIVITY_RECOGNITION)) {
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
+                    } else {
+                        activityRecLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                    }
                 },
             )
-            if (ledFlashEnabled && !canWriteSettings) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                SettingActionRow(
-                    label       = "Permission required",
-                    subtitle    = "Run once via ADB: adb shell pm grant com.thunderpass android.permission.WRITE_SECURE_SETTINGS",
-                    buttonLabel = "App Info",
-                    onClick     = {
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            // Battery Optimization — keep BLE scanning alive in background
+            @SuppressLint("BatteryLife")
+            PermissionRow(
+                label    = "Run in Background",
+                subtitle = "Keep BLE scanning alive while the app is in the background (Doze whitelist)",
+                granted  = batteryOptGranted,
+                onRequest = {
+                    if (batteryOptGranted) {
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                        )
+                    } else {
                         runCatching {
+                            context.startActivity(
+                                Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                            )
+                        }.onFailure {
+                            // Fallback: open app battery settings page
                             context.startActivity(
                                 Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                     data = Uri.parse("package:${context.packageName}")
@@ -268,44 +376,49 @@ fun SettingsScreen(
                                 }
                             )
                         }
-                    },
-                )
-            }
-        }
-
-        // ── App Management ────────────────────────────────────────────────────
-        SettingsSection("App Management") {
-            // Usage Access — required for the daily play-time tracker
-            SettingActionRow(
-                label       = "Usage Access",
-                subtitle    = "Required for the daily gaming play-time tracker (🎮 Daily Play Time)",
-                buttonLabel = "Open",
-                onClick     = {
-                    context.startActivity(
-                        Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
+                    }
                 },
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // App Info — full system settings page for ThunderPass
-            SettingActionRow(
-                label       = "App Info",
-                subtitle    = "View storage, permissions, and other system-level app settings",
-                buttonLabel = "Open",
-                onClick     = {
-                    context.startActivity(
-                        Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.parse("package:${context.packageName}")
-                        }
-                    )
+            // Usage Access — required for the daily play-time tracker
+            PermissionRow(
+                label    = "Usage Access",
+                subtitle = "Required for the daily gaming play-time tracker (Daily Play Time)",
+                granted  = usageAccessGranted,
+                onRequest = {
+                    try {
+                        // Try to open usage access settings directly for this app (Android 10+)
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS)
+                                .setData(Uri.parse("package:${context.packageName}"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    } catch (_: Exception) {
+                        // Fallback: open the general usage access list
+                        context.startActivity(
+                            Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
                 },
+            )
+        }
+        } // close permissions Column
+
+        // ── Device Sync ───────────────────────────────────────────────────────
+        SettingsSection("Device Sync") {
+            SettingActionRow(
+                label       = "Sync Profile Between Devices",
+                subtitle    = "Transfer your profile to another device or keep two devices in sync using a secure pairing code",
+                buttonLabel = "Open",
+                onClick     = onNavigateToDeviceSync,
             )
         }
 
         // ── Advanced (collapsible) ────────────────────────────────────────────
+        var showResetDialog by remember { mutableStateOf(false) }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 modifier              = Modifier
@@ -337,16 +450,65 @@ fun SettingsScreen(
                         modifier            = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Safe Zone — completely pauses all BLE activity
-                        SettingToggleRow(
-                            label           = "Safe Zone",
-                            subtitle        = "Fully pause all BLE — no scanning or advertising (e.g. at home or work). This overrides the Scanning Mode setting above.",
-                            checked         = safeZoneActive,
-                            onCheckedChange = { vm.setSafeZone(it) },
+                        SettingActionRow(
+                            label       = "Reset All Data",
+                            subtitle    = "⚠ Erase your profile, encounters, step history, and all local settings. This action cannot be undone — all local data will be permanently lost.",
+                            buttonLabel = "Reset",
+                            onClick     = { showResetDialog = true },
                         )
                     }
                 }
             }
+        }
+
+        if (showResetDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetDialog = false },
+                title = { Text("Reset All Data?") },
+                text  = {
+                    Text(
+                        "This will permanently delete your profile, all encounters, " +
+                        "step history, badges, stickers, and every local setting.\n\n" +
+                        "This cannot be undone."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showResetDialog = false
+
+                            // ── 1. Clear ALL SharedPreferences (plain + encrypted) ──
+                            val prefsDir = java.io.File(context.applicationInfo.dataDir, "shared_prefs")
+                            if (prefsDir.isDirectory) {
+                                prefsDir.listFiles()?.forEach { it.delete() }
+                            }
+
+                            // ── 2. Delete Room database files ──
+                            context.deleteDatabase("thunderpass.db")
+                            context.deleteDatabase("thunderpass.db-wal")
+                            context.deleteDatabase("thunderpass.db-shm")
+
+                            // ── 3. Wipe caches (Coil disk cache, etc.) ──
+                            context.cacheDir?.deleteRecursively()
+
+                            // ── 4. Restart app ──
+                            val pm = context.packageManager
+                            val intent = pm.getLaunchIntentForPackage(context.packageName)
+                            if (intent != null) {
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                Runtime.getRuntime().exit(0)
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text("Reset Everything") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
         }
 
         // ── Updates ───────────────────────────────────────────────────────────
@@ -383,13 +545,21 @@ fun SettingsScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsSection(
+    title: String,
+    highlightTitle: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text       = title.uppercase(),
             style      = MaterialTheme.typography.labelSmall,
-            color      = MaterialTheme.colorScheme.primary,
+            color      = if (highlightTitle) Color.White else MaterialTheme.colorScheme.primary,
             fontFamily = FontFamily.Monospace,
+            modifier   = if (highlightTitle) Modifier
+                .background(Color(0xFFB71C1C), RoundedCornerShape(4.dp))
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+            else Modifier,
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -486,4 +656,23 @@ private fun SettingActionRow(
             Text(buttonLabel)
         }
     }
+}
+
+private fun hasUsageStatsPermission(context: android.content.Context): Boolean {
+    val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as AppOpsManager
+    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            context.packageName,
+        )
+    } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            context.packageName,
+        )
+    }
+    return mode == AppOpsManager.MODE_ALLOWED
 }

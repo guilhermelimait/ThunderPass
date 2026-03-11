@@ -71,14 +71,14 @@ interface EncounterDao {
     @Query("SELECT * FROM encounter WHERE isFriend = 1 ORDER BY seenAt DESC")
     fun observeFriends(): Flow<List<Encounter>>
 
-    /** Total friend count — used for Supabase sync. */
+    /** Total friend count. */
     @Query("SELECT COUNT(*) FROM encounter WHERE isFriend = 1")
     suspend fun countFriends(): Int
 
     /**
      * Delete a provisional encounter row.
-     * Called when post-GATT dedup determines this user was already encountered
-     * within the 24-hour window, or when Supabase identity verification fails.
+     * Called when post-GATT dedup determines this device was already encountered
+     * within the 24-hour window.
      */
     @Query("DELETE FROM encounter WHERE id = :id")
     suspend fun delete(id: Long)
@@ -99,31 +99,31 @@ interface EncounterDao {
     suspend fun updateSeenAt(id: Long, seenAt: Long)
 
     /**
-     * Find the most recent encounter whose linked peer snapshot belongs to [userId].
+     * Find the most recent encounter whose linked peer snapshot belongs to [peerInstId].
      * Used together with [updateSeenAt] to refresh an existing pass instead of
-     * inserting a duplicate when the same user is re-encountered within the dedup window.
+     * inserting a duplicate when the same device is re-encountered within the dedup window.
      */
     @Query("""
         SELECT e.id FROM encounter e
         INNER JOIN peer_profile_snapshot p ON e.peerSnapshotId = p.id
-        WHERE p.peerUserId = :userId
+        WHERE p.peerInstId = :peerInstId
         ORDER BY e.seenAt DESC
         LIMIT 1
     """)
-    suspend fun getMostRecentEncounterIdForUser(userId: String): Long?
+    suspend fun getMostRecentEncounterIdForPeer(peerInstId: String): Long?
 
     /**
-     * Set the friend flag on ALL encounter rows linked to a peer with [peerUserId].
+     * Set the friend flag on ALL encounter rows linked to a peer with [peerInstId].
      * Called on friend-toggle so every historical row for the same identity stays
      * consistent — prevents the same person appearing in both Sparks and Friends.
      */
     @Query("""
         UPDATE encounter SET isFriend = :isFriend
         WHERE peerSnapshotId IN (
-            SELECT id FROM peer_profile_snapshot WHERE peerUserId = :peerUserId
+            SELECT id FROM peer_profile_snapshot WHERE peerInstId = :peerInstId
         )
     """)
-    suspend fun setFriendByUserId(peerUserId: String, isFriend: Boolean)
+    suspend fun setFriendByInstId(peerInstId: String, isFriend: Boolean)
 
     /**
      * Count encounters whose [rotatingId] matches [mac] (i.e. same hardware address),

@@ -10,10 +10,13 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 | 1 | StreetPass Core | ✅ Complete |
 | 2 | Energy & Quality of Life | ✅ Complete |
 | 3 | Fun Layer & Retro | ✅ Complete |
-| 4 | Accounts & Cloud Sync | ✅ Partial |
+| 4 | Accounts & Cloud Sync | ❌ Removed |
 | 5 | UX Overhaul | ✅ Complete |
-| 6 | Platform Growth | 🔄 In Progress |
+| 6 | Platform Growth | ✅ Complete |
 | 7 | UI Polish & Feature Completion | 🔄 In Progress |
+| 8 | Security Hardening & Release Readiness | 🔄 In Progress |
+
+**Current release:** v0.8.0 (versionCode 15) — 2×2 widget, adaptive icon, security hardening (FLAG_SECURE, data extraction rules), Obtainium support.
 
 ---
 
@@ -66,17 +69,19 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 
 ---
 
-## Milestone 4 — Accounts and Cloud Sync
-**Goal:** Introduce optional cloud identity so users' data is safe and accessible across reinstalls.
+## Milestone 4 — Accounts and Cloud Sync *(Removed)*
+**Goal:** ~~Introduce optional cloud identity so users’ data is safe and accessible across reinstalls.~~
 
-- [x] Supabase Email OTP sign-in (no password required)
-- [x] **Anonymous sign-in** — every device automatically gets a Supabase session on first launch, no account creation required. Used for encounter verification and 24-hour identity deduplication.
-- [x] Auto-sync profile to Supabase `profiles` table (display name, greeting, avatar seed, ghost score, stickers)
-- [x] Web dashboard (GitHub Pages)
-- [x] Profile sync triggered after Spark encounters — dedup path now refreshes friend card with latest data instead of dropping it
-- [ ] Optional encounter backup and restore
-- [ ] Remote blocklist and privacy controls
-- [ ] GitHub-managed deployment automation
+**Status**: All Supabase code has been removed. ThunderPass is now fully offline — no cloud servers, no accounts, no internet required. The features below were implemented but have been deliberately stripped in favor of the offline-first architecture.
+
+- [x] ~~Supabase Email OTP sign-in (no password required)~~ — **removed**
+- [x] ~~Anonymous sign-in~~ — **removed**
+- [x] ~~Auto-sync profile to Supabase~~ — **removed**
+- [x] Web dashboard (GitHub Pages) — static page remains at `docs/index.html`
+- [x] Profile sync triggered after Spark encounters — dedup path now refreshes friend card with latest data instead of dropping it (local-only)
+- [ ] ~~Optional encounter backup and restore~~ — deferred
+- [ ] ~~Remote blocklist and privacy controls~~ — deferred
+- [ ] ~~GitHub-managed deployment automation~~ — deferred
 
 ---
 
@@ -141,14 +146,14 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 - [x] LED Flash on Encounter moved to Permissions section; requested at install time
 - [x] Safe Zone toggle in Advanced
 - [x] Keep-screen-on while ThunderPass service is active
-- [x] OTA update check: polls GitHub Releases API on launch; amber banner with Download button if a newer version is found
+- [x] ~~OTA update check: polls GitHub Releases API on launch~~ — **removed** (`OtaChecker.kt` deleted with Supabase code; `HomeViewModel.availableUpdate` is dead code, always null)
 - [x] Background music toggle (default on; plays `thunderpass-bg.mp3` on open)
 - [x] Privacy Mode toggle
 - [x] App management section with permission shortcuts and service controls
 
 ### 5.9 About Screen
-- [x] Ko-fi / GitHub / Discord social links as icon circles (white icon on dark circle / dark icon on light circle)
-- [x] Developer avatar pulled from Ko-fi profile
+// [x] GitHub / Discord social links as icon circles (white icon on dark circle / dark icon on light circle)
+// [x] Developer avatar (no Ko-fi)
 - [x] Gradient card wrapper with decorative squares (same style as Home/Badges/Profile cards)
 - [x] All content contained inside card — card never touches screen edges
 - [x] Back button / TopAppBar matching all other screens
@@ -165,11 +170,15 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 ---
 
 ## Milestone 6 — Platform Growth *(In Progress)*
-**Goal:** Expand the platform with server-side intelligence, location events, and a versioned BLE protocol.
+**Goal:** Expand the platform with a versioned BLE protocol, connection resilience, and future event systems.
 
-- [x] Profile synced from Supabase on startup — server data applied only when newer than local state
-- [ ] Versioned BLE protocol extensions (backward-compatible)
+- [x] ~~Profile synced from Supabase on startup~~ — **removed** (Supabase deleted; app is fully offline)
+- [x] Versioned BLE protocol extensions — GATT payload versioned, backward-compatible
 - [x] Stats over BLE: Volts, badge count, streaks, and pass count included in GATT payload — shared even in privacy mode (only stable identity fields are withheld)
+- [x] GattClient connection retry: up to 2 retries (3 total attempts) with 2.5 s delay on pre-connection failures (e.g. BLE race condition status=62). Fresh ephemeral ECDH keys per retry.
+- [x] **2×2 home screen widget** — profile card (avatar + name + status + Volts) + Passes / Badges / Streak stats row; registered alongside the existing 2×1 toggle widget
+- [x] EncounterWidget unregistered from manifest — only the two ThunderPass-branded widgets exposed in the picker
+- [x] Widget sync fixed — all 6 call sites (BleService, HomeViewModel, ToggleAction) now refresh both the 2×1 and 2×2 widgets together, preventing stale state
 - [ ] Power Surge Events: location-based 2× Volt multipliers
 - [ ] Optional encounter cloud backup and restore
 - [ ] Remote privacy controls and blocklist
@@ -187,7 +196,8 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 - [ ] Shared-profile dedup: if same profile passes again, update the last-seen timestamp only — do not create a new card when the encounter is within 4 hours
 
 ### 7.2 Home Screen
-- [ ] Header area: gradient card with decorative squares matching Badges/About card style
+- [x] Header area: gradient card with decorative squares matching Badges/About card style
+- [x] Header: Volts count on the right side (⚡ + voltsTotal), clickable → Shop
 - [ ] Light shadows on action buttons and animation area
 - [ ] ThunderPass enable toggle moved to above the animation area (not inside it)
 - [ ] Animation area aligned with top of the left-hand button column
@@ -221,6 +231,8 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 - [ ] **FriendlyFire with Hardcore Sync**: awarded when adding the first friend to favourites; values and positions swapped with its previous definition
 
 ### 7.7 RetroAchievements
+- [x] RetroRepository.fetchAndCache() fully implemented — HTTP fetch via OkHttp, Room persistence, 3 achievement triggers (PlatinumPulse, LegendaryEncounter, RetroCircuit)
+- [x] RA username resolution priority: Room → EncryptedSharedPreferences → cache (fixes stale mid-typing cache poisoning)
 - [ ] Always show softcore points for the peer (on friend card and own profile when RA is connected)
 - [ ] Remove Web API key field — RA public profile data accessible with username only
 - [ ] Retro card text rendered in white for readability
@@ -229,13 +241,13 @@ ThunderPass is a modern StreetPass-inspired Android app built on Bluetooth Low E
 - [ ] Do not create a "Last Passed By" entry for an unconfirmed traveler (no data confirmed from server); prefer showing nothing over phantom or duplicate users farming Volts
 - [ ] Validate uniqueness before crediting any Volts
 
-### 7.9 Identity & Supabase
-- [ ] Use device-derived installation ID + anonymous Supabase session to confirm a user is unique without requiring sign-in
-- [ ] Display total unique-user count (server-side) on the web dashboard
-- [ ] Roadmap note added: users who delete the app or factory-reset their device will receive a new anonymous identity; named account linking is planned for a future version
+### 7.9 Identity *(Revised \u2014 Supabase Removed)*
+- [x] Device-derived installation ID used for local encounter dedup and device sync (no server confirmation needed)
+- [ ] ~~Display total unique-user count (server-side) on the web dashboard~~ \u2014 deferred (no server)
+- [ ] ~~Roadmap note: users who delete the app or factory-reset lose data; named account linking planned~~ \u2014 documented above in \"What Happens if You Delete the App\"
 
 ### 7.10 Known Bugs
-- [ ] **LED flash blinking not working** — investigate `flashThorLeds()` in `BleService`, verify `WRITE_SECURE_SETTINGS` path on AYN Thor 2
+- [x] **LED flash blinking not working** — fixed: `getString(…) ?: return` bailed when key not yet present in Secure settings; now proceeds and only restores previous color if it existed
 - [ ] **Avatar not pre-loaded in Sparky Editor** — when entering the editor, sliders must reflect the currently displayed avatar (random or saved), not defaults
 - [ ] **Online profile cards not auto-refreshing** — every time the app connects to the internet it should re-fetch profile data for all saved pass cards and update them locally
 
@@ -285,8 +297,8 @@ rotatingId = Base64Url( HMAC-SHA256(installationId, floor(epochMs / 3 600 000)) 
 
 ---
 
-### How the Server Recognises a User
-No account or registration is required. On first launch ThunderPass automatically signs in **anonymously** via Supabase. This creates a server-side UUID tied to the session — invisible to the user, requiring no email or password.
+### How the Device Identifies a User
+No account, server, or registration is required. On first launch the device derives a stable installation ID from `ANDROID_ID` via SHA-256 (UUID v5 format). This ID is used locally for encounter deduplication and device sync — it never leaves the device in plaintext.
 
 ---
 
@@ -296,15 +308,80 @@ ThunderPass stores two kinds of state:
 
 | What | Stored where | Survives uninstall? | Survives factory reset? |
 |---|---|---|---|
-| Display name, avatar, greeting, Volts, stickers | Supabase `profiles` table (cloud) | ✅ Yes — restored on first launch after reinstall | ✅ Yes — if you sign in with the same Google / email account |
+| Display name, avatar, greeting, Volts, stickers | Local Room database | ❌ No — lost on uninstall | ❌ No |
 | Pass history (Sparks list) | Local Room database | ❌ No — lost on uninstall | ❌ No |
-| Anonymous session UUID | Android SharedPreferences | ❌ No — new UUID issued on reinstall | ❌ No |
+| ~~Anonymous session UUID~~ | ~~Android SharedPreferences~~ | N/A — Supabase removed | N/A |
 | Installation ID | SharedPreferences (derived from `ANDROID_ID`) | ✅ Yes — same device produces same ID via SHA-256 | ❌ No — `ANDROID_ID` changes after factory reset |
 
 **In plain terms:**
-- If you **uninstall and reinstall** without signing in: you get a fresh anonymous UUID and your Spark history is gone. Your cloud profile remains on the server but cannot be automatically linked back until you sign in.
-- If you **factory reset**: same as above, plus your `ANDROID_ID` changes.
-- If you **sign in with Google or email** before losing the app, your profile is fully restored after reinstall.
+- If you **uninstall and reinstall**: your profile, Spark history, badges, and Volts are all gone. The installation ID will be the same (derived from `ANDROID_ID`), but all other data must be rebuilt.
+- If you **factory reset**: same as above, plus your `ANDROID_ID` changes so you get a new identity.
+- **Device Sync** (two-device pairing) keeps your data on multiple physical devices. If one is lost, the other retains a full copy.
 
-> 📌 **Planned for a future version:** optional cloud backup of the Spark history, and the ability to link an anonymous session to a named account after the fact.
+> 📌 **Planned for a future version:** optional local export/import of Spark history for backup purposes.
+
+---
+
+## Milestone 8 — Security Hardening & Release Readiness *(Planned)*
+**Goal:** Resolve all findings from the internal security audit and prepare the codebase for a public v1.0 release.
+
+> Full audit details: [`.internal/SECURITY_AUDIT.md`](.internal/SECURITY_AUDIT.md)
+
+### 8.1 Database Migrations (Medium Priority)
+- [ ] Replace `fallbackToDestructiveMigration()` with explicit `Migration` objects for every schema version increment
+- [ ] Write migration tests using Room's `MigrationTestHelper` to verify data is preserved across upgrades
+- [ ] Document the migration path from current version 17 to v1.0 schema
+
+### 8.2 HKDF Salt Versioning (Low Priority)
+- [ ] Add a protocol version byte to the BLE handshake that selects the HKDF salt
+- [ ] Current `"thunderpass-ble-v2"` salt remains the default — new salt introduced only when the protocol version is bumped
+- [ ] Ensure backward compatibility: older clients continue to work until a minimum protocol version is enforced
+
+### 8.3 Security-Crypto Library (Low Priority)
+- [ ] Monitor `androidx.security:security-crypto` for a stable (non-alpha) release
+- [ ] When available, upgrade from `1.1.0-alpha06` and validate EncryptedSharedPreferences migration
+- [ ] If stable release is delayed beyond v1.0, document the alpha dependency and its risk profile
+
+### 8.4 Rogue-App Detection Hardening (Low Priority)
+- [ ] Evaluate whether signature verification failures should trigger a user-visible warning (currently only logged)
+- [ ] Add a "suspicious encounter" counter visible in Settings → Advanced for transparency
+- [ ] Consider a configurable policy: log-only (default) vs. silent-drop vs. user-alert
+
+### 8.5 Auto-Walk & Battery Optimization Audit
+- [ ] Verify Auto-Walk correctly pauses scanning on all tested devices (AYN Thor, Retroid Pocket, stock Android)
+- [ ] Profile battery consumption across the three scan modes with real-world usage traces
+- [ ] Document expected battery impact per mode in user-facing settings descriptions
+- [ ] Ensure Doze-mode whitelist prompt is shown once and respected
+
+### 8.6 Permissions Audit
+- [ ] Review `WRITE_SETTINGS` usage — confirm it is guarded and only used on supported AYN devices
+- [x] Review `PACKAGE_USAGE_STATS` — ensure it is optional and the app degrades gracefully when denied
+- [x] Verify all permission-gating in SettingsScreen matches AndroidManifest declarations
+- [x] Non-blocking permission flow: permissions auto-requested on launch, red header when denied, tap navigates to Settings with highlighted Permissions section
+- [x] Activity Recognition permission added to Settings Permissions section
+
+### 8.7 Release Checklist
+- [ ] ProGuard rules validated — confirm all Log calls stripped and no sensitive strings survive in release APK
+- [x] `network_security_config.xml` verified — cleartext blocked, user CAs blocked in release
+- [x] `allowBackup="false"` confirmed in manifest
+- [x] `dataExtractionRules` XML added — explicitly blocks cloud Auto Backup and D2D device transfer on Android 12+
+- [x] `FLAG_SECURE` set in MainActivity — blocks screenshots, screen recording, Recent Apps thumbnail, and overlay spyware from capturing any app screen
+- [ ] Full test pass on Android 12, 13, 14, and 15 devices
+- [ ] Final security audit sign-off documented in `.internal/SECURITY_AUDIT.md`
+
+### 8.8 Documentation
+- [x] Internal security audit (`.internal/SECURITY_AUDIT.md`)
+- [x] Architecture reference (`.internal/ARCHITECTURE.md`)
+- [x] BLE protocol specification (`.internal/BLE_PROTOCOL.md`)
+- [x] Cryptographic primitives reference (`.internal/CRYPTOGRAPHY.md`)
+- [x] Data model reference (`.internal/DATA_MODEL.md`)
+- [x] Component reference (`.internal/COMPONENTS.md`)
+- [x] AI agent context files (`AGENTS.md` + per-package leaf files) — excluded from git, never public
+- [x] `ROADMAP.md` excluded from git — internal planning document, never public
+- [ ] Contributor onboarding guide (`CONTRIBUTING.md`)
+
+### 8.9 App Icon Overhaul
+- [x] Adaptive icon introduced — `mipmap-anydpi-v26/` XMLs created, takes priority over density PNGs on all supported devices (minSdk=33)
+- [x] Background: solid black (`#000000`)
+- [x] Foreground: `black.png` logo (500×500) on full transparency — no background fill in foreground layer
 

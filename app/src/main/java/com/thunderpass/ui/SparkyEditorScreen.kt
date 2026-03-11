@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,12 +54,13 @@ fun SparkyEditorScreen(
     // We intentionally do NOT read profile.avatarSeed here directly, because the
     // StateFlow may still hold its blank default (MyProfile(installationId=…)) on
     // the first composition frame — the actual DB row arrives slightly later.
-    var hairIdx      by remember { mutableStateOf(SparkyOptions().hair) }
-    var hairColorIdx by remember { mutableStateOf(SparkyOptions().hairColor) }
-    var eyesIdx      by remember { mutableStateOf(SparkyOptions().eyes) }
-    var mouthIdx     by remember { mutableStateOf(SparkyOptions().mouth) }
-    var skinIdx      by remember { mutableStateOf(SparkyOptions().skin) }
-    var bgIdx        by remember { mutableStateOf(SparkyOptions().bg) }
+    var hairIdx        by remember { mutableStateOf(SparkyOptions().hair) }
+    var hairColorIdx   by remember { mutableStateOf(SparkyOptions().hairColor) }
+    var eyesIdx        by remember { mutableStateOf(SparkyOptions().eyes) }
+    var mouthIdx       by remember { mutableStateOf(SparkyOptions().mouth) }
+    var skinIdx        by remember { mutableStateOf(SparkyOptions().skin) }
+    var bgIdx          by remember { mutableStateOf(SparkyOptions().bg) }
+    var accessoryIdx   by remember { mutableStateOf(SparkyOptions().accessory) }
 
     // True once the user actually moves any slider (stays false during initial sync).
     var hasModified by remember { mutableStateOf(false) }
@@ -83,6 +85,7 @@ fun SparkyEditorScreen(
                         mouthIdx     = opts.mouth
                         skinIdx      = opts.skin
                         bgIdx        = opts.bg
+                        accessoryIdx = opts.accessory
                     }
                     p.avatarSeed.isNotEmpty() -> {
                         // Legacy UUID seed: derive slider positions deterministically,
@@ -95,6 +98,7 @@ fun SparkyEditorScreen(
                         mouthIdx     = opts.mouth
                         skinIdx      = opts.skin
                         bgIdx        = opts.bg
+                        accessoryIdx = opts.accessory
                         vm.saveAvatarSeed(buildSparkySeed(opts))
                     }
                     else -> {
@@ -108,6 +112,7 @@ fun SparkyEditorScreen(
                         mouthIdx     = opts.mouth
                         skinIdx      = opts.skin
                         bgIdx        = opts.bg
+                        accessoryIdx = opts.accessory
                         vm.saveAvatarSeed(seed)
                     }
                 }
@@ -115,10 +120,24 @@ fun SparkyEditorScreen(
         }
     }
 
+    // Randomize all sliders to a fresh random sparky
+    val onRandomize: () -> Unit = {
+        val seed = randomSparkySeed()
+        val opts = parseSparkyOptions(seed)
+        hairIdx      = opts.hair
+        hairColorIdx = opts.hairColor
+        eyesIdx      = opts.eyes
+        mouthIdx     = opts.mouth
+        skinIdx      = opts.skin
+        bgIdx        = opts.bg
+        accessoryIdx = opts.accessory
+        hasModified  = true
+    }
+
     // Live preview seed rebuilt from current selections
     val previewSeed by remember {
         derivedStateOf {
-            buildSparkySeed(SparkyOptions(hairIdx, hairColorIdx, eyesIdx, mouthIdx, skinIdx, bgIdx))
+            buildSparkySeed(SparkyOptions(hairIdx, hairColorIdx, eyesIdx, mouthIdx, skinIdx, bgIdx, accessoryIdx))
         }
     }
 
@@ -171,7 +190,7 @@ fun SparkyEditorScreen(
                         .padding(16.dp),
                     contentAlignment  = Alignment.Center,
                 ) {
-                    SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
+                    SparkyAvatarCard(seed = displaySeed, onRandomize = onRandomize, modifier = Modifier.fillMaxSize())
                 }
 
                 // Amber gradient vertical divider — same style as HomeScreen landscape split
@@ -208,12 +227,14 @@ fun SparkyEditorScreen(
                         mouthIdx     = mouthIdx,
                         skinIdx      = skinIdx,
                         bgIdx        = bgIdx,
-                        onHair       = { hairIdx = it;      hasModified = true },
-                        onHairColor  = { hairColorIdx = it; hasModified = true },
-                        onEyes       = { eyesIdx = it;      hasModified = true },
-                        onMouth      = { mouthIdx = it;     hasModified = true },
-                        onSkin       = { skinIdx = it;      hasModified = true },
-                        onBg         = { bgIdx = it;        hasModified = true },
+                        accessoryIdx = accessoryIdx,
+                        onHair       = { hairIdx = it;       hasModified = true },
+                        onHairColor  = { hairColorIdx = it;  hasModified = true },
+                        onEyes       = { eyesIdx = it;       hasModified = true },
+                        onMouth      = { mouthIdx = it;      hasModified = true },
+                        onSkin       = { skinIdx = it;       hasModified = true },
+                        onBg         = { bgIdx = it;         hasModified = true },
+                        onAccessory  = { accessoryIdx = it;  hasModified = true },
                     )
                     Spacer(Modifier.height(8.dp))
                 }
@@ -238,7 +259,7 @@ fun SparkyEditorScreen(
                         .height(220.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SparkyAvatarCard(seed = displaySeed, modifier = Modifier.fillMaxSize())
+                    SparkyAvatarCard(seed = displaySeed, onRandomize = onRandomize, modifier = Modifier.fillMaxSize())
                 }
 
                 // Horizontal amber gradient separator — mirrors the landscape divider
@@ -266,12 +287,14 @@ fun SparkyEditorScreen(
                     mouthIdx     = mouthIdx,
                     skinIdx      = skinIdx,
                     bgIdx        = bgIdx,
-                    onHair       = { hairIdx = it;      hasModified = true },
-                    onHairColor  = { hairColorIdx = it; hasModified = true },
-                    onEyes       = { eyesIdx = it;      hasModified = true },
-                    onMouth      = { mouthIdx = it;     hasModified = true },
-                    onSkin       = { skinIdx = it;      hasModified = true },
-                    onBg         = { bgIdx = it;        hasModified = true },
+                    accessoryIdx = accessoryIdx,
+                    onHair       = { hairIdx = it;       hasModified = true },
+                    onHairColor  = { hairColorIdx = it;  hasModified = true },
+                    onEyes       = { eyesIdx = it;       hasModified = true },
+                    onMouth      = { mouthIdx = it;      hasModified = true },
+                    onSkin       = { skinIdx = it;       hasModified = true },
+                    onBg         = { bgIdx = it;         hasModified = true },
+                    onAccessory  = { accessoryIdx = it;  hasModified = true },
                 )
 
                 Spacer(Modifier.height(16.dp))
@@ -285,7 +308,7 @@ fun SparkyEditorScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SparkyAvatarCard(seed: String, modifier: Modifier = Modifier) {
+private fun SparkyAvatarCard(seed: String, onRandomize: () -> Unit, modifier: Modifier = Modifier) {
     // Same geometric gradient banner used in the Badges header and Home user panel.
     // Decorated with semi-transparent rotated squares for depth.
     Box(
@@ -326,6 +349,20 @@ private fun SparkyAvatarCard(seed: String, modifier: Modifier = Modifier) {
             size     = 160.dp,
             modifier = Modifier.clip(CircleShape),
         )
+
+        // Random button — top-right corner, matching ProfileScreen
+        IconButton(
+            onClick  = onRandomize,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp),
+        ) {
+            Icon(
+                imageVector        = Icons.Filled.Casino,
+                contentDescription = "Randomize Sparky",
+                tint               = Color.White,
+            )
+        }
     }
 }
 
@@ -341,12 +378,14 @@ private fun SparkyAttributeSliders(
     mouthIdx:     Int,
     skinIdx:      Int,
     bgIdx:        Int,
+    accessoryIdx: Int,
     onHair:       (Int) -> Unit,
     onHairColor:  (Int) -> Unit,
     onEyes:       (Int) -> Unit,
     onMouth:      (Int) -> Unit,
     onSkin:       (Int) -> Unit,
     onBg:         (Int) -> Unit,
+    onAccessory:  (Int) -> Unit,
 ) {
     SparkySliderSection(
         title   = "💇 Hair Style",
@@ -383,6 +422,12 @@ private fun SparkyAttributeSliders(
         labels  = SPARKY_BG_LABELS,
         current = bgIdx,
         onChange = onBg,
+    )
+    SparkySliderSection(
+        title   = "🎭 Accessories",
+        labels  = SPARKY_ACCESSORY_LABELS,
+        current = accessoryIdx,
+        onChange = onAccessory,
     )
 }
 

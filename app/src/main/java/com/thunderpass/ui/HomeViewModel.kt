@@ -12,12 +12,17 @@ import com.thunderpass.data.db.entity.Encounter
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import com.thunderpass.retro.RetroAuthManager
 import com.thunderpass.retro.RetroRepository
-import com.thunderpass.supabase.OtaChecker
+import com.thunderpass.steps.DAILY_VOLT_CAP
+import com.thunderpass.steps.StepVoltManager
+import com.thunderpass.widget.ThunderPassWidget
+import com.thunderpass.widget.ThunderPassWidget2x2
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -74,10 +79,24 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // ── Safe Zone ─────────────────────────────────────────────────────────────
     private val _safeZoneActive = MutableStateFlow(prefs.getBoolean(BleService.PREF_SAFE_ZONE, false))
     val safeZoneActive: StateFlow<Boolean> = _safeZoneActive
+    private val _autoWalkEnabled = MutableStateFlow(prefs.getBoolean(BleService.PREF_AUTO_WALK, false))
+    val autoWalkEnabled: StateFlow<Boolean> = _autoWalkEnabled
+    // ── BLE enabled (user toggle in Settings) ─────────────────────────────────
+    private val _bleEnabled = MutableStateFlow(prefs.getBoolean(BleService.PREF_BLE_ENABLED, true))
+    val bleEnabled: StateFlow<Boolean> = _bleEnabled
 
     // ── Service running state ─────────────────────────────────────────────────
+    // Stays in sync with any external pref change (e.g. widget toggle, service stop).
     private val _serviceRunning = MutableStateFlow(prefs.getBoolean(BleService.PREF_SERVICE_ACTIVE, false))
     val serviceRunning: StateFlow<Boolean> = _serviceRunning
+
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == BleService.PREF_SERVICE_ACTIVE) {
+            _serviceRunning.value = prefs.getBoolean(BleService.PREF_SERVICE_ACTIVE, false)
+            viewModelScope.launch { ThunderPassWidget.refreshAll(getApplication(), _serviceRunning.value) }
+            viewModelScope.launch { ThunderPassWidget2x2.refreshAll(getApplication(), _serviceRunning.value) }
+        }
+    }.also { prefs.registerOnSharedPreferenceChangeListener(it) }
 
     // ── Scan mode ─────────────────────────────────────────────────────────────
     private val _scanMode = MutableStateFlow(
@@ -103,6 +122,22 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.voltsTotal }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
+    // ── Step-Volt daily progress (polls every 30 s; step sensor updates are infrequent) ──
+    val stepVoltsToday: StateFlow<Long> = flow {
+        while (true) {
+            emit(StepVoltManager.voltsTodayLive(getApplication()))
+            delay(30_000L)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
+    // ── Raw step count today (polls alongside volts) ──────────────────────────
+    val stepsToday: StateFlow<Long> = flow {
+        while (true) {
+            emit(StepVoltManager.stepsTodayLive(getApplication()))
+            delay(30_000L)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
+
     // ── Owned Stickers ────────────────────────────────────────────────────────
     val ownedStickers: StateFlow<Set<String>> = profileDao.observe()
         .filterNotNull()
@@ -124,7 +159,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Full encounter list with resolved snapshots ─────────────────────────
     // Only confirmed encounters (peerSnapshotId != null) are surfaced — phantoms are excluded.
-    // Display-level dedup: one card per unique peerUserId, keeping the most-recent encounter row.
+    // Display-level dedup: one card per unique peerInstId, keeping the most-recent encounter row.
     // isFriend is synthesised from the group: if ANY row for that identity is marked friend,
     // the deduped entry carries isFriend = true — so Sparks and Friends are always consistent.
     val encounters: StateFlow<List<EncounterWithProfile>> =
@@ -137,7 +172,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
                 enriched
-                    .groupBy { it.snapshot?.peerUserId }
+                    .groupBy { it.snapshot?.peerInstId }
                     .flatMap { (key, group) ->
                         if (key != null) {
                             val latest    = group.maxByOrNull { it.encounter.seenAt }!!
@@ -167,8 +202,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     // ── Friend invite (from thunderpass://add-friend/{userId} deep links) ─────
     /** Non-null when the app was opened via a friend-invite link and is pending resolution. */
-    private val _friendInviteUserId = MutableStateFlow<String?>(null)
-    val friendInviteUserId: StateFlow<String?> = _friendInviteUserId
+    private val _friendInvitePeerInstId = MutableStateFlow<String?>(null)
+    val friendInvitePeerInstId: StateFlow<String?> = _friendInvitePeerInstId
 
     /** Result of the most recent friend-invite resolution. */
     sealed class FriendInviteResult {
@@ -187,17 +222,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (_serviceRunning.value) {
             startService()
         }
-        // Check for OTA updates in the background on every app launch.
-        viewModelScope.launch {
-            _availableUpdate.value = OtaChecker.checkForUpdate(getApplication())
-        }
         // Check for a pending friend invite from a thunderpass://add-friend deep link
         viewModelScope.launch {
             val settingsPrefs = getApplication<android.app.Application>()
                 .getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
             val pendingUserId = settingsPrefs.getString("pending_friend_invite", null)
             if (!pendingUserId.isNullOrBlank()) {
-                _friendInviteUserId.value = pendingUserId
+                _friendInvitePeerInstId.value = pendingUserId
             }
         }
     }
@@ -238,6 +269,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // ── Start / Stop BLE service ──────────────────────────────────────────────
 
     fun startService() {
+        if (!_bleEnabled.value) return
         val ctx = getApplication<Application>()
         ContextCompat.startForegroundService(
             ctx,
@@ -245,6 +277,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         )
         _serviceRunning.value = true
         prefs.edit().putBoolean(BleService.PREF_SERVICE_ACTIVE, true).apply()
+        viewModelScope.launch { ThunderPassWidget.refreshAll(ctx, true) }
+        viewModelScope.launch { ThunderPassWidget2x2.refreshAll(ctx, true) }
     }
 
     fun stopService() {
@@ -254,6 +288,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         )
         _serviceRunning.value = false
         prefs.edit().putBoolean(BleService.PREF_SERVICE_ACTIVE, false).apply()
+        viewModelScope.launch { ThunderPassWidget.refreshAll(ctx, false) }
+        viewModelScope.launch { ThunderPassWidget2x2.refreshAll(ctx, false) }
     }
 
     // ── Scan mode ─────────────────────────────────────────────────────────────
@@ -290,17 +326,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Toggle the friend mark on an encounter.
      *
-     * When a stable [peerUserId] is provided the flag is applied to ALL encounter
-     * rows for that identity (via [EncounterDao.setFriendByUserId]), so historical
+     * When a stable [peerInstId] is provided the flag is applied to ALL encounter
+     * rows for that identity (via [EncounterDao.setFriendByInstId]), so historical
      * rows never cause the same person to appear twice in the Friends list.
      * Falls back to updating the single row when no identity key is available
-     * (anonymous / privacy-mode peers without a userId).
+     * (anonymous / privacy-mode peers without an installationId).
      */
-    fun toggleFriend(encounterId: Long, currentlyFriend: Boolean, peerUserId: String? = null) {
+    fun toggleFriend(encounterId: Long, currentlyFriend: Boolean, peerInstId: String? = null) {
         viewModelScope.launch {
             val newState = !currentlyFriend
-            if (peerUserId != null) {
-                encounterDao.setFriendByUserId(peerUserId, newState)
+            if (peerInstId != null) {
+                encounterDao.setFriendByInstId(peerInstId, newState)
             } else {
                 encounterDao.setFriend(encounterId, newState)
             }
@@ -335,20 +371,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Called when the user confirms or auto-resolves a friend invite deep link.
-     * Looks up the encounter for [peerUserId] and marks it as friend if found.
+     * Looks up the encounter for [peerInstId] and marks it as friend if found.
      * Posts the result to [friendInviteResult] for the UI to act on.
      * Clears the stored invite from SharedPrefs regardless of outcome.
      */
-    fun resolveFriendInvite(peerUserId: String) {
+    fun resolveFriendInvite(peerInstId: String) {
         viewModelScope.launch {
             // Clear from prefs immediately (don't re-show on next launch)
             getApplication<android.app.Application>()
                 .getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
                 .edit().remove("pending_friend_invite").apply()
-            _friendInviteUserId.value = null
+            _friendInvitePeerInstId.value = null
 
             // Look up the encounter
-            val snapshotId  = snapshotDao.getSnapshotIdByUserId(peerUserId)
+            val snapshotId  = snapshotDao.getSnapshotIdByInstId(peerInstId)
             val encounterId = snapshotId?.let { encounterDao.getIdBySnapshotId(it) }
             if (encounterId != null) {
                 encounterDao.setFriend(encounterId, true)
@@ -388,5 +424,35 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 }
             )
         }
+    }
+    // ── BLE Enabled ─────────────────────────────────────────────────────────
+
+    fun setBleEnabled(enabled: Boolean) {
+        _bleEnabled.value = enabled
+        prefs.edit().putBoolean(BleService.PREF_BLE_ENABLED, enabled).apply()
+        if (!enabled && _serviceRunning.value) {
+            stopService()
+        }
+    }
+
+    // ── Auto-Walk ───────────────────────────────────────────────────────────
+
+    fun setAutoWalk(enabled: Boolean) {
+        _autoWalkEnabled.value = enabled
+        prefs.edit().putBoolean(BleService.PREF_AUTO_WALK, enabled).apply()
+        if (_serviceRunning.value) {
+            val ctx = getApplication<Application>()
+            ctx.startService(
+                Intent(ctx, BleService::class.java).apply {
+                    action = BleService.ACTION_SET_AUTO_WALK
+                    putExtra(BleService.EXTRA_AUTO_WALK, enabled)
+                }
+            )
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
     }
 }

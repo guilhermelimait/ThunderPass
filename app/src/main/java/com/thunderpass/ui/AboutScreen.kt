@@ -109,152 +109,143 @@ fun AboutScreen(onBack: () -> Unit = {}) {
                 Column(
                     modifier            = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    // ── Top row: avatar+name on left, bio on right ────────────
+                    // ── Author + bio + privacy ───────────────────────────────
                     Row(
-                        modifier          = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier              = Modifier.fillMaxWidth(),
+                        verticalAlignment     = Alignment.Top,
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // Left — avatar + name + tagline
+                        // Left — photo, tagline, social links
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.width(110.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier            = Modifier.width(104.dp),
                         ) {
                             SubcomposeAsyncImage(
-                                model              = "https://storage.ko-fi.com/cdn/useruploads/81b005da-03c3-4771-992a-09a0f8f77595_bc4f05e0-07c0-4ed6-a9-13f16968d95b.png",
-                                contentDescription = "Guilherme Lima",
+                                model              = "https://avatars.githubusercontent.com/guilhermelimait",
+                                contentDescription = "Developer photo",
                                 contentScale       = ContentScale.Crop,
                                 modifier           = Modifier
-                                    .size(80.dp)
+                                    .size(96.dp)
                                     .clip(CircleShape),
-                                loading = {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(80.dp)
-                                            .clip(CircleShape)
-                                            .background(Color.White.copy(alpha = 0.2f)),
-                                    )
-                                },
-                                error = {
-                                    DiceBearAvatar(seed = "guilhermelimait", size = 80.dp, modifier = Modifier.clip(CircleShape))
-                                },
                             )
                             Text(
-                                text       = "Guilherme Lima",
-                                style      = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color      = Color.White,
-                                textAlign  = TextAlign.Center,
-                            )
-                            Text(
-                                text      = "Made with ⚡ and ☕",
+                                text      = "Tailored with AI and ⚡",
                                 style     = MaterialTheme.typography.labelSmall,
                                 color     = Color.White.copy(alpha = 0.85f),
                                 textAlign = TextAlign.Center,
                             )
+                            Spacer(Modifier.height(2.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment     = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(circleBackground)
+                                        .clickable {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/guilhermelimait/ThunderPass"))
+                                            )
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter            = painterResource(R.drawable.ic_github),
+                                        contentDescription = "GitHub",
+                                        tint               = iconTint,
+                                        modifier           = Modifier.size(20.dp),
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(circleBackground)
+                                        .clickable {
+                                            context.startActivity(
+                                                Intent(Intent.ACTION_VIEW, Uri.parse("https://discord.gg/jVxQnp8Fy"))
+                                            )
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        painter            = painterResource(R.drawable.ic_discord),
+                                        contentDescription = "Discord",
+                                        tint               = iconTint,
+                                        modifier           = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
                         }
 
-                        // Right — app bio
-                        Text(
-                            text      = "ThunderPass is an offline-first StreetPass app for Android handheld gaming " +
-                                        "devices. It discovers nearby players over Bluetooth LE, exchanges profile " +
-                                        "cards, and tracks encounters — no internet required.\n\n" +
-                                        "Built by a solo dev who wanted StreetPass back on modern hardware.",
-                            style     = MaterialTheme.typography.bodyMedium,
-                            color     = Color.White.copy(alpha = 0.9f),
-                            modifier  = Modifier.weight(1f),
-                        )
+                        // Right — app description + privacy & security
+                        Column(
+                            modifier            = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text       = "ThunderPass",
+                                style      = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = Color.White,
+                            )
+                            Text(
+                                text  = "A modern StreetPass for Android handheld gaming devices. " +
+                                        "Discovers nearby players via Bluetooth LE, exchanges profile cards, " +
+                                        "tracks encounters, badges, and streaks.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.90f),
+                            )
+                            Text(
+                                text  = "Built by a solo developer who missed StreetPass and decided to bring it back for modern hardware.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.75f),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text       = "Privacy & Security",
+                                style      = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = Color.White,
+                            )
+                            val securityLines = listOf(
+                                "Profile data is stored locally on your device and encrypted at rest using AES-256-GCM.",
+                                "Encounters exchanged over Bluetooth LE are protected with RSA asymmetric cryptography — only the intended recipient device can decrypt them.",
+                                "Cryptographic keys are managed by the Android Keystore, hardware-backed where supported by the device.",
+                                "ThunderPass has no internet connectivity, no external servers, no accounts, and no telemetry of any kind.",
+                                "Your data never leaves your device unless you explicitly sync it to another device you own.",
+                            )
+                            securityLines.forEach { line ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier              = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        text  = "•",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.70f),
+                                    )
+                                    Text(
+                                        text  = line,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.85f),
+                                    )
+                                }
+                            }
+                        }
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
-
-                    // Social / support icon buttons — circles adapt to theme
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment     = Alignment.CenterVertically,
-                    ) {
-                        // Ko-fi
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(circleBackground)
-                                .clickable {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/guilhermelimait/"))
-                                    )
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector        = Icons.Filled.LocalCafe,
-                                contentDescription = "Support on Ko-fi",
-                                tint               = iconTint,
-                                modifier           = Modifier.size(28.dp),
-                            )
-                        }
-
-                        Spacer(Modifier.width(28.dp))
-
-                        // GitHub
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(circleBackground)
-                                .clickable {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/guilhermelimait/ThunderPass"))
-                                    )
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter            = painterResource(R.drawable.ic_github),
-                                contentDescription = "GitHub",
-                                tint               = iconTint,
-                                modifier           = Modifier.size(28.dp),
-                            )
-                        }
-
-                        Spacer(Modifier.width(28.dp))
-
-                        // Discord
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(circleBackground)
-                                .clickable {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://discord.gg/jVxQnp8Fy"))
-                                    )
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter            = painterResource(R.drawable.ic_discord),
-                                contentDescription = "Discord",
-                                tint               = iconTint,
-                                modifier           = Modifier.size(28.dp),
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.25f))
-
-                    // Version
+                    // ── Version ───────────────────────────────────────────────
                     Text(
-                        text      = "ThunderPass v${BuildConfig.VERSION_NAME}\nBluetooth LE • Zero cloud • Open source",
-                        style     = MaterialTheme.typography.bodySmall,
-                        color     = Color.White.copy(alpha = 0.75f),
-                        textAlign = TextAlign.Center,
+                        text  = "v${BuildConfig.VERSION_NAME} • Open source",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.55f),
                     )
                 }
             }

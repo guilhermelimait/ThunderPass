@@ -72,11 +72,11 @@ data class PeerProfileSnapshot(
     val ghostScore: Long? = null,
 
     /**
-     * The peer's Supabase auth UUID, sent voluntarily in the GATT payload.
+     * The peer's stable installation ID, sent in the GATT payload as "instId".
      * Null when the peer is in privacy mode or running an older build.
-     * Used for 24-hour identity dedup: one Spark per userId per day.
+     * Used for 24-hour identity dedup: one Spark per device per day.
      */
-    val peerUserId: String? = null,
+    val peerInstId: String? = null,
 
     // ── RetroAchievements — recent game titles (SEP-joined strings) ──────────
 
@@ -102,4 +102,12 @@ data class PeerProfileSnapshot(
 
     /** Peer's current encounter streak in days. Null if peer did not share. */
     val peerStreakCount: Int? = null,
+
+    // ── Location ─────────────────────────────────────────────────────────
+
+    /** Peer's ISO 3166-1 alpha-2 country code, if shared (null when private). */
+    val peerCountry: String? = null,
+
+    /** Peer's city name, if shared (null when private). */
+    val peerCity: String? = null,
 )

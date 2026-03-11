@@ -1,20 +1,16 @@
 package com.thunderpass
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.thunderpass.BleService
-import com.thunderpass.supabase.SupabaseManager
 import com.thunderpass.ui.ThunderPassNavGraph
-import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
 
@@ -22,10 +18,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Prevent screenshots, screen recording, and Recent Apps thumbnail
+        // from capturing sensitive profile data (RA API key, etc.).
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE,
+        )
         enableEdgeToEdge()
-        handleSupabaseDeepLink(intent)
         handleFriendInviteDeepLink(intent)
-        requestIgnoreBatteryOptimizationsIfNeeded()
         setContent {
             ThunderPassNavGraph(onMusicChange = { enabled ->
                 if (enabled) startMusicIfEnabled() else { mediaPlayer?.pause() }
@@ -48,12 +48,18 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         mediaPlayer?.release()
         mediaPlayer = null
+        // Stop the BLE service when the app is fully closed (back-press / swipe from recents).
+        // isFinishing distinguishes a real close from a configuration change (screen rotation).
+        if (isFinishing) {
+            startService(Intent(this, BleService::class.java).apply {
+                action = BleService.ACTION_STOP
+            })
+        }
     }
 
     // Handle deep link when app is already running (singleTop)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleSupabaseDeepLink(intent)
         handleFriendInviteDeepLink(intent)
     }
 
@@ -116,38 +122,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ── Battery optimization whitelist ──────────────────────────────────────
-
-    /**
-     * On first launch, if the app is not already exempt from battery restrictions,
-     * open the system dialog so the user can add it to the Doze whitelist.
-     * Without this, BLE scanning is throttled or killed in background.
-     */
-    @SuppressLint("BatteryLife")
-    private fun requestIgnoreBatteryOptimizationsIfNeeded() {
-        runCatching {
-            val prefs = getSharedPreferences("tp_settings", MODE_PRIVATE)
-            if (prefs.getBoolean("doze_prompt_shown", false)) return
-            val pm = getSystemService(PowerManager::class.java) ?: return
-            if (pm.isIgnoringBatteryOptimizations(packageName)) return
-            prefs.edit().putBoolean("doze_prompt_shown", true).apply()
-            startActivity(
-                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-            )
-        }
-    }
-
-    // ── Supabase deep-link ─────────────────────────────────────────────
-
-    private fun handleSupabaseDeepLink(intent: Intent?) {
-        val uri: Uri = intent?.data ?: return
-        if (uri.scheme == "thunderpass" && uri.host == "callback") {
-            SupabaseManager.client.handleDeeplinks(intent)
-        }
-    }
-
     // ── Friend-invite deep-link ───────────────────────────────────────
 
     /**
@@ -159,10 +133,13 @@ class MainActivity : ComponentActivity() {
     private fun handleFriendInviteDeepLink(intent: Intent?) {
         val uri: Uri = intent?.data ?: return
         if (uri.scheme != "thunderpass" || uri.host != "add-friend") return
-        val peerUserId = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return
+        // Bound the input: installation IDs are UUIDs (36 chars). Discard anything longer
+        // to prevent accidentally storing attacker-controlled data of unbounded length.
+        val peerInstId = uri.lastPathSegment
+            ?.takeIf { it.isNotBlank() && it.length <= 64 } ?: return
         getSharedPreferences("tp_settings", MODE_PRIVATE)
             .edit()
-            .putString("pending_friend_invite", peerUserId)
+            .putString("pending_friend_invite", peerInstId)
             .apply()
     }
 }

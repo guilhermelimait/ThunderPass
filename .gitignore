@@ -36,10 +36,25 @@ captures/
 
 # Internal planning / spec documents (not for public distribution)
 SPEC.md
+ROADMAP.md
+.internal/
+
+# Agent instruction files — internal dev context, never public
+AGENTS.md
+**/AGENTS.md
 
 # Unit tests (internal; not distributed with open-source release)
 app/src/test/
 
-# Supabase CLI local state — may contain connection strings and session tokens
-/supabase/.temp/
-/supabase/
+# Local device tooling / ADB test scripts (never published)
+tools/
+
+# Debug / ADB log captures — may contain BLE MAC addresses and device identifiers
+*.log
+retroid_ble.log
+
+# Loose image files (screenshots, test captures — not part of the app)
+black.png
+streetview.png
+docs/black.png
+docs/streetview.png

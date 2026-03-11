@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ (API 31+) data extraction rules.
+    Supersedes allowBackup for cloud Auto Backup and device-to-device transfers.
+    Excluding all domains ensures that no app data is ever transferred to another
+    device or uploaded to the user's Google account, regardless of system policy.
+
+    Note: allowBackup="false" in AndroidManifest already disables Auto Backup,
+    but this file provides explicit belt-and-suspenders coverage for D2D transfers
+    and future Android versions that may relax allowBackup semantics.
+-->
+<data-extraction-rules>
+
+    <!-- ── Cloud backup (Google Auto Backup) ─────────────────────── -->
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+
+    <!-- ── Device-to-device (D2D) transfer ───────────────────────── -->
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+
+</data-extraction-rules>

@@ -62,17 +62,17 @@ interface PeerProfileSnapshotDao {
     suspend fun markRetroFetchAttempted(id: Long)
 
     /**
-     * Count snapshots recorded from a specific peer Supabase userId since [sinceMs].
-     * Used for 24-hour identity dedup: if > 0, we’ve already sparked this user today.
+     * Count snapshots recorded from a specific peer installationId since [sinceMs].
+     * Used for 24-hour identity dedup: if > 0, we've already sparked this device today.
      */
-    @Query("SELECT COUNT(*) FROM peer_profile_snapshot WHERE peerUserId = :userId AND receivedAt >= :sinceMs")
-    suspend fun countByUserIdSince(userId: String, sinceMs: Long): Int
+    @Query("SELECT COUNT(*) FROM peer_profile_snapshot WHERE peerInstId = :instId AND receivedAt >= :sinceMs")
+    suspend fun countByInstIdSince(instId: String, sinceMs: Long): Int
     /**
-     * Returns the most-recent snapshot id from [userId] that falls within the dedup window.
+     * Returns the most-recent snapshot id from [instId] that falls within the dedup window.
      * Used to refresh profile data when dedup fires.
      */
-    @Query("SELECT id FROM peer_profile_snapshot WHERE peerUserId = :userId AND receivedAt >= :sinceMs ORDER BY receivedAt DESC LIMIT 1")
-    suspend fun latestIdByUserIdSince(userId: String, sinceMs: Long): Long?
+    @Query("SELECT id FROM peer_profile_snapshot WHERE peerInstId = :instId AND receivedAt >= :sinceMs ORDER BY receivedAt DESC LIMIT 1")
+    suspend fun latestIdByInstIdSince(instId: String, sinceMs: Long): Long?
 
     /**
      * Refreshes the mutable profile fields on an existing snapshot without changing
@@ -94,6 +94,8 @@ interface PeerProfileSnapshotDao {
             peerPassesCount = :peerPassesCount,
             peerBadgesCount = :peerBadgesCount,
             peerStreakCount  = :peerStreakCount,
+            peerCountry     = :peerCountry,
+            peerCity        = :peerCity,
             rawJson         = :rawJson
         WHERE id = :id
     """)
@@ -111,13 +113,15 @@ interface PeerProfileSnapshotDao {
         peerPassesCount:Int?,
         peerBadgesCount:Int?,
         peerStreakCount: Int?,
+        peerCountry:    String?,
+        peerCity:       String?,
         rawJson:        String,
     )    /**
-     * Find the most recent snapshot from a specific peer Supabase userId.
+     * Find the most recent snapshot from a specific peer installationId.
      * Used to resolve friend-invite deep links to an existing encounter.
      */
-    @Query("SELECT id FROM peer_profile_snapshot WHERE peerUserId = :userId ORDER BY receivedAt DESC LIMIT 1")
-    suspend fun getSnapshotIdByUserId(userId: String): Long?
+    @Query("SELECT id FROM peer_profile_snapshot WHERE peerInstId = :instId ORDER BY receivedAt DESC LIMIT 1")
+    suspend fun getSnapshotIdByInstId(instId: String): Long?
 
     /**
      * Find snapshots that have a retroUsername but whose RA data hasn't been

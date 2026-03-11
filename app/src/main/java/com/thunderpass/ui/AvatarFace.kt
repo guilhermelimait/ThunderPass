@@ -91,9 +91,21 @@ val SPARKY_BG_LABELS = listOf(
     "Peach", "Mint", "Yellow", "Salmon",
 )
 
+// v9.x DiceBear big-smile accessories (API param: accessories=<name>&accessoriesProbability=100)
+// Index 0 = "none" = no accessory (accessoriesProbability=0)
+// Valid names sourced from https://api.dicebear.com/9.x/big-smile/schema.json
+val SPARKY_ACCESSORY_STYLES = listOf(
+    "none", "catEars", "clownNose", "faceMask", "glasses",
+    "mustache", "sailormoonCrown", "sleepMask", "sunglasses",
+)
+val SPARKY_ACCESSORY_LABELS = listOf(
+    "None", "Cat Ears", "Clown Nose", "Face Mask", "Glasses",
+    "Mustache", "Sailor Moon Crown", "Sleep Mask", "Sunglasses",
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sparky seed encoding / decoding
-// Seed format: "sparky|h=0|hc=3|e=2|m=0|s=0|b=0"
+// Seed format: "sparky|h=bangs|hc=0e0e0e|e=cheery|m=awkwardSmile|s=FDDEB5|b=b6e3f4|ac=none"
 // ─────────────────────────────────────────────────────────────────────────────
 
 data class SparkyOptions(
@@ -103,6 +115,7 @@ data class SparkyOptions(
     val mouth:     Int = 0,  // awkwardSmile
     val skin:      Int = 0,
     val bg:        Int = 0,
+    val accessory: Int = 0,  // 0 = none
 )
 
 /**
@@ -125,12 +138,13 @@ fun parseSparkyOptions(seed: String): SparkyOptions {
     }
 
     return SparkyOptions(
-        hair      = idx(SPARKY_HAIR_STYLES,     "h",  0),
-        hairColor = idx(SPARKY_HAIR_COLORS_HEX, "hc", 0),
-        eyes      = idx(SPARKY_EYE_STYLES,      "e",  1),
-        mouth     = idx(SPARKY_MOUTH_STYLES,    "m",  0),
-        skin      = idx(SKIN_TONE_HEXES,        "s",  0),
-        bg        = idx(SPARKY_BG_COLORS,       "b",  0),
+        hair      = idx(SPARKY_HAIR_STYLES,      "h",  0),
+        hairColor = idx(SPARKY_HAIR_COLORS_HEX,  "hc", 0),
+        eyes      = idx(SPARKY_EYE_STYLES,       "e",  1),
+        mouth     = idx(SPARKY_MOUTH_STYLES,     "m",  0),
+        skin      = idx(SKIN_TONE_HEXES,         "s",  0),
+        bg        = idx(SPARKY_BG_COLORS,        "b",  0),
+        accessory = idx(SPARKY_ACCESSORY_STYLES, "ac", 0),
     )
 }
 
@@ -147,6 +161,7 @@ fun randomSparkySeed(): String = buildSparkySeed(
         mouth     = SPARKY_MOUTH_STYLES.indices.random(),
         skin      = SKIN_TONE_HEXES.indices.random(),
         bg        = SPARKY_BG_COLORS.indices.random(),
+        accessory = SPARKY_ACCESSORY_STYLES.indices.random(),
     )
 )
 
@@ -161,24 +176,26 @@ fun sparkyOptionsFromSeed(seed: String): SparkyOptions {
     fun pick(size: Int, mix: Long): Int =
         ((((h * mix) ushr 16) % size).toInt().let { if (it < 0) it + size else it })
     return SparkyOptions(
-        hair      = pick(SPARKY_HAIR_STYLES.size,     1L),
-        hairColor = pick(SPARKY_HAIR_COLORS_HEX.size, 3L),
-        eyes      = pick(SPARKY_EYE_STYLES.size,      7L),
-        mouth     = pick(SPARKY_MOUTH_STYLES.size,    13L),
-        skin      = pick(SKIN_TONE_HEXES.size,        23L),
-        bg        = pick(SPARKY_BG_COLORS.size,       41L),
+        hair      = pick(SPARKY_HAIR_STYLES.size,      1L),
+        hairColor = pick(SPARKY_HAIR_COLORS_HEX.size,  3L),
+        eyes      = pick(SPARKY_EYE_STYLES.size,       7L),
+        mouth     = pick(SPARKY_MOUTH_STYLES.size,     13L),
+        skin      = pick(SKIN_TONE_HEXES.size,         23L),
+        bg        = pick(SPARKY_BG_COLORS.size,        41L),
+        accessory = pick(SPARKY_ACCESSORY_STYLES.size, 53L),
     )
 }
 
 /** Encodes a [SparkyOptions] as a human-readable seed string using style names. */
 fun buildSparkySeed(o: SparkyOptions): String {
-    val h  = SPARKY_HAIR_STYLES.getOrElse(o.hair)      { SPARKY_HAIR_STYLES[0] }
-    val hc = SPARKY_HAIR_COLORS_HEX.getOrElse(o.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
-    val e  = SPARKY_EYE_STYLES.getOrElse(o.eyes)       { SPARKY_EYE_STYLES[1] }
-    val m  = SPARKY_MOUTH_STYLES.getOrElse(o.mouth)    { SPARKY_MOUTH_STYLES[0] }
-    val s  = SKIN_TONE_HEXES.getOrElse(o.skin)         { SKIN_TONE_HEXES[0] }
-    val b  = SPARKY_BG_COLORS.getOrElse(o.bg)          { SPARKY_BG_COLORS[0] }
-    return "sparky|h=$h|hc=$hc|e=$e|m=$m|s=$s|b=$b"
+    val h  = SPARKY_HAIR_STYLES.getOrElse(o.hair)           { SPARKY_HAIR_STYLES[0] }
+    val hc = SPARKY_HAIR_COLORS_HEX.getOrElse(o.hairColor)  { SPARKY_HAIR_COLORS_HEX[0] }
+    val e  = SPARKY_EYE_STYLES.getOrElse(o.eyes)            { SPARKY_EYE_STYLES[1] }
+    val m  = SPARKY_MOUTH_STYLES.getOrElse(o.mouth)         { SPARKY_MOUTH_STYLES[0] }
+    val s  = SKIN_TONE_HEXES.getOrElse(o.skin)              { SKIN_TONE_HEXES[0] }
+    val b  = SPARKY_BG_COLORS.getOrElse(o.bg)               { SPARKY_BG_COLORS[0] }
+    val ac = SPARKY_ACCESSORY_STYLES.getOrElse(o.accessory) { SPARKY_ACCESSORY_STYLES[0] }
+    return "sparky|h=$h|hc=$hc|e=$e|m=$m|s=$s|b=$b|ac=$ac"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -226,17 +243,20 @@ fun diceBearUrl(seed: String, transparent: Boolean = false): String {
 
     if (safeSeed.startsWith("sparky|")) {
         val opts      = parseSparkyOptions(safeSeed)
-        val hair      = SPARKY_HAIR_STYLES.getOrElse(opts.hair)          { SPARKY_HAIR_STYLES[0] }
-        val hairColor = SPARKY_HAIR_COLORS_HEX.getOrElse(opts.hairColor) { SPARKY_HAIR_COLORS_HEX[0] }
-        val eyes      = SPARKY_EYE_STYLES.getOrElse(opts.eyes)           { SPARKY_EYE_STYLES[1] }
-        val mouth     = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)        { SPARKY_MOUTH_STYLES[0] }
-        val skin      = SKIN_TONE_HEXES.getOrElse(opts.skin)             { SKIN_TONE_HEXES[0] }
-        val bg        = SPARKY_BG_COLORS.getOrElse(opts.bg)              { SPARKY_BG_COLORS[0] }
-        // v9.x API accepts plain param names; accessories suppressed so none appear randomly
+        val hair      = SPARKY_HAIR_STYLES.getOrElse(opts.hair)           { SPARKY_HAIR_STYLES[0] }
+        val hairColor = SPARKY_HAIR_COLORS_HEX.getOrElse(opts.hairColor)  { SPARKY_HAIR_COLORS_HEX[0] }
+        val eyes      = SPARKY_EYE_STYLES.getOrElse(opts.eyes)            { SPARKY_EYE_STYLES[1] }
+        val mouth     = SPARKY_MOUTH_STYLES.getOrElse(opts.mouth)         { SPARKY_MOUTH_STYLES[0] }
+        val skin      = SKIN_TONE_HEXES.getOrElse(opts.skin)              { SKIN_TONE_HEXES[0] }
+        val bg        = SPARKY_BG_COLORS.getOrElse(opts.bg)               { SPARKY_BG_COLORS[0] }
+        val ac        = SPARKY_ACCESSORY_STYLES.getOrElse(opts.accessory)  { "none" }
+        // If the user chose an accessory, force 100% probability; otherwise suppress to 0%.
+        val accessoryParam = if (ac == "none") "&accessoriesProbability=0"
+                             else "&accessories=$ac&accessoriesProbability=100"
         return "https://api.dicebear.com/9.x/big-smile/svg" +
             "?seed=sparky-fixed" +
             "&radius=50&size=128" +
-            "&accessoriesProbability=0" +
+            accessoryParam +
             "&hair=$hair" +
             "&hairColor=${hairColor.lowercase()}" +
             "&eyes=$eyes" +

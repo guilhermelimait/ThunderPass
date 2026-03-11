@@ -1,79 +1,129 @@
 package com.thunderpass.retro
 
 import android.util.Log
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
-private const val TAG = "ThunderPass/RetroClient"
-private const val BASE_URL = "https://retroachievements.org/API/"
+private const val TAG = "ThunderPass/RetroAPI"
+private const val BASE_URL = "https://retroachievements.org/API"
 
 /**
- * Singleton Retrofit client for the RetroAchievements API.
- *
- * Credentials are resolved at call-time from [RetroAuthManager], which checks
- * EncryptedSharedPreferences first and falls back to BuildConfig compile-time values.
+ * Fetches RetroAchievements profile data over the RA v1 REST API.
+ * Uses OkHttp (already on the classpath via Coil) + Android's built-in org.json.
  */
 object RetroRetrofitClient {
 
-    private val moshi: Moshi by lazy {
-        Moshi.Builder()
-            .addLast(KotlinJsonAdapterFactory())
-            .build()
-    }
-
-    private val service: RetroApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-            .create(RetroApiService::class.java)
-    }
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
 
     /**
-     * Fetches the RetroAchievements global stats for [username].
-     * Credentials are resolved from [auth] at call time.
+     * Fetch a user's RA profile summary including points and recently played games.
      */
     suspend fun fetchRetroMetadata(
         username: String,
         auth: RetroAuthManager,
-    ): Result<RetroProfile> {
-        val apiKey  = auth.getApiKey()
-        val apiUser = auth.getApiUser()
+    ): Result<RetroProfile> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = auth.getApiKey()
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure<RetroProfile>(
+                    IllegalStateException("No RA API key configured")
+                )
+            }
+            val apiUser = auth.getApiUser().ifBlank { username }
 
-        if (apiUser.isBlank()) {
-            Log.d(TAG, "RA username not configured — skipping fetch for '$username'")
-            return Result.failure(IllegalStateException("RA username not set"))
-        }
+            val url = "$BASE_URL/API_GetUserSummary.php".toHttpUrl().newBuilder()
+                .addQueryParameter("z", apiUser)
+                .addQueryParameter("y", apiKey)
+                .addQueryParameter("u", username)
+                .addQueryParameter("g", "10")
+                .build()
 
-        return runCatching {
-            service.getUserSummary(apiUser = apiUser, apiKey = apiKey, user = username)
-        }.onSuccess {
-            Log.d(TAG, "Fetched RA profile for '$username': ${it.totalPoints} pts")
-        }.onFailure {
-            Log.w(TAG, "RA fetch failed for '$username': ${it.message}")
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure<RetroProfile>(
+                    RuntimeException("RA API HTTP ${response.code}")
+                )
+            }
+
+            val body = response.body?.string()
+            if (body.isNullOrBlank()) {
+                return@withContext Result.failure<RetroProfile>(
+                    RuntimeException("Empty response from RA API")
+                )
+            }
+
+            val json = JSONObject(body)
+
+            val recentlyPlayed = json.optJSONArray("RecentlyPlayed")?.let { arr ->
+                (0 until arr.length()).map { i ->
+                    val g = arr.getJSONObject(i)
+                    RecentGame(
+                        gameId      = g.optLong("GameID"),
+                        title       = g.optString("Title", ""),
+                        consoleName = g.optString("ConsoleName", ""),
+                        lastPlayed  = g.optString("LastPlayed").takeIf { it.isNotBlank() },
+                        imageIcon   = g.optString("ImageIcon").takeIf { it.isNotBlank() },
+                    )
+                }
+            }
+
+            Result.success(
+                RetroProfile(
+                    user                = json.optString("User", username),
+                    totalPoints         = json.optLong("TotalPoints", 0),
+                    totalSoftcorePoints = json.optLong("TotalSoftcorePoints", 0),
+                    recentlyPlayedCount = json.optInt("RecentlyPlayedCount", 0),
+                    recentlyPlayed      = recentlyPlayed,
+                )
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchRetroMetadata($username) failed", e)
+            Result.failure(e)
         }
     }
 
     /**
-     * Fetches the total number of softcore achievements earned by [username].
-     * Makes a single call requesting up to 500 games (covers the vast majority of players).
-     * Returns 0 on error or if credentials are missing.
-     *
-     * The [UserCompletionProgress.results] entries each have [CompletionEntry.numAwarded]
-     * which counts achievements earned in softcore mode (includes hardcore-earned ones,
-     * matching the count displayed on the RA website).
+     * Returns the total number of (softcore) achievements the user has earned.
+     * Uses the same summary endpoint; falls back to 0 on any error.
      */
     suspend fun fetchSoftcoreAchievementCount(
         username: String,
         auth: RetroAuthManager,
-    ): Int {
-        val apiKey  = auth.getApiKey()
-        val apiUser = auth.getApiUser()
-        if (apiUser.isBlank()) return 0
-        return runCatching {
-            service.getUserCompletionProgress(apiUser = apiUser, apiKey = apiKey, user = username)
-        }.getOrNull()?.results?.sumOf { it.numAwarded } ?: 0
+    ): Int = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = auth.getApiKey()
+            if (apiKey.isBlank()) return@withContext 0
+            val apiUser = auth.getApiUser().ifBlank { username }
+
+            val url = "$BASE_URL/API_GetUserSummary.php".toHttpUrl().newBuilder()
+                .addQueryParameter("z", apiUser)
+                .addQueryParameter("y", apiKey)
+                .addQueryParameter("u", username)
+                .addQueryParameter("g", "0")
+                .build()
+
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext 0
+
+            val body = response.body?.string() ?: return@withContext 0
+            val json = JSONObject(body)
+            // ContribCount represents the user's contribution/achievement count
+            json.optInt("ContribCount", 0)
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchSoftcoreAchievementCount($username) failed", e)
+            0
+        }
     }
 }

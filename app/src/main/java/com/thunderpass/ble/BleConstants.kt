@@ -40,10 +40,55 @@ object BleConstants {
 
     /**
      * Standard Client Characteristic Configuration Descriptor (CCCD).
-     * Required to enable notifications on RESPONSE_CHAR.
+     * Required to enable notifications on RESPONSE_CHAR and SYNC_NOTIFY_CHAR.
      */
     val CCCD_UUID: UUID =
         UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+    // ── Device Sync Service UUIDs (separate from the main ThunderPass service) ─
+
+    /**
+     * Sync service UUID — only advertised while the owning device is in active export mode.
+     * Uses a distinct base to guarantee no conflict with the main ThunderPass service.
+     */
+    val SYNC_SERVICE_UUID: UUID =
+        UUID.fromString("12345678-1234-1234-1234-123456789001")
+
+    val SYNC_SERVICE_PARCEL: android.os.ParcelUuid =
+        android.os.ParcelUuid(SYNC_SERVICE_UUID)
+
+    /**
+     * Sync WRITE characteristic — the GATT client (secondary device) writes the
+     * ephemeral key exchange frame here:
+     * `[SYNC_REQUEST_MAGIC: 1 byte][client ephemeral P-256 pubkey: 91 bytes]` = 92 bytes.
+     */
+    val SYNC_WRITE_CHAR_UUID: UUID =
+        UUID.fromString("12345678-1234-1234-1234-123456789002")
+
+    /**
+     * Sync NOTIFY characteristic — the GATT server (primary device) sends the
+     * encrypted, chunked sync payload here. NOTIFY-only; no READ permission.
+     */
+    val SYNC_NOTIFY_CHAR_UUID: UUID =
+        UUID.fromString("12345678-1234-1234-1234-123456789003")
+
+    /** Magic byte that opens a sync WRITE frame from the secondary device. */
+    const val SYNC_REQUEST_MAGIC: Byte = 0x53  // 'S'
+
+    /** Magic byte that opens every encrypted sync RESPONSE chunk from the primary. */
+    const val SYNC_RESPONSE_MAGIC: Byte = 0x52.toByte()  // 'R'
+
+    /** Written by the client to confirm step 1 (pairing code match). */
+    const val CONFIRM_STEP1_MAGIC: Byte = 0x43  // 'C'
+
+    /** Written by the client to confirm step 2 (profile verification). */
+    const val CONFIRM_STEP2_MAGIC: Byte = 0x44  // 'D'
+
+    /** Sent by the server to the client when the sender has confirmed step 2 locally. */
+    const val STEP2_ACK_MAGIC: Byte = 0x45  // 'E'
+
+    /** How long (ms) the sync GATT server stays open awaiting a connection. */
+    const val SYNC_ADVERTISE_TIMEOUT_MS = 5L * 60 * 1000  // 5 minutes
 
     // ── Protocol constants ────────────────────────────────────────────────────
 
@@ -65,11 +110,11 @@ object BleConstants {
     const val DEDUP_COOLDOWN_MS = ROTATING_ID_WINDOW_MS
 
     /**
-     * Identity dedup window in milliseconds (post-GATT, per Supabase userId).
-     * A given user earns at most one new Spark per [USER_DEDUP_WINDOW_MS];
+     * Identity dedup window in milliseconds (post-GATT, per installationId).
+     * A given device earns at most one new Spark per [USER_DEDUP_WINDOW_MS];
      * within this window the existing pass's timestamp is refreshed instead
      * of creating a duplicate row.
-     * Default: 24 hours — one Spark per person per day maximum.
+     * Default: 24 hours — one Spark per device per day maximum.
      */
     const val USER_DEDUP_WINDOW_MS = 24L * 60 * 60 * 1000
 
@@ -97,4 +142,10 @@ object BleConstants {
 
     /** Notification channel ID for encounter alerts. v2 = added LED light settings. */
     const val ENCOUNTER_CHANNEL_ID = "thunderpass_encounter_v2"
+
+    /** Notification channel ID for paired-device sync alerts. */
+    const val PAIRED_SYNC_CHANNEL_ID = "thunderpass_paired_sync"
+
+    /** Notification ID for paired-device nearby alert. */
+    const val PAIRED_SYNC_NOTIF_ID = 1003
 }

@@ -4,10 +4,13 @@ import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
 import com.thunderpass.ble.RotatingIdManager
 import com.thunderpass.data.db.ThunderPassDatabase
+import com.thunderpass.retro.RetroAuthManager
+import com.thunderpass.ui.randomSparkySeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,7 +38,8 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
                 profileDao.upsert(
                     com.thunderpass.data.db.entity.MyProfile(
                         installationId = RotatingIdManager(this@ThunderPassApplication)
-                            .installationId
+                            .installationId,
+                        avatarSeed = randomSparkySeed(),
                     )
                 )
             }
@@ -50,12 +54,14 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
                 "beta_tester",
             )
 
-            // Award "Shared Quest" retroactively on every start if the user already has
-            // RetroAchievements data cached (meaning they previously linked their account
-            // and downloaded game data successfully).
-            val raCache = com.thunderpass.retro.RetroProfileCache.load(this@ThunderPassApplication)
-            if (raCache != null) {
-                com.thunderpass.data.BadgeManager.award(this@ThunderPassApplication, "shared_quest")
+            // ── Rehydrate RetroAuth credentials from DB ──────────────────────
+            // EncryptedSharedPrefs can be wiped by OEM updates. The Room DB is
+            // the authoritative source; mirror credentials back if missing.
+            profileDao.get()?.let { p ->
+                val auth = RetroAuthManager.getInstance(this@ThunderPassApplication)
+                if (!auth.hasCredentials() && (p.retroUsername.isNotBlank() || p.raApiKey.isNotBlank())) {
+                    auth.saveCredentials(apiUser = p.retroUsername, apiKey = p.raApiKey)
+                }
             }
 
             // ── Volts recalculation ───────────────────────────────────────────
@@ -75,7 +81,10 @@ class ThunderPassApplication : Application(), SingletonImageLoader.Factory {
     /** Coil picks this up automatically via [SingletonImageLoader.Factory]. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
-            .components { add(SvgDecoder.Factory()) }
             .crossfade(true)
+            .components {
+                add(OkHttpNetworkFetcherFactory())
+                add(SvgDecoder.Factory())
+            }
             .build()
 }
