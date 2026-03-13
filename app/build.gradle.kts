@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("com.google.protobuf") version "0.9.4"
 }
 
 // Load local.properties (not automatically visible to project.findProperty)
@@ -102,6 +103,9 @@ dependencies {
     implementation("androidx.sqlite:sqlite-ktx:2.4.0")
     // org.json is part of Android's runtime — no extra dep needed
 
+    // Protobuf — binary payload for BLE profile exchange (dual-format with JSON)
+    implementation("com.google.protobuf:protobuf-kotlin-lite:3.25.1")
+
     // Coil 3 — image loading
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
@@ -126,4 +130,22 @@ dependencies {
     // Instrumented tests
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.1"
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+                create("kotlin") {
+                    option("lite")
+                }
+            }
+        }
+    }
 }
