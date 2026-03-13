@@ -326,9 +326,20 @@ class GattClient(
                 val requestFrame = byteArrayOf(BleEncryption.REQUEST_TYPE_ENCRYPTED) +
                     BleEncryption.encodePublicKey(clientKey.public)
                 // WRITE_TYPE_NO_RESPONSE saves ~7–15ms (one ATT round-trip); 92-byte payload fits in one packet.
-                requestChar.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-                gatt?.writeCharacteristic(requestChar, requestFrame)
+                gatt?.writeCharacteristic(
+                    requestChar,
+                    requestFrame,
+                    BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                )
                 Log.d(TAG, "Encrypted REQUEST sent to $address (${requestFrame.size} bytes, No Response)")
+                // Start exchange timeout immediately — with NO_RESPONSE we don't await ATT ack.
+                exchangeTimeouts[address] = scope.launch {
+                    delay(20_000L)
+                    if (activeConnections.contains(address)) {
+                        Log.w(TAG, "No response chunks from $address within 20s — disconnecting")
+                        gatt?.disconnect()
+                    }
+                }
             }
         }
 
@@ -343,17 +354,9 @@ class GattClient(
                 cleanup(gatt)
                 return
             }
-            Log.d(TAG, "REQUEST write confirmed for $address — awaiting chunked response\u2026")
-            // Start a 20-second exchange timeout: if the server sends nothing
-            // (e.g. profile is null on the remote side), we disconnect cleanly
-            // rather than leaking the GATT connection until the device walks away.
-            exchangeTimeouts[address] = scope.launch {
-                delay(20_000L)
-                if (activeConnections.contains(address)) {
-                    Log.w(TAG, "No response chunks from $address within 20s — disconnecting")
-                    gatt?.disconnect()
-                }
-            }
+            // With WRITE_TYPE_NO_RESPONSE the timeout is started in onDescriptorWrite's scope.launch.
+            // This callback may still fire (Android signals write queued); log for debugging.
+            Log.d(TAG, "REQUEST write confirmed for $address — awaiting chunked response…")
         }
 
         override fun onCharacteristicChanged(

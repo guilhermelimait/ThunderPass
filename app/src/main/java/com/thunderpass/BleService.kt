@@ -139,6 +139,13 @@ class BleService : Service() {
     private lateinit var gattClient: GattClient
     private lateinit var encounterDedup: EncounterDedup
 
+    // ── Profile cache for GattServer (saves ~10–50ms DB read per encounter) ────
+    // Cache ProfileData only; BlePayloadProto outer layer (ts, sig, encryption) is built fresh per exchange.
+    @Volatile private var cachedProfile: com.thunderpass.data.db.entity.MyProfile? = null
+    @Volatile private var cachedStats: BleStats? = null
+    @Volatile private var profileCacheTimestampMs: Long = 0L
+    private val PROFILE_CACHE_TTL_MS = 2_000L
+
     // ── Bluetooth state receiver ──────────────────────────────────────────────
     // Restarts advertising + scanning automatically when the user turns BT back on.
     private val btStateReceiver = object : BroadcastReceiver() {
@@ -238,26 +245,11 @@ class BleService : Service() {
                 serviceScope.launch { ThunderPassWidget.refreshAll(this@BleService, true) }
                 serviceScope.launch { ThunderPassWidget2x2.refreshAll(this@BleService, true) }
                 startForeground(BleConstants.NOTIF_ID, buildNotification())
+                // Warm profile cache so first encounter avoids DB read
+                refreshProfileCache()
                 gattServer.start(
-                    profileProvider = {
-                        // Provide the current profile synchronously (ok: DB on IO thread)
-                        runBlocking(Dispatchers.IO) {
-                            ThunderPassDatabase.getInstance(this@BleService).myProfileDao().get()
-                        }
-                    },
-                    statsProvider = {
-                        // Compute encounter stats to include in the BLE payload
-                        runBlocking(Dispatchers.IO) {
-                            val db           = ThunderPassDatabase.getInstance(this@BleService)
-                            val encounterDao = db.encounterDao()
-                            val passes       = encounterDao.countAll()
-                            val profile      = db.myProfileDao().get()
-                            val badges       = com.thunderpass.ui.ALL_BADGES.count { it.tier > 0 }
-                            val encounters   = encounterDao.getAll()
-                            val streak       = computeEncounterStreak(encounters)
-                            BleStats(passesCount = passes, badgesCount = badges, streakCount = streak)
-                        }
-                    },
+                    profileProvider = { getProfileForExchange() },
+                    statsProvider = { getStatsForExchange() },
                 )
                 if (!_safeZoneActive) {
                     if (_autoWalkEnabled) {
@@ -504,6 +496,66 @@ class BleService : Service() {
         catch (e: Exception) { Log.w(TAG, "stopScan: ${e.message}") }
         scanCallback = null
         bleScanner = null
+    }
+
+    // ── Profile cache for GattServer ───────────────────────────────────────────
+
+    /** Fetches profile + stats from DB and updates the cache. Call at service start to warm cache. */
+    private fun refreshProfileCache() {
+        runBlocking(Dispatchers.IO) {
+            val db = ThunderPassDatabase.getInstance(this@BleService)
+            cachedProfile = db.myProfileDao().get()
+            val encounterDao = db.encounterDao()
+            val passes = encounterDao.countAll()
+            val encounters = encounterDao.getAll()
+            cachedStats = BleStats(
+                passesCount = passes,
+                badgesCount = com.thunderpass.ui.ALL_BADGES.count { it.tier > 0 },
+                streakCount = computeEncounterStreak(encounters),
+            )
+            profileCacheTimestampMs = System.currentTimeMillis()
+        }
+    }
+
+    /** Returns cached profile if warm; else fetches and updates cache. BlePayloadProto outer layer built fresh per exchange. */
+    private fun getProfileForExchange(): com.thunderpass.data.db.entity.MyProfile? {
+        val now = System.currentTimeMillis()
+        if (cachedProfile != null && (now - profileCacheTimestampMs) < PROFILE_CACHE_TTL_MS) {
+            return cachedProfile
+        }
+        return runBlocking(Dispatchers.IO) {
+            val db = ThunderPassDatabase.getInstance(this@BleService)
+            val profile = db.myProfileDao().get()
+            val encounterDao = db.encounterDao()
+            cachedProfile = profile
+            cachedStats = BleStats(
+                passesCount = encounterDao.countAll(),
+                badgesCount = com.thunderpass.ui.ALL_BADGES.count { it.tier > 0 },
+                streakCount = computeEncounterStreak(encounterDao.getAll()),
+            )
+            profileCacheTimestampMs = System.currentTimeMillis()
+            profile
+        }
+    }
+
+    /** Returns cached stats if warm; else fetches (and updates profile cache). */
+    private fun getStatsForExchange(): BleStats? {
+        val now = System.currentTimeMillis()
+        if (cachedStats != null && (now - profileCacheTimestampMs) < PROFILE_CACHE_TTL_MS) {
+            return cachedStats
+        }
+        runBlocking(Dispatchers.IO) {
+            val db = ThunderPassDatabase.getInstance(this@BleService)
+            cachedProfile = db.myProfileDao().get()
+            val encounterDao = db.encounterDao()
+            cachedStats = BleStats(
+                passesCount = encounterDao.countAll(),
+                badgesCount = com.thunderpass.ui.ALL_BADGES.count { it.tier > 0 },
+                streakCount = computeEncounterStreak(encounterDao.getAll()),
+            )
+            profileCacheTimestampMs = System.currentTimeMillis()
+        }
+        return cachedStats
     }
 
     // ── Notification ──────────────────────────────────────────────────────────
