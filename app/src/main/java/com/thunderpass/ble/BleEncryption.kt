@@ -27,11 +27,11 @@ private const val TAG = "ThunderPass/BleEnc"
  * 3. SERVER parses the client ephemeral public key.
  * 4. SERVER generates its own fresh ephemeral P-256 key pair.
  * 5. SERVER derives a 256-bit AES key via ECDH + HKDF-Extract (HMAC-SHA256).
- * 6. SERVER encrypts the JSON payload with AES-256-GCM (12-byte random IV, 16-byte auth tag).
+ * 6. SERVER encrypts the profile payload (Protobuf bytes) with AES-256-GCM (12-byte random IV, 16-byte auth tag).
  * 7. SERVER chunks and sends RESPONSE_CHAR:
  *    `[ENCRYPTED_RESPONSE_MAGIC (0xE5)][server pubkey, 91 bytes][IV, 12 bytes][ciphertext+tag]`.
  * 8. CLIENT reassembles chunks, performs ECDH with the server pubkey → same AES key.
- * 9. CLIENT decrypts + authenticates the ciphertext; parses JSON on success.
+ * 9. CLIENT decrypts + authenticates the ciphertext; parses Protobuf (or legacy JSON) on success.
  *
  * ## Security guarantees
  * - **Confidentiality**: passive BLE sniffers cannot read profile data.
@@ -177,15 +177,15 @@ object BleEncryption {
      *
      * @param serverEphemeral Server's ephemeral key pair for this session.
      * @param sharedKey       256-bit AES session key derived from ECDH.
-     * @param json            Plaintext JSON profile payload to protect.
+     * @param payload         Plaintext profile payload (e.g. Protobuf bytes) to protect.
      */
     fun buildEncryptedResponse(
         serverEphemeral: KeyPair,
         sharedKey: SecretKey,
-        json: String,
+        payload: ByteArray,
     ): ByteArray {
         val serverPubBytes = encodePublicKey(serverEphemeral.public)
-        val encrypted      = encrypt(json.toByteArray(Charsets.UTF_8), sharedKey)
+        val encrypted      = encrypt(payload, sharedKey)
         return byteArrayOf(ENCRYPTED_RESPONSE_MAGIC) + serverPubBytes + encrypted
     }
 }

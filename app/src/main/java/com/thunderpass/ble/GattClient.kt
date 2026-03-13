@@ -10,6 +10,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.thunderpass.MainActivity
@@ -24,12 +26,14 @@ import com.thunderpass.data.db.dao.MyProfileDao
 import com.thunderpass.data.db.dao.PeerProfileSnapshotDao
 import com.thunderpass.data.db.entity.PeerProfileSnapshot
 import com.thunderpass.ble.BleEncryption
+import com.thunderpass.ble.proto.BlePayloadProto
 import com.thunderpass.security.DeviceGroupManager
 import com.thunderpass.security.PairedSyncManager
 import com.thunderpass.security.PayloadSigner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.security.KeyPair
@@ -48,7 +52,7 @@ private const val TAG = "ThunderPass/GattClient"
  * 4. Enable notifications on [RESPONSE_CHAR_UUID].
  * 5. Write to [REQUEST_CHAR_UUID] to request the peer's profile.
  * 6. Collect chunked notifications from [RESPONSE_CHAR_UUID] and reassemble.
- * 7. Parse the JSON, persist a [PeerProfileSnapshot], and update the encounter.
+ * 7. Parse the payload (JSON or Protobuf), persist a [PeerProfileSnapshot], and update the encounter.
  * 8. Disconnect.
  *
  * ### Chunking
@@ -76,6 +80,9 @@ class GattClient(
 
     // Ephemeral ECDH key pairs generated per connect() call; discarded after exchange.
     // One pair per in-flight BLE address — never stored persistently.
+    // Deferred allows key gen to run in parallel with BLE connection; resolved KeyPair
+    // is stored in ephemeralKeys after await in onDescriptorWrite for use in decryptResponse.
+    private val ephemeralKeyDeferreds = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<KeyPair>>()
     private val ephemeralKeys = ConcurrentHashMap<String, KeyPair>()
 
     // Chunk reassembly buffers keyed by "$deviceAddress:$encounterId".
@@ -130,9 +137,11 @@ class GattClient(
         }
         activeConnections += address
         retryCount[address] = 0
-        // Generate a fresh ephemeral P-256 key pair for this session.
-        // It is used in onDescriptorWrite to build the encrypted REQUEST frame.
-        ephemeralKeys[address] = BleEncryption.generateEphemeralKeyPair()
+        // Generate ephemeral P-256 key pair in parallel with BLE connection
+        // (saves ~20–50ms). Resolved in onDescriptorWrite before building REQUEST.
+        ephemeralKeyDeferreds[address] = scope.async(Dispatchers.Default) {
+            BleEncryption.generateEphemeralKeyPair()
+        }
         Log.i(TAG, "Connecting to $address (encounterId=$encounterId)")
         // TRANSPORT_LE forces BLE — avoids accidental BR/EDR connection attempts.
         device.connectGatt(
@@ -167,6 +176,7 @@ class GattClient(
         private fun cleanup(gatt: BluetoothGatt?) {
             val address = gatt?.device?.address.orEmpty()
             activeConnections -= address
+            ephemeralKeyDeferreds.remove(address)
             ephemeralKeys.remove(address)
             retryCount.remove(address)
             connectionTimeouts.remove(address)?.cancel()  // timeout no longer needed
@@ -188,10 +198,25 @@ class GattClient(
                     // Cancel the pre-connection timeout — we're connected; the exchange
                     // timeout below will take over once the REQUEST write completes.
                     connectionTimeouts.remove(address)?.cancel()
+
+                    // 1. Request high connection priority (shorter connection interval).
+                    gatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
+
+                    // 2. Request 2M PHY for faster data transfer (Android 8+). May be
+                    // ignored or fail on devices that don't support 2M — safe to call.
+                    gatt?.setPreferredPhy(
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_LE_2M_MASK,
+                        BluetoothDevice.PHY_OPTION_NO_PREFERRED,
+                    )
+
                     Log.d(TAG, "GATT connected to $address; requesting MTU ${BleConstants.PREFERRED_MTU}…")
-                    // Negotiate a larger MTU before service discovery so that
-                    // the full profile JSON fits in a single notification.
                     gatt?.requestMtu(BleConstants.PREFERRED_MTU)
+                    // Fast path: API 35+ pipelines discovery — saves ~15ms on modern hardware
+                    if (Build.VERSION.SDK_INT >= 35) {
+                        Log.d(TAG, "Android 15+ detected, pipelining service discovery…")
+                        gatt?.discoverServices()
+                    }
                 }
 
                 newState == BluetoothProfile.STATE_DISCONNECTED -> {
@@ -207,8 +232,10 @@ class GattClient(
                                 "(attempt ${attempt + 1}/${MAX_CONNECT_RETRIES + 1})")
                             retryCount[address] = attempt
                             gatt?.close()
-                            // Fresh ephemeral key for the new session
-                            ephemeralKeys[address] = BleEncryption.generateEphemeralKeyPair()
+                            // Fresh ephemeral key for the retry session
+                            ephemeralKeyDeferreds[address] = scope.async(Dispatchers.Default) {
+                                BleEncryption.generateEphemeralKeyPair()
+                            }
                             chunkBuffers.remove(bufferKey(address, encounterId))
                             // activeConnections entry stays — we're about to reconnect
                             scope.launch {
@@ -237,18 +264,21 @@ class GattClient(
 
         /**
          * Called when MTU negotiation completes.
-         * Only start service discovery after MTU is agreed so the server
-         * knows how large each notification packet can be.
+         * Safe path (API < 35): Discovery runs here so janky BLE firmware on retro handhelds
+         * doesn't drop MTU negotiation when discoverServices races with requestMtu.
+         * Fast path (API 35+): Discovery already fired in onConnectionStateChange.
          */
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             val address = gatt.device?.address.orEmpty()
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "MTU negotiated: $mtu for $address — discovering services…")
+                Log.d(TAG, "MTU negotiated: $mtu for $address")
             } else {
-                Log.w(TAG, "MTU negotiation failed (status=$status) for $address — discovering services anyway…")
+                Log.w(TAG, "MTU negotiation failed (status=$status) for $address")
             }
-            // Proceed regardless; the server will use the agreed (or default) MTU.
-            gatt.discoverServices()
+            if (Build.VERSION.SDK_INT < 35) {
+                Log.d(TAG, "Legacy OS detected, discovering services post-MTU…")
+                gatt.discoverServices()
+            }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
@@ -282,26 +312,44 @@ class GattClient(
                 return
             }
 
-            // Notifications enabled — send the encrypted REQUEST
-            // Frame: [0x02][91-byte X.509 P-256 ephemeral pubkey]
+            // Notifications enabled — await ephemeral key (generated in parallel with connect)
+            // then send the encrypted REQUEST. Use scope.launch so we don't block the Binder thread.
+            val address = gatt?.device?.address.orEmpty()
             val requestChar = gatt
                 ?.getService(THUNDERPASS_SERVICE_UUID)
                 ?.getCharacteristic(REQUEST_CHAR_UUID) ?: return
 
-            val clientKey = ephemeralKeys[gatt.device?.address.orEmpty()]
-            if (clientKey == null) {
-                Log.w(TAG, "No ephemeral key for ${gatt.device?.address} — aborting")
-                cleanup(gatt)
-                return
+            scope.launch {
+                val clientKey = try {
+                    ephemeralKeyDeferreds[address]?.await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Ephemeral key gen failed for $address: ${e.message}")
+                    null
+                }
+                if (clientKey == null) {
+                    Log.w(TAG, "No ephemeral key for $address — aborting")
+                    cleanup(gatt)
+                    return@launch
+                }
+                ephemeralKeys[address] = clientKey
+                val requestFrame = byteArrayOf(BleEncryption.REQUEST_TYPE_ENCRYPTED) +
+                    BleEncryption.encodePublicKey(clientKey.public)
+                // WRITE_TYPE_NO_RESPONSE saves ~7–15ms (one ATT round-trip); 92-byte payload fits in one packet.
+                gatt?.writeCharacteristic(
+                    requestChar,
+                    requestFrame,
+                    BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                )
+                Log.d(TAG, "Encrypted REQUEST sent to $address (${requestFrame.size} bytes, No Response)")
+                // Start exchange timeout immediately — with NO_RESPONSE we don't await ATT ack.
+                exchangeTimeouts[address] = scope.launch {
+                    delay(20_000L)
+                    if (activeConnections.contains(address)) {
+                        Log.w(TAG, "No response chunks from $address within 20s — disconnecting")
+                        gatt?.disconnect()
+                    }
+                }
             }
-            val requestFrame = byteArrayOf(BleEncryption.REQUEST_TYPE_ENCRYPTED) +
-                BleEncryption.encodePublicKey(clientKey.public)
-            gatt.writeCharacteristic(
-                requestChar,
-                requestFrame,
-                BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            )
-            Log.d(TAG, "Encrypted REQUEST sent to ${gatt.device?.address} (${requestFrame.size} bytes) — awaiting ATT confirmation")
         }
 
         override fun onCharacteristicWrite(
@@ -315,17 +363,9 @@ class GattClient(
                 cleanup(gatt)
                 return
             }
-            Log.d(TAG, "REQUEST write confirmed for $address — awaiting chunked response\u2026")
-            // Start a 20-second exchange timeout: if the server sends nothing
-            // (e.g. profile is null on the remote side), we disconnect cleanly
-            // rather than leaking the GATT connection until the device walks away.
-            exchangeTimeouts[address] = scope.launch {
-                delay(20_000L)
-                if (activeConnections.contains(address)) {
-                    Log.w(TAG, "No response chunks from $address within 20s — disconnecting")
-                    gatt?.disconnect()
-                }
-            }
+            // With WRITE_TYPE_NO_RESPONSE the timeout is started in onDescriptorWrite's scope.launch.
+            // This callback may still fire (Android signals write queued); log for debugging.
+            Log.d(TAG, "REQUEST write confirmed for $address — awaiting chunked response…")
         }
 
         override fun onCharacteristicChanged(
@@ -362,12 +402,12 @@ class GattClient(
                     chunkBuffers.remove(key)
                     Log.d(TAG, "All $totalChunks chunks received from $address (${full.size} bytes total)")
                     // Decrypt and authenticate the payload; reject any tampering or wrong key
-                    val json = decryptResponse(full, address) ?: run {
+                    val rawBytes = decryptResponse(full, address) ?: run {
                         Log.w(TAG, "Decryption failed for $address — dropping response")
                         gatt.disconnect()
                         return
                     }
-                    scope.launch(Dispatchers.IO) { parseAndPersist(json, encounterId, address) }
+                    scope.launch(Dispatchers.IO) { parseAndPersist(rawBytes, encounterId, address) }
                     gatt.disconnect()
                 }
             } else {
@@ -388,9 +428,9 @@ class GattClient(
      *
      * @param full    Reassembled raw bytes from all GATT chunks.
      * @param address Remote device MAC address (used to look up our ephemeral private key).
-     * @return Decrypted JSON string, or `null` if verification fails (tampered, wrong key, etc.).
+     * @return Decrypted plaintext bytes, or `null` if verification fails (tampered, wrong key, etc.).
      */
-    private fun decryptResponse(full: ByteArray, address: String): String? {
+    private fun decryptResponse(full: ByteArray, address: String): ByteArray? {
         if (full.isEmpty() || full[0] != BleEncryption.ENCRYPTED_RESPONSE_MAGIC) {
             Log.w(TAG, "Response from $address missing encrypted magic byte — rejected")
             return null
@@ -416,24 +456,240 @@ class GattClient(
             return null
         }
         val ivAndCt = full.copyOfRange(1 + BleEncryption.PUBLIC_KEY_BYTES, full.size)
-        val plaintext = BleEncryption.decrypt(ivAndCt, sharedKey) ?: run {
-            Log.w(TAG, "AES-GCM auth failed from $address — possible replay or tampering")
-            return null
-        }
-        return plaintext.toString(Charsets.UTF_8)
+        return BleEncryption.decrypt(ivAndCt, sharedKey)
     }
 
     // ── Payload parser ────────────────────────────────────────────────────────
 
     /**
-     * Parses the JSON payload per SPEC.md and stores a [PeerProfileSnapshot],
+     * Dual-format routing: if the decrypted payload starts with `{` (0x7B), route to the
+     * legacy JSON parser. Otherwise, parse as Protobuf and store raw bytes as Base64 for
+     * future-proofing.
+     */
+    private suspend fun parseAndPersist(rawBytes: ByteArray, encounterId: Long, address: String) {
+        if (rawBytes.isEmpty()) return
+        if (rawBytes[0] == 0x7B.toByte()) {
+            parseAndPersistJson(String(rawBytes, Charsets.UTF_8), encounterId, address)
+        } else {
+            parseAndPersistProtobuf(rawBytes, encounterId, address)
+        }
+    }
+
+    private suspend fun parseAndPersistProtobuf(rawBytes: ByteArray, encounterId: Long, address: String) {
+        try {
+            val payload = BlePayloadProto.parseFrom(rawBytes)
+            val version = payload.v
+            val rotatingId = payload.rotatingId
+            val ts = payload.ts
+            val data = payload.data
+
+            val peerPubKey = payload.pubKey
+            val peerSig = payload.sig
+
+            when {
+                peerPubKey.isBlank() ->
+                    Log.d(TAG, "No pubKey from $address — accepting as legacy (unverified)")
+                peerSig.isBlank() ->
+                    Log.w(TAG, "Empty sig from $address despite pubKey present — accepting unverified (possible Keystore error on sender)")
+                else -> {
+                    val authMessage = PayloadSigner.signedPayload(rotatingId, ts)
+                    if (!PayloadSigner.verify(authMessage, peerSig, peerPubKey)) {
+                        Log.w(TAG, "Signature verification FAILED for $address — dropping payload (possible spoofing)")
+                        return
+                    }
+                    Log.d(TAG, "Signature verified for $address")
+                }
+            }
+
+            val peerGroupTag = if (data.hasGroupTag()) data.groupTag else ""
+            val peerInstIdGT = if (data.hasInstId()) data.instId else ""
+
+            if (peerGroupTag.isNotBlank() && peerInstIdGT.isNotBlank() &&
+                DeviceGroupManager.isOwnDevice(context, peerInstIdGT, peerGroupTag)) {
+
+                val peerName = data.displayName.ifBlank { "Paired Device" }
+                val peerDevType = if (data.hasDeviceType()) data.deviceType else ""
+                val willSync = PairedSyncManager.shouldSync(context, peerInstIdGT)
+
+                Log.i(TAG, "Own paired device detected via groupTag ($peerInstIdGT) — willSync=$willSync")
+
+                knownPairedAddresses[address] = System.currentTimeMillis()
+
+                NearbyDeviceState.onPairedDeviceSeen(
+                    displayName = peerName,
+                    deviceType = peerDevType,
+                    instId = peerInstIdGT,
+                    synced = willSync,
+                )
+
+                PairedSyncManager.recordPairedDevice(context, peerInstIdGT, peerName, peerDevType)
+                showPairedDeviceNotification(peerName, willSync)
+
+                if (willSync) {
+                    // Bridge format: map ProfileDataProto to JSONObject until PairedSyncManager
+                    // is refactored to accept ProfileDataProto directly.
+                    val jsonForSync = org.json.JSONObject().apply {
+                        put("displayName", data.displayName)
+                        put("greeting", data.greeting)
+                        put("avatar", org.json.JSONObject().apply {
+                            put("kind", data.avatar.kind)
+                            put("color", data.avatar.color)
+                            if (data.avatar.hasSeed()) put("seed", data.avatar.seed)
+                        })
+                        if (data.hasUpdatedAt()) put("updatedAt", data.updatedAt)
+                        put("volts", data.volts)
+                        if (data.hasRetroUsername()) put("retroUsername", data.retroUsername)
+                        if (data.hasGhostGame()) put("ghostGame", data.ghostGame)
+                        if (data.hasGhostScore()) put("ghostScore", data.ghostScore)
+                        if (data.hasCountry()) put("country", data.country)
+                        if (data.hasCity()) put("city", data.city)
+                        if (data.hasSyncBadges()) put("syncBadges", data.syncBadges)
+                        if (data.hasSyncStickers()) put("syncStickers", data.syncStickers)
+                        if (data.hasSyncPrivacyMode()) put("syncPrivacyMode", data.syncPrivacyMode)
+                    }
+                    scope.launch { PairedSyncManager.mergeIncomingProfile(context, profileDao, peerInstIdGT, jsonForSync) }
+                }
+
+                val ownDeviceGreeting = peerDevType.ifBlank { "Your paired device" }
+                val rawBase64 = Base64.encodeToString(rawBytes, Base64.NO_WRAP)
+                val ownSnapshot = PeerProfileSnapshot(
+                    rotatingId = rotatingId,
+                    displayName = peerName.ifBlank { "Paired Device" },
+                    greeting = ownDeviceGreeting,
+                    avatarKind = "own_device",
+                    avatarColor = "#FFFFFF",
+                    avatarSeed = peerInstIdGT,
+                    protocolVersion = version,
+                    receivedAt = System.currentTimeMillis(),
+                    rawJson = rawBase64,
+                    peerInstId = peerInstIdGT,
+                )
+                val snapshotId = snapshotDao.insert(ownSnapshot)
+                encounterDao.linkSnapshot(encounterId, snapshotId)
+                encounterDao.setFriend(encounterId, true)
+                Log.i(TAG, "Own device added as friend (encounterId=$encounterId snapshotId=$snapshotId)")
+                return
+            }
+
+            val displayName = data.displayName.ifBlank { "Unknown" }
+            val greeting = data.greeting
+            val avatarKind = data.avatar.kind.ifBlank { "defaultBolt" }
+            val avatarColor = data.avatar.color.ifBlank { "#FFFFFF" }
+            val avatarSeed = if (data.avatar.hasSeed()) data.avatar.seed else null
+            val retroUsername = if (data.hasRetroUsername()) data.retroUsername else null
+            val ghostGame = if (data.hasGhostGame()) data.ghostGame else null
+            val ghostScore = if (data.hasGhostScore()) data.ghostScore else null
+
+            val peerVolts = if (data.volts >= 0L) data.volts else null
+            val peerPasses = if (data.hasPasses() && data.passes >= 0) data.passes else null
+            val peerBadges = if (data.hasBadges() && data.badges >= 0) data.badges else null
+            val peerStreak = if (data.hasStreak() && data.streak >= 0) data.streak else null
+            val peerCountry = if (data.hasCountry() && data.country.isNotBlank()) data.country else null
+            val peerCity = if (data.hasCity() && data.city.isNotBlank()) data.city else null
+
+            val peerInstId = if (data.hasInstId() && data.instId.isNotBlank()) data.instId else null
+            val effectiveId = peerInstId
+
+            val rawBase64 = Base64.encodeToString(rawBytes, Base64.NO_WRAP)
+
+            if (effectiveId != null) {
+                val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
+                if (snapshotDao.countByInstIdSince(effectiveId, cutoffMs) > 0) {
+                    Log.i(TAG, "User $effectiveId already encountered within 24h window — refreshing profile data only")
+                    val existingId = snapshotDao.latestIdByInstIdSince(effectiveId, cutoffMs)
+                    if (existingId != null) {
+                        snapshotDao.updateProfileData(
+                            id = existingId,
+                            displayName = displayName,
+                            greeting = greeting,
+                            avatarKind = avatarKind,
+                            avatarColor = avatarColor,
+                            avatarSeed = avatarSeed,
+                            retroUsername = retroUsername,
+                            ghostGame = ghostGame,
+                            ghostScore = ghostScore,
+                            peerVoltsTotal = peerVolts,
+                            peerPassesCount = peerPasses,
+                            peerBadgesCount = peerBadges,
+                            peerStreakCount = peerStreak,
+                            peerCountry = peerCountry,
+                            peerCity = peerCity,
+                            rawJson = rawBase64,
+                        )
+                        Log.i(TAG, "Profile refreshed for $effectiveId (snapshot=$existingId)")
+                    }
+                    return
+                }
+            } else {
+                val cutoffMs = System.currentTimeMillis() - BleConstants.USER_DEDUP_WINDOW_MS
+                if (encounterDao.countLinkedByMacSince(address, cutoffMs) > 0) {
+                    Log.i(TAG, "Anonymous device $address already linked within 24h window — skipping duplicate")
+                    return
+                }
+            }
+
+            val snapshotId = snapshotDao.insert(
+                PeerProfileSnapshot(
+                    rotatingId = rotatingId,
+                    displayName = displayName,
+                    greeting = greeting,
+                    avatarKind = avatarKind,
+                    avatarColor = avatarColor,
+                    avatarSeed = avatarSeed,
+                    protocolVersion = version,
+                    receivedAt = ts * 1000,
+                    rawJson = rawBase64,
+                    retroUsername = retroUsername,
+                    ghostGame = ghostGame,
+                    ghostScore = ghostScore,
+                    peerInstId = effectiveId,
+                    peerVoltsTotal = peerVolts,
+                    peerPassesCount = peerPasses,
+                    peerBadgesCount = peerBadges,
+                    peerStreakCount = peerStreak,
+                    peerCountry = peerCountry,
+                    peerCity = peerCity,
+                )
+            )
+
+            encounterDao.linkSnapshot(encounterId, snapshotId)
+            profileDao.addVolts(100)
+
+            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val totalEncounters = encounterDao.countAll()
+            val todayStart = java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            val stickerKeys = mutableListOf("first_spark")
+            if (retroUsername != null) stickerKeys += "player_2"
+            if (hour >= 21) stickerKeys += "dusk_patrol"
+            if (hour < 8) stickerKeys += "early_bird"
+            if (totalEncounters >= 100) stickerKeys += "thunder_god"
+            else if (totalEncounters >= 50) stickerKeys += "marathon"
+            if (encounterDao.countSince(todayStart) >= 3) stickerKeys += "on_fire"
+            com.thunderpass.data.StickerManager.award(context, *stickerKeys.toTypedArray())
+
+            Log.i(TAG, "Profile from $rotatingId persisted (snapshot=$snapshotId, encounter=$encounterId, +100J)")
+            onProfileReceived?.invoke(encounterId, displayName)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse/persist Protobuf payload: ${e.message}")
+        }
+    }
+
+    /**
+     * Parses the legacy JSON payload per SPEC.md and stores a [PeerProfileSnapshot],
      * then links it to the [encounter] row.
      *
-     * @param address  The BLE MAC address of the remote device (stable within an advertising
-     *                 session). Used as a fallback dedup key when the peer is in privacy mode
-     *                 and no stable [effectiveId] is available.
+     * @param address The BLE MAC address of the remote device (stable within an advertising
+     *                session). Used as a fallback dedup key when the peer is in privacy mode
+     *                and no stable [effectiveId] is available.
      */
-    private suspend fun parseAndPersist(raw: String, encounterId: Long, address: String) {
+    private suspend fun parseAndPersistJson(raw: String, encounterId: Long, address: String) {
         try {
             val json       = org.json.JSONObject(raw)
             val version    = json.optInt("v", 0)

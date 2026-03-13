@@ -18,9 +18,18 @@ import com.thunderpass.ble.BleConstants.CCCD_UUID
 import com.thunderpass.ble.BleConstants.REQUEST_CHAR_UUID
 import com.thunderpass.ble.BleConstants.RESPONSE_CHAR_UUID
 import com.thunderpass.ble.BleConstants.THUNDERPASS_SERVICE_UUID
+import com.thunderpass.ble.proto.AvatarProto
+import com.thunderpass.ble.proto.BlePayloadProto
+import com.thunderpass.ble.proto.ProfileDataProto
 import com.thunderpass.data.db.entity.MyProfile
 import com.thunderpass.security.DeviceGroupManager
 import com.thunderpass.security.PayloadSigner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 
 private const val TAG = "ThunderPass/GattServer"
 
@@ -40,7 +49,7 @@ data class BleStats(
  * ### Flow (SPEC.md § GATT Handshake)
  * 1. Remote client connects and enables notifications on [RESPONSE_CHAR_UUID].
  * 2. Client writes to [REQUEST_CHAR_UUID] to signal it wants a profile.
- * 3. Server notifies [RESPONSE_CHAR_UUID] with the JSON payload.
+ * 3. Server notifies [RESPONSE_CHAR_UUID] with the encrypted Protobuf payload.
  *    (MVP: single notification; chunking is a TODO for payloads > MTU.)
  */
 class GattServer(
@@ -49,6 +58,12 @@ class GattServer(
 ) {
 
     private var gattServer: BluetoothGattServer? = null
+
+    /** Pre-generated ephemeral key for the next incoming request. Atomically consumed so
+     *  two concurrent clients never receive the same key. Replenished in background. */
+    private val nextServerKey = AtomicReference<KeyPair?>(null)
+    private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var pregenJob: Job? = null
 
     /** Negotiated MTU per remote device address (set in [onMtuChanged]).
      *  ConcurrentHashMap because [onMtuChanged] and [onConnectionStateChange] can
@@ -67,15 +82,23 @@ class GattServer(
         gattServer = btManager.openGattServer(context, buildCallback(profileProvider, statsProvider))
             ?.also { server ->
                 server.addService(buildService())
+                pregenJob = serverScope.launch {
+                    if (nextServerKey.get() == null) {
+                        nextServerKey.set(BleEncryption.generateEphemeralKeyPair())
+                        Log.d(TAG, "Pre-generated first server ephemeral key.")
+                    }
+                }
                 Log.i(TAG, "GATT server started.")
             }
     }
 
     /** Call from [BleService.onDestroy]. */
     fun stop() {
+        pregenJob?.cancel()
         gattServer?.close()
         gattServer = null
         deviceMtu.clear()
+        nextServerKey.set(null)
         Log.i(TAG, "GATT server stopped.")
     }
 
@@ -183,8 +206,11 @@ class GattServer(
                     return
                 }
 
-                val serverEphemeral = BleEncryption.generateEphemeralKeyPair()
-                val sharedKey       = BleEncryption.deriveSharedKey(serverEphemeral.private, clientPubKey)
+                val serverEphemeral = nextServerKey.getAndSet(null) ?: BleEncryption.generateEphemeralKeyPair()
+                serverScope.launch {
+                    nextServerKey.set(BleEncryption.generateEphemeralKeyPair())
+                }
+                val sharedKey = BleEncryption.deriveSharedKey(serverEphemeral.private, clientPubKey)
 
                 device?.let { dev ->
                     val mtu = deviceMtu[dev.address] ?: BleConstants.DEFAULT_MTU
@@ -246,7 +272,7 @@ class GattServer(
         val payload = BleEncryption.buildEncryptedResponse(
             serverEphemeral = serverEphemeral,
             sharedKey       = sharedKey,
-            json            = buildPayloadJson(profile, stats),
+            payload         = buildPayloadBytes(profile, stats),
         )
 
         // ATT notification overhead: 3 bytes (opcode 1 + handle 2).
@@ -271,116 +297,74 @@ class GattServer(
     }
 
     /**
-     * Builds the JSON exchange payload per SPEC.md § Exchange Layer.
-     *
-     * ```json
-     * {
-     *   "v": 1,
-     *   "type": "profile",
-     *   "rotatingId": "base64...",
-     *   "ts": 1710000000,
-     *   "data": { "displayName": "Gui", "greeting": "Hey!", "avatar": {...} }
-     * }
-     * ```
+     * Builds the Protobuf exchange payload per SPEC.md § Exchange Layer.
+     * Privacy mode: share name, greeting, avatar, and stats — but hide identity
+     * (retroUsername, instId, deviceType, ghostGame) so the peer can display the
+     * card without being able to track or verify who they met.
      */
-    private fun buildPayloadJson(profile: MyProfile, stats: BleStats?): String {
-        // Privacy mode: share name, greeting, avatar, and stats — but hide identity
-        // (retroUsername, userId, instId, deviceType, ghostGame, sig) so the peer
-        // can display the card without being able to track or verify who they met.
-        val data = if (profile.privacyMode) {
-            org.json.JSONObject().apply {
-                put("displayName", profile.displayName)
-                put("greeting", profile.greeting)
-                put("avatar", org.json.JSONObject().apply {
-                    put("kind", profile.avatarKind)
-                    put("color", profile.avatarColor)
-                    if (profile.avatarSeed.isNotBlank()) put("seed", profile.avatarSeed)
-                })
-                put("private", true)
-                // Volts + encounter stats — visible even in privacy mode
-                put("volts", profile.voltsTotal)
-                if (stats != null) {
-                    put("passes", stats.passesCount)
-                    put("badges", stats.badgesCount)
-                    put("streak", stats.streakCount)
-                }
-                // retroUsername, ghostGame, userId, instId, deviceType, sig intentionally omitted
-            }
-        } else org.json.JSONObject().apply {
-            put("displayName", profile.displayName)
-            put("greeting", profile.greeting)
-            put("avatar", org.json.JSONObject().apply {
-                put("kind", profile.avatarKind)
-                put("color", profile.avatarColor)
-                // Include DiceBear seed so peers can render the same avatar
-                if (profile.avatarSeed.isNotBlank()) put("seed", profile.avatarSeed)
-            })
-            // Include RetroAchievements username if the user has set one
-            if (profile.retroUsername.isNotBlank()) {
-                put("retroUsername", profile.retroUsername)
-            }
-            if (profile.ghostGame.isNotBlank()) {
-                put("ghostGame", profile.ghostGame)
-                if (profile.ghostScore > 0L) put("ghostScore", profile.ghostScore)
-            }
-            // Always include the stable installationId as the identity dedup key.
-            // Peers use this to perform 24-hour dedup so nearby devices don't
-            // accumulate duplicate Sparks on every rotating-ID window change.
-            if (profile.installationId.isNotBlank()) {
-                put("instId", profile.installationId)
-            }
-            // Include detected device type (e.g. "AYN Thor 2", "Retroid Pocket 4 Pro")
-            if (profile.deviceType.isNotBlank()) {
-                put("deviceType", profile.deviceType)
-            }
-            // Country + city — visible to all encounters when privacy is off
-            if (profile.country.isNotBlank()) put("country", profile.country)
-            if (profile.city.isNotBlank()) put("city", profile.city)
-            // Include Volts + encounter stats so peers can display them
-            put("volts", profile.voltsTotal)
+    private fun buildPayloadBytes(profile: MyProfile, stats: BleStats?): ByteArray {
+        val dataBuilder = ProfileDataProto.newBuilder().apply {
+            displayName = profile.displayName
+            greeting = profile.greeting
+            avatar = AvatarProto.newBuilder().apply {
+                kind = profile.avatarKind
+                color = profile.avatarColor
+                if (profile.avatarSeed.isNotBlank()) seed = profile.avatarSeed
+            }.build()
+            volts = profile.voltsTotal
+
             if (stats != null) {
-                put("passes", stats.passesCount)
-                put("badges", stats.badgesCount)
-                put("streak", stats.streakCount)
+                passes = stats.passesCount
+                badges = stats.badgesCount
+                streak = stats.streakCount
+            }
+
+            if (profile.privacyMode) {
+                isPrivate = true
+            } else {
+                isPrivate = false
+                if (profile.retroUsername.isNotBlank()) retroUsername = profile.retroUsername
+                if (profile.ghostGame.isNotBlank()) {
+                    ghostGame = profile.ghostGame
+                    if (profile.ghostScore > 0L) ghostScore = profile.ghostScore
+                }
+                if (profile.installationId.isNotBlank()) instId = profile.installationId
+                if (profile.deviceType.isNotBlank()) deviceType = profile.deviceType
+                if (profile.country.isNotBlank()) country = profile.country
+                if (profile.city.isNotBlank()) city = profile.city
+            }
+
+            // Paired-device delta sync — always appended regardless of privacy mode.
+            // Paired devices authenticate via HMAC(DGK, instId); strangers without
+            // the DGK cannot verify or use the groupTag.
+            val groupTagStr = DeviceGroupManager.computeGroupTag(context, profile.installationId)
+            if (groupTagStr.isNotBlank()) {
+                instId = profile.installationId
+                groupTag = groupTagStr
+                updatedAt = profile.updatedAt
+                if (profile.badgesJson.isNotBlank()) syncBadges = profile.badgesJson
+                if (profile.stickersJson.isNotBlank()) syncStickers = profile.stickersJson
+                syncPrivacyMode = profile.privacyMode
+                if (profile.country.isNotBlank()) country = profile.country
+                if (profile.city.isNotBlank()) city = profile.city
             }
         }
 
-        // ── Paired-device delta sync — always appended regardless of privacy mode ──
-        // Paired devices authenticate via HMAC(DGK, instId); strangers without
-        // the DGK cannot verify or use the groupTag.  Including instId here for
-        // the HMAC check is a minimal privacy trade-off (SHA-256 derivative, inside
-        // AES-256-GCM payload) that enables country, city, and all profile fields
-        // to stay in sync across paired devices even when privacy mode is on.
-        val groupTag = DeviceGroupManager.computeGroupTag(context, profile.installationId)
-        if (groupTag.isNotBlank()) {
-            data.put("instId", profile.installationId)
-            data.put("groupTag", groupTag)
-            // Extra fields for periodic paired-device delta sync (PairedSyncManager).
-            // The receiving GattClient verifies the groupTag before consuming these.
-            // NOTE: credentials (raApiKey) are intentionally excluded — they are only
-            // transferred during the explicit SAS-verified SyncGattServer flow.
-            data.put("updatedAt", profile.updatedAt)
-            if (profile.badgesJson.isNotBlank())   data.put("syncBadges",   profile.badgesJson)
-            if (profile.stickersJson.isNotBlank()) data.put("syncStickers", profile.stickersJson)
-            data.put("syncPrivacyMode", profile.privacyMode)
-            // Country + city — always synced to paired devices
-            if (profile.country.isNotBlank()) data.put("country", profile.country)
-            if (profile.city.isNotBlank())    data.put("city",    profile.city)
-        }
-        val rotatingId = rotatingIdManager.currentRotatingId()
-        val ts         = System.currentTimeMillis() / 1000
-        // Authenticate this payload: sign the rotatingId + time window with the
-        // device-bound Keystore key so peers can verify origin without breaking privacy.
-        val pubKey = PayloadSigner.ensureKeyPairAndGetPublicKey()
-        val sig    = PayloadSigner.sign(PayloadSigner.signedPayload(rotatingId, ts)) ?: ""
-        return org.json.JSONObject().apply {
-            put("v", BleConstants.PROTOCOL_VERSION)
-            put("type", "profile")
-            put("rotatingId", rotatingId)
-            put("ts", ts)
-            put("pubKey", pubKey)
-            put("sig", sig)
-            put("data", data)
-        }.toString()
+        val rotatingIdStr = rotatingIdManager.currentRotatingId()
+        val tsLong = System.currentTimeMillis() / 1000
+        val pubKeyStr = PayloadSigner.ensureKeyPairAndGetPublicKey()
+        val sigStr = PayloadSigner.sign(PayloadSigner.signedPayload(rotatingIdStr, tsLong)) ?: ""
+
+        val payloadProto = BlePayloadProto.newBuilder().apply {
+            v = BleConstants.PROTOCOL_VERSION
+            type = "profile"
+            rotatingId = rotatingIdStr
+            ts = tsLong
+            pubKey = pubKeyStr
+            sig = sigStr
+            data = dataBuilder.build()
+        }.build()
+
+        return payloadProto.toByteArray()
     }
 }
