@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -209,10 +210,13 @@ class GattClient(
                         BluetoothDevice.PHY_OPTION_NO_PREFERRED,
                     )
 
-                    Log.d(TAG, "GATT connected to $address; requesting MTU ${BleConstants.PREFERRED_MTU}, discovering services…")
-                    // Pipeline MTU negotiation and service discovery — overlap saves ~15ms on stacks that allow it.
+                    Log.d(TAG, "GATT connected to $address; requesting MTU ${BleConstants.PREFERRED_MTU}…")
                     gatt?.requestMtu(BleConstants.PREFERRED_MTU)
-                    gatt?.discoverServices()
+                    // Fast path: API 35+ pipelines discovery — saves ~15ms on modern hardware
+                    if (Build.VERSION.SDK_INT >= 35) {
+                        Log.d(TAG, "Android 15+ detected, pipelining service discovery…")
+                        gatt?.discoverServices()
+                    }
                 }
 
                 newState == BluetoothProfile.STATE_DISCONNECTED -> {
@@ -260,8 +264,9 @@ class GattClient(
 
         /**
          * Called when MTU negotiation completes.
-         * Service discovery is already initiated in onConnectionStateChange (pipelined).
-         * If the stack serialized and discovery hasn't run yet, it will use the new MTU.
+         * Safe path (API < 35): Discovery runs here so janky BLE firmware on retro handhelds
+         * doesn't drop MTU negotiation when discoverServices races with requestMtu.
+         * Fast path (API 35+): Discovery already fired in onConnectionStateChange.
          */
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             val address = gatt.device?.address.orEmpty()
@@ -269,6 +274,10 @@ class GattClient(
                 Log.d(TAG, "MTU negotiated: $mtu for $address")
             } else {
                 Log.w(TAG, "MTU negotiation failed (status=$status) for $address")
+            }
+            if (Build.VERSION.SDK_INT < 35) {
+                Log.d(TAG, "Legacy OS detected, discovering services post-MTU…")
+                gatt.discoverServices()
             }
         }
 

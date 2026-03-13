@@ -22,8 +22,10 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -703,10 +705,15 @@ class BleService : Service() {
     /** Update the encounter notification once we know the peer's display name. */
     private fun updateEncounterNotification(encounterId: Long, displayName: String) {
         // ⚡ "The Spark" — double-pulse haptic feedback on successful profile exchange
-        // Null-guard: VibratorManager can be null on custom ROMs (OdinOS)
+        // API 31+: VibratorManager. API < 31: deprecated Vibrator (VibrationEffect is API 26+)
         val settingsPrefs = getSharedPreferences("tp_settings", android.content.Context.MODE_PRIVATE)
         if (settingsPrefs.getBoolean("vibration_enabled", true)) {
-            val vibrator = getSystemService(VibratorManager::class.java)?.defaultVibrator
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Vibrator::class.java)
+            }
             // Pattern: off 0ms → buzz 80ms → pause 120ms → buzz 250ms
             vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 120, 250), -1))
         }

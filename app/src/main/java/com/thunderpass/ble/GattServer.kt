@@ -24,6 +24,12 @@ import com.thunderpass.ble.proto.ProfileDataProto
 import com.thunderpass.data.db.entity.MyProfile
 import com.thunderpass.security.DeviceGroupManager
 import com.thunderpass.security.PayloadSigner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 
 private const val TAG = "ThunderPass/GattServer"
 
@@ -53,6 +59,12 @@ class GattServer(
 
     private var gattServer: BluetoothGattServer? = null
 
+    /** Pre-generated ephemeral key for the next incoming request. Atomically consumed so
+     *  two concurrent clients never receive the same key. Replenished in background. */
+    private val nextServerKey = AtomicReference<KeyPair?>(null)
+    private val serverScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var pregenJob: Job? = null
+
     /** Negotiated MTU per remote device address (set in [onMtuChanged]).
      *  ConcurrentHashMap because [onMtuChanged] and [onConnectionStateChange] can
      *  be invoked simultaneously for different devices on different Binder threads.
@@ -70,15 +82,23 @@ class GattServer(
         gattServer = btManager.openGattServer(context, buildCallback(profileProvider, statsProvider))
             ?.also { server ->
                 server.addService(buildService())
+                pregenJob = serverScope.launch {
+                    if (nextServerKey.get() == null) {
+                        nextServerKey.set(BleEncryption.generateEphemeralKeyPair())
+                        Log.d(TAG, "Pre-generated first server ephemeral key.")
+                    }
+                }
                 Log.i(TAG, "GATT server started.")
             }
     }
 
     /** Call from [BleService.onDestroy]. */
     fun stop() {
+        pregenJob?.cancel()
         gattServer?.close()
         gattServer = null
         deviceMtu.clear()
+        nextServerKey.set(null)
         Log.i(TAG, "GATT server stopped.")
     }
 
@@ -186,8 +206,11 @@ class GattServer(
                     return
                 }
 
-                val serverEphemeral = BleEncryption.generateEphemeralKeyPair()
-                val sharedKey       = BleEncryption.deriveSharedKey(serverEphemeral.private, clientPubKey)
+                val serverEphemeral = nextServerKey.getAndSet(null) ?: BleEncryption.generateEphemeralKeyPair()
+                serverScope.launch {
+                    nextServerKey.set(BleEncryption.generateEphemeralKeyPair())
+                }
+                val sharedKey = BleEncryption.deriveSharedKey(serverEphemeral.private, clientPubKey)
 
                 device?.let { dev ->
                     val mtu = deviceMtu[dev.address] ?: BleConstants.DEFAULT_MTU
